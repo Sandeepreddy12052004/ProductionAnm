@@ -90,35 +90,35 @@ const DashboardContent = () => {
   return (
     <div className="w-full">
 
-      <h1 className="text-2xl font-bold text-[#d1867d] mb-6">System Overview</h1>
+      <h1 className="text-2xl font-extrabold text-[#16223F] mb-6 tracking-tight">System Overview</h1>
 
       {/* 🔥 SMALL COMPACT CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-8">
 
         <div className={cardStyle}>
-          <p className="text-[10px] uppercase text-gray-500 font-bold">Livestock</p>
-          <p className="text-2xl font-black text-[#272E52] mt-1">
+          <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Livestock</p>
+          <p className="text-2xl font-black text-[#16223F] mt-1">
             {mounted ? stats.totalAnimals : 0} 
           </p>
         </div>
 
         <div className={cardStyle}>
-          <p className="text-[10px] uppercase text-gray-500 font-bold">Milk Production</p>
-          <p className="text-2xl font-black text-[#272E52] mt-1">
-            {mounted ? stats.dailyMilk : 0}<span className="text-2xl font-bold text-[#272E52] ">L</span>
+          <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Milk Production</p>
+          <p className="text-2xl font-black text-[#16223F] mt-1">
+            {mounted ? stats.dailyMilk : 0}<span className="text-2xl font-bold text-[#16223F]">L</span>
           </p>
         </div>
 
         <div className={cardStyle}>
-          <p className="text-[10px] uppercase text-gray-500 font-bold">Health</p>
-          <p className="text-2xl font-black text-red-600 mt-1">
+          <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Health</p>
+          <p className="text-2xl font-black text-rose-500 mt-1">
             {mounted ? stats.healthAlerts : 0}
           </p>
         </div>
 
         <div className={cardStyle}>
-          <p className="text-[10px] uppercase text-gray-500 font-bold">Alerts</p>
-          <p className="text-2xl font-black text-red-500 mt-1">
+          <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Alerts</p>
+          <p className="text-2xl font-black text-[#D1867D] mt-1">
             {mounted ? stats.pdTodayTomorrow + stats.calvingTodayTomorrow + stats.heatTodayTomorrow : 0}
           </p>
         </div>
@@ -126,63 +126,63 @@ const DashboardContent = () => {
       </div>
 
       {/* 🔥 IMPORTANT CARDS (LIKE YOUR IMAGE) */}
-     <h2 className="text-lg font-bold text-[#d1867d] mb-3">
+     <h2 className="text-lg font-extrabold text-[#16223F] mb-4 tracking-tight">
   Cattle Categories
 </h2>
 
-<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
 
   {/* Pregnant */}
-  <div className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-green-500 bg-green-50 hover:scale-105 transition cursor-pointer">
-    <div className="text-4xl mb-1">🐄</div>
-    <p className="text-sm font-medium text-gray-700">Pregnant</p>
-    <p className="text-lg font-bold text-green-700">3</p>
+  <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/40 hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/5 transition duration-300 cursor-pointer">
+    <div className="text-3xl mb-1.5">🐄</div>
+    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pregnant</p>
+    <p className="text-xl font-black text-emerald-800 mt-0.5">3</p>
   </div>
 
   {/* Inseminated */}
-  <div className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-indigo-500 bg-indigo-50 hover:scale-105 transition cursor-pointer">
-    <div className="text-4xl mb-1">💉</div>
-    <p className="text-sm font-medium text-gray-700">Inseminated</p>
-    <p className="text-lg font-bold text-indigo-700">4</p>
+  <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 hover:scale-105 hover:shadow-lg hover:shadow-brand-navy/5 transition duration-300 cursor-pointer">
+    <div className="text-3xl mb-1.5">💉</div>
+    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inseminated</p>
+    <p className="text-xl font-black text-brand-navy mt-0.5">4</p>
   </div>
 
   {/* Dry */}
-  <div className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-gray-800 bg-gray-100 hover:scale-105 transition cursor-pointer">
-    <div className="text-4xl mb-1">🌙</div>
-    <p className="text-sm font-medium text-gray-700">Dry</p>
-    <p className="text-lg font-bold text-gray-800">3</p>
+  <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:scale-105 hover:shadow-lg hover:shadow-slate-500/5 transition duration-300 cursor-pointer">
+    <div className="text-3xl mb-1.5">🌙</div>
+    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dry</p>
+    <p className="text-xl font-black text-slate-700 mt-0.5">3</p>
   </div>
 
   {/* Issues */}
-  <div className="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-red-500 bg-red-50 hover:scale-105 transition cursor-pointer">
-    <div className="text-4xl mb-1">⚠️</div>
-    <p className="text-sm font-medium text-gray-700">Issues</p>
-    <p className="text-lg font-bold text-red-600">4</p>
+  <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl border border-brand-rose/30 bg-brand-rose/5 hover:scale-105 hover:shadow-lg hover:shadow-brand-rose/5 transition duration-300 cursor-pointer">
+    <div className="text-3xl mb-1.5">⚠️</div>
+    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Issues</p>
+    <p className="text-xl font-black text-brand-rose mt-0.5">4</p>
   </div>
 
 </div>
       {/* 🔥 BREEDING ALERTS */}
-      <h2 className="text-lg font-bold text-[#d1867d] mb-4">Breeding Alerts</h2>
+      <h2 className="text-lg font-extrabold text-[#16223F] mb-4 tracking-tight">Breeding Alerts</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        <div onClick={() => handleNavigation('PD date')} className={`${interactiveCardStyle} border-l-4 border-blue-500`}>
-          <p className="text-[10px] uppercase text-[#272E52] font-bold">PD Test</p>
-          <p className="text-2xl font-black text-[#272E52]">
+        <div onClick={() => handleNavigation('PD date')} className={`${interactiveCardStyle} border-l-4 border-[#FFC145]`}>
+          <p className="text-[10px] uppercase text-[#16223F] font-black tracking-wider">PD Test</p>
+          <p className="text-2xl font-black text-[#16223F] mt-1">
             {mounted ? stats.pdTodayTomorrow : 0}
           </p>
         </div>
 
-        <div onClick={() => handleNavigation('estimated calving date')} className={`${interactiveCardStyle} border-l-4 border-blue-500`}>
-          <p className="text-[10px] uppercase text-[#272E52] font-bold">Calving</p>
-          <p className="text-2xl font-black text-[#272E52]">
+        <div onClick={() => handleNavigation('estimated calving date')} className={`${interactiveCardStyle} border-l-4 border-[#D1867D]`}>
+          <p className="text-[10px] uppercase text-[#16223F] font-black tracking-wider">Calving</p>
+          <p className="text-2xl font-black text-[#16223F] mt-1">
             {mounted ? stats.calvingTodayTomorrow : 0}
           </p>
         </div>
 
-        <div onClick={() => handleNavigation('heat monitoring 1st notification')} className={`${interactiveCardStyle} border-l-4 border-blue-500`}>
-          <p className="text-[10px] uppercase text-[#272E52] font-bold">Heat</p>
-          <p className="text-2xl font-black text-[#272E52]">
+        <div onClick={() => handleNavigation('heat monitoring 1st notification')} className={`${interactiveCardStyle} border-l-4 border-[#16223F]`}>
+          <p className="text-[10px] uppercase text-[#16223F] font-black tracking-wider">Heat</p>
+          <p className="text-2xl font-black text-[#16223F] mt-1">
             {mounted ? stats.heatTodayTomorrow : 0}
           </p>
         </div>

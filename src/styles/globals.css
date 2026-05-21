@@ -1,6 +1,7 @@
-/* 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* 
 :root {
   --background: #f8fafc;
   --foreground: #1f2937;
@@ -24,22 +25,37 @@ body {
 
 
 
-@import "tailwindcss";
 
-/* ✅ FORCE LIGHT MODE */
+
+/* ✅ FORCE LIGHT MODE & BRAND CONFIGS */
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --color-brand-navy: #16223F;
+  --color-brand-rose: #D1867D;
+  --color-brand-gold: #FFC145;
 }
 
-/* ❌ REMOVE DARK MODE BLOCK COMPLETELY */
-
-/* ✅ APPLY */
 html, body {
   background-color: var(--background) !important;
   color: var(--foreground) !important;
-  font-family: system-ui, Arial, sans-serif;
-
-  /* ✅ THIS IS CRITICAL */
+  font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
   color-scheme: light;
+}
+
+/* Custom PWA rounded scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }

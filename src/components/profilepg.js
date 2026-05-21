@@ -125,16 +125,16 @@ const Profile = () => {
 
       {/* Avatar */}
       <div className="mb-6 relative">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-3xl sm:text-4xl font-black shadow-md">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-[#16223F] rounded-full flex items-center justify-center text-white text-3xl sm:text-4xl font-black shadow-md">
           A
         </div>
-        <span className="absolute bottom-1 right-1 w-5 h-5 sm:w-6 sm:h-6 bg-green-500 border-4 border-gray-100 rounded-full"></span>
+        <span className="absolute bottom-1 right-1 w-5 h-5 sm:w-6 sm:h-6 bg-emerald-500 border-4 border-gray-100 rounded-full"></span>
       </div>
 
       {/* Name */}
       <div className="mb-6 text-center">
         <h2 className="text-2xl sm:text-3xl font-black text-black">Admin User</h2>
-        <p className="text-green-700 font-bold text-sm tracking-widest uppercase mt-1">
+        <p className="text-[#D1867D] font-bold text-sm tracking-widest uppercase mt-1">
           Agasthya Manager
         </p>
       </div>
@@ -155,7 +155,7 @@ const Profile = () => {
 
         <div className="flex justify-between">
           <span className="text-gray-500 text-xs uppercase">Session Status</span>
-          <span className="text-green-600 font-bold">Active</span>
+          <span className="text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full text-xs border border-emerald-200/50">Active</span>
         </div>
       </div>
 

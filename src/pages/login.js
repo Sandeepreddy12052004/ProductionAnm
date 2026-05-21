@@ -66,20 +66,20 @@ export default function LoginPage() {
         {/* Form Section */}
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-xs font-bold text-[#1A233E] uppercase tracking-wider mb-2 ml-1">
+            <label className="block text-xs font-bold text-[#16223F] uppercase tracking-wider mb-2 ml-1">
               User ID
             </label>
             <input
               type="text"
               required
-              className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-200 text-[#1A233E] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
+              className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
               placeholder="Enter your ID"
               onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#1A233E] uppercase tracking-wider mb-2 ml-1">
+            <label className="block text-xs font-bold text-[#16223F] uppercase tracking-wider mb-2 ml-1">
               Password
             </label>
             <div className="relative">
@@ -88,7 +88,7 @@ export default function LoginPage() {
     type={showPassword ? "text" : "password"}
     required
     value={formData.password ||  ""}
-    className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-200 text-[#1A233E] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
+    className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
     placeholder="••••••••"
     onChange={(e) =>
       setFormData({
@@ -112,7 +112,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-[#1A233E] hover:bg-[#25335a] text-white font-bold rounded-xl shadow-lg shadow-navy-900/20 transform transition active:scale-[0.98] disabled:opacity-70 mt-4"
+            className="w-full py-4 bg-[#16223F] hover:bg-[#16223F]/90 text-white font-bold rounded-xl shadow-lg shadow-[#16223F]/20 transform transition active:scale-[0.98] disabled:opacity-70 mt-4"
           >
             {loading ? "Authenticating..." : "Login to Farm"}
           </button>

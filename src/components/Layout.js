@@ -72,7 +72,7 @@ const Layout = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-transparent">
 
       {/* SIDEBAR */}
       <Sidebar

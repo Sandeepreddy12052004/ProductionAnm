@@ -38,7 +38,7 @@ const userConfig = {
 
 export default function UsersPage() {
   return (
-    <div className="p-4 md:p-8 min-w-max">
+    <div className="p-4 md:p-8 w-full">
       <UserManagementPg moduleConfig={userConfig} />
     </div>
   );

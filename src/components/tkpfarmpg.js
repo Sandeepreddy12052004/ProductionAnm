@@ -212,8 +212,69 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         ...current.fields.reduce((acc, field) => { acc[field.name] = log[field.name]; return acc; }, {})
       });
     });
+
+    // Style the header row (row 1)
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "16223F" } // Brand Navy
+      };
+      cell.font = {
+        name: "Segoe UI",
+        bold: true,
+        color: { argb: "FFFFFF" },
+        size: 11
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "16223F" } },
+        left: { style: "thin", color: { argb: "1E293B" } },
+        bottom: { style: "medium", color: { argb: "1E293B" } },
+        right: { style: "thin", color: { argb: "1E293B" } }
+      };
+    });
+    headerRow.height = 28;
+
+    // Style body rows and auto-adjust widths
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell((cell) => {
+          cell.font = { name: "Segoe UI", size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: "left" };
+          cell.border = {
+            top: { style: "thin", color: { argb: "E2E8F0" } },
+            left: { style: "thin", color: { argb: "E2E8F0" } },
+            bottom: { style: "thin", color: { argb: "E2E8F0" } },
+            right: { style: "thin", color: { argb: "E2E8F0" } }
+          };
+          if (rowNumber % 2 === 0) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "F8FAFC" } // Zebra striping
+            };
+          }
+        });
+        row.height = 20;
+      }
+    });
+
+    // Auto-fit column widths based on maximum text length
+    worksheet.columns.forEach((column) => {
+      let maxLen = 0;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const val = cell.value ? String(cell.value) : "";
+        if (val.length > maxLen) {
+          maxLen = val.length;
+        }
+      });
+      column.width = Math.max(maxLen + 4, 15);
+    });
+
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer]);
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -224,12 +285,106 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
   /* ---------- EXPORT PDF ---------- */
   const exportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "A4"
+    });
+
     const columns = ["Date", ...current.fields.map(f => f.label)];
     const rows = filteredLogs.map(log => [log.entryDate, ...current.fields.map(f => log[f.name])]);
-    doc.text(`TKP Farm - ${current.name}`, 14, 15);
-    autoTable(doc, { head: [columns], body: rows, startY: 20 });
-    doc.save(`${current.name}_logs.pdf`);
+
+    const img = new Image();
+    img.src = "/LOGO.png";
+    img.onload = () => {
+      // Landscape A4 size is 842pt x 595pt
+      // Place beautiful brand logo at top-left
+      doc.addImage(img, "PNG", 20, 10, 40, 40);
+
+      // Corporate title next to logo
+      doc.setFontSize(16);
+      doc.setTextColor(22, 34, 63); // Brand Navy
+      doc.setFont("helvetica", "bold");
+      doc.text(`TKP Farm - ${current.name}`, 75, 26);
+
+      doc.setFontSize(9);
+      doc.setTextColor(209, 134, 125); // Brand Rose
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 75, 40);
+
+      autoTable(doc, {
+        head: [columns],
+        body: rows,
+        startY: 60,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          cellPadding: 6,
+          overflow: "linebreak",
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: [22, 34, 63],
+          textColor: 255,
+          fontSize: 9,
+          halign: "center",
+        },
+        bodyStyles: {
+          halign: "left",
+        },
+        columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 80 },
+        },
+        tableWidth: "auto",
+        margin: { left: 20, right: 20 },
+      });
+
+      doc.save(`${current.name}_logs.pdf`);
+    };
+
+    img.onerror = () => {
+      // Fallback if logo fails to load (draw text at original position)
+      doc.setFontSize(16);
+      doc.setTextColor(22, 34, 63);
+      doc.setFont("helvetica", "bold");
+      doc.text(`TKP Farm - ${current.name}`, 20, 25);
+
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 38);
+
+      autoTable(doc, {
+        head: [columns],
+        body: rows,
+        startY: 50,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          cellPadding: 6,
+          overflow: "linebreak",
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: [22, 34, 63],
+          textColor: 255,
+          fontSize: 9,
+          halign: "center",
+        },
+        bodyStyles: {
+          halign: "left",
+        },
+        columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 80 },
+        },
+        tableWidth: "auto",
+        margin: { left: 20, right: 20 },
+      });
+
+      doc.save(`${current.name}_logs.pdf`);
+    };
   };
 
 
@@ -240,7 +395,7 @@ const activeFilterCount = filters.filter(
     <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-[#272E52] font-sans">TKP Farm</h1>
+          <h1 className="text-3xl font-bold text-[#16223F] font-sans">TKP Farm</h1>
           <p className="text-black opacity-60 italic">Module: {current.name}</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -256,7 +411,7 @@ const activeFilterCount = filters.filter(
     transition-all duration-200 ease-out 
     hover:-translate-y-[1px] hover:shadow-md
     ${showFilters 
-      ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' 
+      ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
       : 'bg-white border-gray-300 hover:bg-gray-50'}
   `}
 >
@@ -279,7 +434,7 @@ const activeFilterCount = filters.filter(
 </button>
           <button 
             onClick={() => { setIsEditing(false); setShowForm(true); }} 
-            className="hidden md:block bg-green-600 text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-green-700 transition-all"
+            className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all"
           >
             + Add Entry
           </button>
@@ -345,7 +500,7 @@ const activeFilterCount = filters.filter(
         className={`
           w-full text-left px-4 py-2 text-sm
           hover:bg-gray-100 transition
-          ${activeTab === m.id ? 'bg-green-50 font-bold' : ''}
+          ${activeTab === m.id ? 'bg-[#D1867D]/10 text-[#16223F] font-bold' : ''}
         `}
       >
         {m.icon} {m.name}
@@ -520,7 +675,7 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
 
           <button
             onClick={() => setFilters([...filters, { field: "entryDate", value: "" , from: "", to: "" }])}
-            className="flex-1 bg-green-100 text-green-700 py-2 rounded-lg font-bold text-sm"
+            className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
           >
             + Add Filter
           </button>
@@ -537,7 +692,7 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
         {/* APPLY BUTTON */}
         <button
           onClick={() => setShowFilters(false)}
-          className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg font-bold"
+          className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold"
         >
           Apply Filters
         </button>
@@ -562,14 +717,14 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
               paginatedLogs.map(log => (
                 <tr 
                   key={log.id} 
-                  className="hover:bg-green-50 cursor-pointer group transition-colors" 
+                  className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" 
                   onClick={() => setSelectedEntry(log)}
                 >
                   <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
   {current.fields.map(f => (
     <td key={f.name} className="p-4 font-semibold text-black">{log[f.name]}</td>
   ))}
-  <td className="p-4 text-gray-400 group-hover:text-green-600 text-xl font-bold text-center transition-colors">⋮</td>
+  <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
 </tr>
               ))
             ) : (
@@ -631,7 +786,7 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
 </button>
               <button 
                 onClick={() => { setIsEditing(true); setShowForm(true); }} 
-                className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 shadow-lg shadow-green-100 transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
               >
                 ✏️ Edit Entry
               </button>
@@ -722,12 +877,12 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
       }}
       className="
         w-14 h-14
-        bg-green-600 text-white
+        bg-[#D1867D] text-white
         rounded-full
-        shadow-[0_10px_25px_rgba(0,0,0,0.25)]
+        shadow-[0_10px_25px_rgba(209,134,125,0.4)]
         flex items-center justify-center
         text-3xl font-bold
-        hover:bg-green-700 hover:-translate-y-1
+        hover:bg-[#D1867D]/95 hover:-translate-y-1
         active:scale-95
         transition-all duration-200
       "

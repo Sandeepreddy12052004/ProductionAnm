@@ -40,7 +40,7 @@ const Footer = () => {
 
       {/* MOBILE NAV */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[50]">
-        <div className="bg-white border-t shadow-md flex justify-around items-center py-2 relative">
+        <div className="bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-2xl flex justify-around items-center py-2.5 relative pb-safe">
 
           {navItems.map((item) => {
             const isActive = router.pathname === item.path;
@@ -52,33 +52,23 @@ const Footer = () => {
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute inset-0 mx-2 rounded-xl bg-green-100 shadow-lg"
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="absolute inset-0 mx-2.5 rounded-xl bg-[#D1867D]/10"
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
                   />
                 )}
 
                 <button
                   onClick={() => router.push(item.path)}
-                  className={`relative z-10 flex flex-col items-center text-xs py-1 ${
-                    isActive ? "text-green-600" : "text-gray-500"
+                  className={`relative z-10 flex flex-col items-center text-[10px] font-black uppercase tracking-tight py-1 transition-all duration-300 ${
+                    isActive ? "text-[#D1867D]" : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
-                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-xl mb-0.5">{item.icon}</span>
                   {item.name}
                 </button>
               </div>
             );
           })}
-
-          {/* CENTER BUTTON */}
-          <div className="absolute left-1/2 -translate-x-1/2 -top-6">
-            {/* <button
-              onClick={() => router.push("/add")}
-              className="bg-yellow-400 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl hover:scale-110 transition"
-            >
-              +
-            </button> */}
-          </div>
 
         </div>
       </div>

@@ -181,7 +181,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
       ...current.fields.map(field => ({
         header: field.label,
         key: field.name,
-        width: 25
+        width: 20
       }))
     ];
 
@@ -193,6 +193,66 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           return acc;
         }, {})
       });
+    });
+
+    // Style the header row (row 1)
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "16223F" } // Brand Navy
+      };
+      cell.font = {
+        name: "Segoe UI",
+        bold: true,
+        color: { argb: "FFFFFF" },
+        size: 11
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "16223F" } },
+        left: { style: "thin", color: { argb: "1E293B" } },
+        bottom: { style: "medium", color: { argb: "1E293B" } },
+        right: { style: "thin", color: { argb: "1E293B" } }
+      };
+    });
+    headerRow.height = 28;
+
+    // Style body rows and auto-adjust widths
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell((cell) => {
+          cell.font = { name: "Segoe UI", size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: "left" };
+          cell.border = {
+            top: { style: "thin", color: { argb: "E2E8F0" } },
+            left: { style: "thin", color: { argb: "E2E8F0" } },
+            bottom: { style: "thin", color: { argb: "E2E8F0" } },
+            right: { style: "thin", color: { argb: "E2E8F0" } }
+          };
+          if (rowNumber % 2 === 0) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "F8FAFC" } // Zebra striping
+            };
+          }
+        });
+        row.height = 20;
+      }
+    });
+
+    // Auto-fit column widths based on maximum text length
+    worksheet.columns.forEach((column) => {
+      let maxLen = 0;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const val = cell.value ? String(cell.value) : "";
+        if (val.length > maxLen) {
+          maxLen = val.length;
+        }
+      });
+      column.width = Math.max(maxLen + 4, 15);
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -207,28 +267,109 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
   /* ---------- EXPORT PDF ---------- */
   const exportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "A4"
+    });
+
     const columns = ["Date", ...current.fields.map(f => f.label)];
     const rows = filteredLogs.map(log => [
       log.date,
       ...current.fields.map(f => log[f.name])
     ]);
 
-    doc.setFontSize(18);
-    doc.text(`TDR Farm - ${current.name}`, 14, 15);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+    const img = new Image();
+    img.src = "/LOGO.png";
+    img.onload = () => {
+      // Landscape A4 size is 842pt x 595pt
+      // Place beautiful brand logo at top-left
+      doc.addImage(img, "PNG", 20, 10, 40, 40);
 
-    autoTable(doc, {
-      head: [columns],
-      body: rows,
-      startY: 30,
-      theme: 'grid',
-      headStyles: { fillColor: [21, 128, 61] } // Green-700
-    });
+      // Corporate title next to logo
+      doc.setFontSize(16);
+      doc.setTextColor(22, 34, 63); // Brand Navy
+      doc.setFont("helvetica", "bold");
+      doc.text(`TDR Farm - ${current.name}`, 75, 26);
 
-    doc.save(`TDR_${current.name}_Logs.pdf`);
+      doc.setFontSize(9);
+      doc.setTextColor(209, 134, 125); // Brand Rose
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 75, 40);
+
+      autoTable(doc, {
+        head: [columns],
+        body: rows,
+        startY: 60,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          cellPadding: 6,
+          overflow: "linebreak",
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: [22, 34, 63],
+          textColor: 255,
+          fontSize: 9,
+          halign: "center",
+        },
+        bodyStyles: {
+          halign: "left",
+        },
+        columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 80 },
+        },
+        tableWidth: "auto",
+        margin: { left: 20, right: 20 },
+      });
+
+      doc.save(`TDR_${current.name}_Logs.pdf`);
+    };
+
+    img.onerror = () => {
+      // Fallback if logo fails to load (draw text at original position)
+      doc.setFontSize(16);
+      doc.setTextColor(22, 34, 63);
+      doc.setFont("helvetica", "bold");
+      doc.text(`TDR Farm - ${current.name}`, 20, 25);
+
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 38);
+
+      autoTable(doc, {
+        head: [columns],
+        body: rows,
+        startY: 50,
+        theme: "grid",
+        styles: {
+          fontSize: 8,
+          cellPadding: 6,
+          overflow: "linebreak",
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: [22, 34, 63],
+          textColor: 255,
+          fontSize: 9,
+          halign: "center",
+        },
+        bodyStyles: {
+          halign: "left",
+        },
+        columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 80 },
+        },
+        tableWidth: "auto",
+        margin: { left: 20, right: 20 },
+      });
+
+      doc.save(`TDR_${current.name}_Logs.pdf`);
+    };
   };
 
   const handleDelete = () => {
@@ -256,7 +397,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-[#272E52] opacity-80">TDR Farm</h1>
+          <h1 className="text-3xl font-bold text-[#16223F] opacity-80">TDR Farm</h1>
           <p className="text-gray-500 italic">Module: {current.name}</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -285,7 +426,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   transition-all duration-200 ease-out 
   hover:-translate-y-[1px] hover:shadow-md
   ${showFilters 
-    ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' 
+    ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
     : 'bg-white border-gray-300 hover:bg-gray-50'}
 `}
           >
@@ -306,7 +447,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 )}
           </button>
 
-          <button onClick={() => { setIsEditing(false); setShowForm(true); }} className="hidden md:block bg-green-700 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-800 shadow-md transition-all">
+          <button onClick={() => { setIsEditing(false); setShowForm(true); }} className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold hover:bg-[#16223F]/90 shadow-md transition-all">
             + Add {current.name}
           </button>
         </div>
@@ -333,7 +474,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   {/* MOBILE ADD BUTTON ONLY */}
   <button
     onClick={() => { setIsEditing(false); setShowForm(true); }}
-    className="md:hidden shrink-0 px-4 py-2 bg-green-600 text-white rounded-full font-bold shadow-md"
+    className="md:hidden shrink-0 px-4 py-2 bg-[#16223F] text-white rounded-full font-bold shadow-md hover:bg-[#16223F]/90"
   >
     + Add
   </button>
@@ -366,7 +507,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           setShowTabDropdown(false);
         }}
         className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-          activeTab === m.id ? "bg-green-50 font-bold" : ""
+          activeTab === m.id ? "bg-[#D1867D]/10 text-[#16223F] font-bold" : ""
         }`}
       >
         {m.icon} {m.name}
@@ -464,7 +605,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
       <div className="flex gap-2 mt-6">
         <button
           onClick={() => setFilters([...filters, { field: "date", value: "", from: "", to: "" }])}
-          className="flex-1 bg-green-100 text-green-700 py-2 rounded-lg font-bold text-sm"
+          className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
         >
           + Add Filter
         </button>
@@ -479,7 +620,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
       <button
         onClick={() => setShowFilters(false)}
-        className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg font-bold"
+        className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold"
       >
         Apply Filters
       </button>
@@ -500,10 +641,10 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           </thead>
           <tbody className="divide-y divide-gray-100">
             {paginatedLogs.length > 0 ? paginatedLogs.map(log => (
-              <tr key={log.id} className="hover:bg-green-50 cursor-pointer group transition-colors" onClick={() => setSelectedEntry(log)}>
+              <tr key={log.id} className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" onClick={() => setSelectedEntry(log)}>
                 <td className="p-4 text-sm text-gray-600 font-sans">{log.date}</td>
                 {current.fields.map(f => <td key={f.name} className="p-4 font-semibold text-gray-800">{log[f.name]}</td>)}
-                <td className="p-4 text-gray-300 group-hover:text-green-700 text-xl font-bold text-center transition-colors">⋮</td>
+                <td className="p-4 text-gray-300 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
               </tr>
             )) : (
               <tr><td colSpan={current.fields.length + 2} className="p-12 text-center text-gray-400">No records found for {current.name}.</td></tr>
@@ -563,7 +704,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   >
     👁️ View Details
   </button>
-              <button onClick={() => { setIsEditing(true); setShowForm(true); }} className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-green-800 hover:shadow-md hover:-translate-y-[1px]">✏️ Edit Entry</button>
+              <button onClick={() => { setIsEditing(true); setShowForm(true); }} className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-[#D1867D]/90 hover:shadow-md hover:-translate-y-[1px]">✏️ Edit Entry</button>
               <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-red-100 hover:shadow-md hover:-translate-y-[1px]">🗑️ Delete Entry</button>
               <button onClick={() => setSelectedEntry(null)} className="w-full text-gray-400 py-2 transition-all duration-200 ease-out hover:text-gray-700 hover:bg-gray-100 rounded-lg">Close</button>
             </div>
@@ -620,34 +761,35 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         <LogForm title={isEditing ? `Update ${current.name}` : `New ${current.name}`} fields={current.fields} initialData={isEditing ? selectedEntry : {}} onSubmit={handleSave} onClose={closeAllModals} />
       )}
       {/* MOBILE FLOATING ADD BUTTON */}
-
-  {/* <div
-  className={`
-    md:hidden fixed right-6 z-[100]
-    transition-all duration-300
-    ${hideFABNearBottom 
-      ? "opacity-0 translate-y-10 pointer-events-none" 
-      : "opacity-100 translate-y-0"}
-    bottom-20
-  `}
->
-  <button
-    onClick={() => { setIsEditing(false); setShowForm(true); }}
-    className="
-      w-14 h-14 
-      bg-green-600 text-white 
-      rounded-full 
-      shadow-[0_10px_25px_rgba(0,0,0,0.25)]
-      flex items-center justify-center 
-      text-3xl font-bold
-      hover:bg-green-700
-      active:scale-95
-      transition-all duration-200
-    "
-  >
-    +
-  </button>
-</div> */}
+      {!showForm && !selectedEntry && !viewMode && !showFilters && (
+        <div
+          className={`
+            md:hidden fixed right-6 z-[100]
+            transition-all duration-300
+            ${!showFAB || hideFABNearBottom 
+              ? "opacity-0 translate-y-10 pointer-events-none" 
+              : "opacity-100 translate-y-0"}
+            bottom-20
+          `}
+        >
+          <button
+            onClick={() => { setIsEditing(false); setShowForm(true); }}
+            className="
+              w-14 h-14 
+              bg-[#D1867D] text-white 
+              rounded-full 
+              shadow-[0_10px_25px_rgba(209,134,125,0.4)]
+              flex items-center justify-center 
+              text-3xl font-bold
+              hover:bg-[#D1867D]/95
+              active:scale-95
+              transition-all duration-200
+            "
+          >
+            +
+          </button>
+        </div>
+      )}
 
     </div>
   );

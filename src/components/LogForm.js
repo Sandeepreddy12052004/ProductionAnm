@@ -207,20 +207,20 @@
       // <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
       //   <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
 
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-7 rounded-3xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto border border-slate-100">
 
-          <h2 className="text-xl font-bold mb-4 text-green-800 flex-shrink-0">{title}</h2>
+          <h2 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight flex-shrink-0">{title}</h2>
           <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
             {fields.map((field) => (
               <div key={field.name}>
-                <label className="block text-sm font-medium text-gray-700">{field.label}</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">{field.label}</label>
                 {field.type === "select" ? (
       <select
         name={field.name}
         value={formData[field.name] || ""}
         required={!field.optional && field.name !== "age"}
-        className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-white "
+        className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         onChange={handleChange}
       >
         <option value="">Select {field.label}</option>
@@ -239,7 +239,7 @@
       list="tag-options"
       // value={formData.tag || ""}
       value={formData[field.name] || ""}
-      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+      className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
       onChange={(e) => {
         handleChange(e);
         const value = e.target.value;
@@ -375,14 +375,14 @@
     
     readOnly={field.name === "age" || field.name === "Pregnant age"}
     
-    className={`mt-1 block w-full border border-gray-300 rounded-md p-2 ${
+    className={`mt-1 block w-full border rounded-xl p-2.5 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 ${
       field.name === "age" || 
       field.name === "Pregnant age" || 
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       (["pregnancy confirmed date", "estimated calving date", "actual calving date", "calf tag", "heat monitoring 2nd notification"].includes(field.name) && formData["pregnancy status"] !== "Positive") ||
       (field.name === "heat monitoring 1st notification" && !["Positive", "Negative"].includes(formData["pregnancy status"]))
-        ? "bg-gray-100 cursor-not-allowed text-gray-400" 
-        : "bg-white text-black"
+        ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400" 
+        : "bg-white text-black border-slate-200"
     }`}
 
 
@@ -411,7 +411,7 @@
       )}
               </div>
             ))}
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-7">
               {/* <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg">Save</button>
               <button type="button" onClick={onClose} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancel</button> */}
               {/* <button
@@ -428,10 +428,10 @@
   <button
     type="submit"
     disabled={tagError !== "" || dobError !== ""}
-    className={`flex-1 py-2 rounded-lg font-semibold transition-all duration-200
+    className={`flex-1 py-3 rounded-xl font-bold transition-all duration-200 shadow-md
     ${(tagError || dobError)
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-      : "bg-green-600 text-white hover:bg-green-700 hover:shadow-md hover:-translate-y-[1px]"
+      ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
+      : "bg-[#16223F] text-white hover:bg-[#16223F]/90 hover:shadow-lg hover:shadow-[#16223F]/10 hover:-translate-y-[1px]"
     }`}
   >
     Save
@@ -440,9 +440,9 @@
   <button
     type="button"
     onClick={onClose}
-    className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg
+    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold
     transition-all duration-200 ease-out
-    hover:bg-gray-300 hover:shadow-md hover:-translate-y-[1px]"
+    hover:bg-slate-200 hover:shadow-md hover:-translate-y-[1px]"
   >
     Cancel
   </button>

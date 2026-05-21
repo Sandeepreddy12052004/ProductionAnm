@@ -314,33 +314,33 @@ const UserManagementPg = ({ moduleConfig }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 min-w-max bg-white dark:bg-gray-900 text-black dark:text-white">
+    <div className="p-4 md:p-8 w-full bg-transparent text-slate-800">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-green-700">👥 User Management</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-black text-[#16223F]">👥 User Management</h1>
 
         <button
           onClick={() => { setIsEditing(false); setShowForm(true); }}
-          className="bg-black text-white px-4 py-2 rounded"
+          className="bg-[#16223F] hover:bg-[#16223F]/90 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all duration-200 active:scale-[0.98]"
         >
           Create New User
         </button>
       </div>
 
       {/* FILTERS */}
-      <div className="flex flex-wrap gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-6">
 
         <input
           placeholder="Search User ID / Name"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border p-2 rounded w-60 bg-white dark:bg-gray-800"
+          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 w-60"
         />
 
         <select
           onChange={(e) => setFilters({ ...filters, farm: e.target.value })}
-          className="border p-2 rounded bg-white dark:bg-gray-800"
+          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Farms</option>
           <option>TKP</option>
@@ -349,7 +349,7 @@ const UserManagementPg = ({ moduleConfig }) => {
 
         <select
           onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-          className="border p-2 rounded bg-white dark:bg-gray-800"
+          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Departments</option>
           <option>IT</option>
@@ -360,7 +360,7 @@ const UserManagementPg = ({ moduleConfig }) => {
 
         <select
           onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-          className="border p-2 rounded bg-white dark:bg-gray-800"
+          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Roles</option>
           <option>Admin</option>
@@ -370,7 +370,7 @@ const UserManagementPg = ({ moduleConfig }) => {
 
         <select
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="border p-2 rounded bg-white dark:bg-gray-800"
+          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Status</option>
           <option>Active</option>
@@ -380,45 +380,45 @@ const UserManagementPg = ({ moduleConfig }) => {
       </div>
 
       {/* TABLE */}
-      <div className="border rounded-lg overflow-auto">
-        <table className="min-w-full text-sm">
+      <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto bg-white">
+        <table className="w-full text-left min-w-[800px]">
 
-          <thead className="bg-gray-200 dark:bg-gray-800">
+          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
-              <th className="p-3">S.no</th>
-              <th className="p-3">User ID</th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Mobile</th>
-              <th className="p-3">Farm</th>
-              <th className="p-3">Department</th>
-              <th className="p-3">Role</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Actions</th>
+              <th className="p-4 border-b">S.no</th>
+              <th className="p-4 border-b">User ID</th>
+              <th className="p-4 border-b">Name</th>
+              <th className="p-4 border-b">Email</th>
+              <th className="p-4 border-b">Mobile</th>
+              <th className="p-4 border-b">Farm</th>
+              <th className="p-4 border-b">Department</th>
+              <th className="p-4 border-b">Role</th>
+              <th className="p-4 border-b text-center">Status</th>
+              <th className="p-4 border-b">Actions</th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
-                <tr key={user.id} className="border-t">
+                <tr key={user.id} className="hover:bg-[#D1867D]/5 transition-colors cursor-pointer">
 
-                  <td className="p-3">{index + 1}</td>
-                  <td className="p-3">{user.userId}</td>
-                  <td className="p-3">{user.name}</td>
-                  <td className="p-3">{user.email || "-"}</td>
-                  <td className="p-3">{user.mobile}</td>
-                  <td className="p-3">{user.farm}</td>
-                  <td className="p-3">{user.department}</td>
-                  <td className="p-3">{user.role}</td>
+                  <td className="p-4 text-sm font-medium text-black">{index + 1}</td>
+                  <td className="p-4 text-sm font-semibold text-black">{user.userId}</td>
+                  <td className="p-4 text-sm font-bold text-black">{user.name}</td>
+                  <td className="p-4 text-sm text-gray-500 font-sans">{user.email || "-"}</td>
+                  <td className="p-4 text-sm text-gray-500 font-sans">{user.mobile}</td>
+                  <td className="p-4 text-sm font-semibold text-black">{user.farm}</td>
+                  <td className="p-4 text-sm font-semibold text-gray-600">{user.department}</td>
+                  <td className="p-4 text-sm font-semibold text-gray-600">{user.role}</td>
 
                   {/* ✅ STATUS CLICKABLE */}
-                  <td className="p-3">
+                  <td className="p-4 text-center">
                     {statusEditId === user.id ? (
                       <select
                         value={user.status}
                         onChange={(e) => handleStatusChange(user.id, e.target.value)}
-                        className="border p-1 rounded"
+                        className="px-2 py-1 rounded-xl bg-gray-50 border border-gray-200 text-sm font-semibold outline-none focus:border-[#D1867D]"
                       >
                         <option>Active</option>
                         <option>Inactive</option>
@@ -426,22 +426,24 @@ const UserManagementPg = ({ moduleConfig }) => {
                     ) : (
                       <span
                         onClick={() => setStatusEditId(user.id)}
-                        className={`cursor-pointer px-2 py-1 rounded text-xs text-white ${
-                          user.status === "Active" ? "bg-green-600" : "bg-red-500"
+                        className={`cursor-pointer px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
+                          user.status === "Inactive"
+                            ? "bg-red-50 text-red-700 border-red-100/50"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-100/50"
                         }`}
                       >
-                        {user.status}
+                        {user.status || "Active"}
                       </span>
                     )}
                   </td>
 
-                  <td className="p-3 flex gap-2">
+                  <td className="p-4 flex gap-2 items-center">
                     <button
                       onClick={() => {
                         setSelectedEntry(user);
                         setViewMode(true);
                       }}
-                      className="bg-blue-500 text-white px-3 py-1 rounded"
+                      className="bg-[#16223F] hover:bg-[#16223F]/90 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
                     >
                       View
                     </button>
@@ -452,7 +454,7 @@ const UserManagementPg = ({ moduleConfig }) => {
                         setIsEditing(true);
                         setShowForm(true);
                       }}
-                      className="bg-yellow-400 px-3 py-1 rounded"
+                      className="bg-[#D1867D] hover:bg-[#D1867D]/90 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
                     >
                       Edit
                     </button>
@@ -474,20 +476,23 @@ const UserManagementPg = ({ moduleConfig }) => {
 
       {/* VIEW MODAL */}
       {selectedEntry && viewMode && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded w-96">
+        <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-7 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-[400px]">
 
-            <h3 className="text-lg font-bold mb-4 text-center">User Details</h3>
+            <h3 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight">User Details</h3>
 
-            {moduleConfig.fields.map(field => (
-              <p key={field.name}>
-                <b>{field.label}:</b> {selectedEntry[field.name] || "-"}
-              </p>
-            ))}
+            <div className="space-y-4 mb-6">
+              {moduleConfig.fields.map(field => (
+                <div key={field.name} className="border-b border-slate-50 pb-2">
+                  <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
+                  <span className="text-sm font-semibold text-slate-800">{selectedEntry[field.name] || "-"}</span>
+                </div>
+              ))}
+            </div>
 
             <button
               onClick={() => setViewMode(false)}
-              className="mt-4 w-full bg-gray-300 py-2 rounded"
+              className="w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg hover:shadow-[#16223F]/10 hover:-translate-y-[1px] transition-all duration-200"
             >
               Close
             </button>

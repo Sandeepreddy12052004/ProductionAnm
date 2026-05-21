@@ -205,9 +205,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   // const activeStyle = "bg-[#f3f6fb] border-[#1e3a5f] text-[#1e3a5f]";
   // const normalStyle = "border-transparent hover:bg-gray-100";
 
-const activeStyle = "bg-[#f3f6fb] border-[#1e3a5f] text-[#1e3a5f] transition-all duration-200";
+const activeStyle = "bg-[#D1867D]/10 border-[#D1867D] text-[#16223F] font-extrabold transition-all duration-200";
 
-const normalStyle = "border-transparent hover:bg-gray-100 hover:shadow-sm hover:translate-x-1 transition-all duration-200 cursor-pointer";
+const normalStyle = "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:shadow-sm hover:translate-x-1 transition-all duration-200 cursor-pointer";
 
 
   // ✅ SCROLL LOCK ADDED
@@ -245,7 +245,7 @@ const normalStyle = "border-transparent hover:bg-gray-100 hover:shadow-sm hover:
       >
         {/* MOBILE HEADER */}
         <div className="flex justify-between items-center mb-6 md:hidden">
-          <span className="text-lg font-bold text-[#1e3a5f]">Menu</span>
+          <span className="text-lg font-bold text-[#16223F]">Menu</span>
           <button
             onClick={() => setIsOpen(false)}
             className="text-gray-800 text-xl font-bold"
@@ -254,9 +254,20 @@ const normalStyle = "border-transparent hover:bg-gray-100 hover:shadow-sm hover:
           </button>
         </div>
 
-        <h3 className="text-3xl font-extrabold mb-10 tracking-wide text-[#1e3a5f]">
-          AGASTHYA
-        </h3>
+        {/* BRAND LOGO HEADER */}
+        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100 shadow-sm">
+            <img
+              src="/LOGO.png"
+              alt="logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-[#16223F] text-[16px] leading-none mb-0.5">AGASTHYA</span>
+            <span className="font-black text-[9px] text-[#D1867D] uppercase tracking-widest leading-none">Nutro Milk</span>
+          </div>
+        </div>
 
         <ul className="space-y-2">
 
