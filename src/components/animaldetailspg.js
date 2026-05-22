@@ -4,6 +4,8 @@ import LogForm from './LogForm';
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { api } from '@/utils/api';
+import { toast } from 'react-hot-toast';
 
 
 
@@ -16,9 +18,8 @@ const [logs, setLogs] = useState([]);
 const [selectedEntry, setSelectedEntry] = useState(null);
 const [viewMode, setViewMode] = useState(false);
 const [isEditing, setIsEditing] = useState(false);
+const [isLoading, setIsLoading] = useState(false);
 
-// const [filterCategory, setFilterCategory] = useState("entryDate");
-// const [filterValue, setFilterValue] = useState("");
 const [filters, setFilters] = useState([
   { field: "entryDate", value: "" }
 ]);
@@ -38,31 +39,32 @@ const modules = [
 const current = moduleConfig || { id: 'unknown', name: 'Unknown', fields: [] };
 const storageKey = `global_${current.id}_logs`;
 
+const fetchLogs = async () => {
+  setIsLoading(true);
+  try {
+    let data = [];
+    if (current.id === 'livestock') {
+      data = await api.cattle.getAll();
+    } else if (current.id === 'crossing') {
+      data = await api.crossing.getAll();
+    } else {
+      const savedData = localStorage.getItem(storageKey);
+      data = savedData ? JSON.parse(savedData) : [];
+    }
+    setLogs(Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error(`Error loading logs for ${current.id}:`, e);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 useEffect(() => {
   if (!moduleConfig) return;
-  Promise.resolve().then(() => {
-    const savedData = localStorage.getItem(storageKey);
-    setLogs(savedData ? JSON.parse(savedData) : []);
-  
-    setFilters([{ field: "entryDate", value: "" }]);
-    setCurrentPage(1);
-  });
-}, [moduleConfig, storageKey]);
-
-
-useEffect(() => {
-  const loadData = () => {
-    const savedData = localStorage.getItem(storageKey);
-    setLogs(savedData ? JSON.parse(savedData) : []);
-  };
-
-  loadData();
-
-  window.addEventListener("storage", loadData);
-
-  return () => window.removeEventListener("storage", loadData);
-}, [moduleConfig, storageKey]);
+  fetchLogs();
+  setFilters([{ field: "entryDate", value: "" }]);
+  setCurrentPage(1);
+}, [moduleConfig, current.id]);
 
 useEffect(() => {
   const modalOpen =
@@ -209,262 +211,175 @@ const syncToLivestock = (data) => {
 };
 
 
-const handleSave = (data) => {
-  if (current.id === "shed") {
-  const tagValue = data.tag;
-
-  const livestockKey = "global_livestock_logs";
-  const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
-
-  const existingAnimal = livestock.find(item => item.tag === tagValue);
-
-  if (existingAnimal) {
-    //  EXIST → auto-fill old shed
-    data.oldShed = existingAnimal.shed || data.oldShed;
-
-    //  ALSO UPDATE livestock shed
-    existingAnimal.shed = data.newShed;
-
-    localStorage.setItem(livestockKey, JSON.stringify(livestock));
-  }
-}
-
-
-
-
-//  PURCHASE → ADD TO LIVESTOCK + SHED + DUPLICATE CHECK
-if (current.id === "purchase") {
-  const livestockKey = "global_livestock_logs";
-  const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
-
-  const alreadyExists = livestock.some(item => item.tag === data.tag);
-
-  if (alreadyExists) {
-    alert(`Tag "${data.tag}" already exists in Livestock`);
-    return;
-  }
-
-  //  1. ADD TO LIVESTOCK
-  const newAnimal = {
-    id: new Date().getTime(),
-    tag: data.tag,
-    breed: data.breed || "-",
-    gender: data.gender || "-",
-    shed: data.shed || "-",   // IMPORTANT
-    dob: data.dob || "",
-    status: "Active",
-    entryDate: new Date().toLocaleDateString("en-GB")
-  };
-
-  localStorage.setItem(
-    livestockKey,
-    JSON.stringify([newAnimal, ...livestock])
-  );
-
-
-  //  2. ADD TO SHED LOG
-  if (data.shed) {
-    const shedKey = "global_shed_logs";
-    const existingShedLogs = JSON.parse(localStorage.getItem(shedKey)) || [];
-
-    const newShedEntry = {
-      id: new Date().getTime(),
-      tag: data.tag,
-      shiftingDate: new Date().toISOString().split('T')[0],
-      oldShed: "-",                 // REQUIRED
-      newShed: data.shed,           // FROM PURCHASE
-      reason: "Purchase Entry",
-      entryDate: new Date().toLocaleDateString("en-GB")
-    };
-
-    localStorage.setItem(
-      shedKey,
-      JSON.stringify([newShedEntry, ...existingShedLogs])
-    );
-  }
-}
-
-
-
-
-
-if (current.id === "sale") {
-  const livestock = JSON.parse(localStorage.getItem("global_livestock_logs")) || [];
-
-  const exists = livestock.find(item => item.tag === data.tag);
-
-  if (!exists) {
-    alert(`Tag "${data.tag}" not found in Livestock`);
-    return;
-  }
-  const alreadySold = logs.some(
-    log => log.tag === data.tag && (!isEditing || log.id !== selectedEntry?.id)
-  );
-
-  if (alreadySold) {
-    alert(`Tag "${data.tag}" is already sold`);
-    return;
-  }
-}
-
-
-//  CROSSING VALIDATION (Female Tag must exist + Active)
-if (current.id === "crossing") {
-  const livestock = JSON.parse(localStorage.getItem("global_livestock_logs")) || [];
-
-  const animal = livestock.find(item => item.tag === data.tag);
-
-  if (!animal) {
-    alert(`Tag "${data.tag}" not found in Livestock`);
-    return;
-  }
-
-  if (animal.status && animal.status !== "Active") {
-    alert(`Animal "${data.tag}" is not Active`);
-    return;
-  }
-  if (animal.gender && animal.gender.toLowerCase() !== "female") {
-    alert(`Animal "${data.tag}" is not a Female`);
-    return;
-  }
-}
-
-
-
-  if (current.id === 'livestock') {
-    const isDuplicate = logs.some(log => 
-      log.tag === data.tag && (!isEditing || log.id !== selectedEntry.id)
-    );
-
-    if (isDuplicate) {
-      alert(`Error: Tag ID "${data.tag}" already exists in ${current.name}!`);
-      return; 
-    }
-
-
-
-  }
-
-  
-
-  if (isEditing) {
-  const updated = logs.map(log => {
-    if (log.id === selectedEntry.id) {
-      const updatedData = { ...log, ...data };
-
-      if (updatedData.status === "Dead" && !updatedData.deadDate) {
-        updatedData.deadDate = new Date().toISOString();
+const handleSave = async (data) => {
+  setIsLoading(true);
+  try {
+    if (current.id === 'livestock' || current.id === 'crossing') {
+      if (isEditing) {
+        if (current.id === 'livestock') {
+          await api.cattle.update(selectedEntry.id || selectedEntry._id, data);
+          toast.success("Cattle details updated successfully!");
+        } else if (current.id === 'crossing') {
+          await api.crossing.update(selectedEntry.id || selectedEntry._id, data);
+          toast.success("Crossing log updated successfully!");
+        }
+      } else {
+        if (current.id === 'livestock') {
+          await api.cattle.create(data);
+          toast.success("Cattle registered successfully!");
+        } else if (current.id === 'crossing') {
+          await api.crossing.create(data);
+          toast.success("Crossing log created successfully!");
+        }
       }
-
-
-
-      if (updatedData.status === "Dead") {
+      await fetchLogs();
+    } else {
+      // Local Storage Fallback for auxiliary logs (shed, purchase, sale)
+      if (current.id === "shed") {
+        const tagValue = data.tag;
         const livestockKey = "global_livestock_logs";
         const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
-
-        const updatedLivestock = livestock.map(item => {
-          if (item.tag === updatedData.tag) {
-            return {
-              ...item,
-              status: "Dead",
-              deadDate: updatedData.deadDate
-            };
-          }
-          return item;
-        });
-
-        localStorage.setItem(livestockKey, JSON.stringify(updatedLivestock));
+        const existingAnimal = livestock.find(item => item.tag === tagValue);
+        if (existingAnimal) {
+          data.oldShed = existingAnimal.shed || data.oldShed;
+          existingAnimal.shed = data.newShed;
+          localStorage.setItem(livestockKey, JSON.stringify(livestock));
+        }
       }
 
-      return {
-        ...updatedData,
-        age: calculateAge(updatedData.dob)
-      };
+      if (current.id === "purchase") {
+        const livestockKey = "global_livestock_logs";
+        const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
+        const alreadyExists = livestock.some(item => item.tag === data.tag);
+        if (alreadyExists) {
+          alert(`Tag "${data.tag}" already exists in Livestock`);
+          return;
+        }
+        const newAnimal = {
+          id: new Date().getTime(),
+          tag: data.tag,
+          breed: data.breed || "-",
+          gender: data.gender || "-",
+          shed: data.shed || "-",
+          dob: data.dob || "",
+          status: "Active",
+          entryDate: new Date().toLocaleDateString("en-GB")
+        };
+        localStorage.setItem(livestockKey, JSON.stringify([newAnimal, ...livestock]));
+
+        if (data.shed) {
+          const shedKey = "global_shed_logs";
+          const existingShedLogs = JSON.parse(localStorage.getItem(shedKey)) || [];
+          const newShedEntry = {
+            id: new Date().getTime(),
+            tag: data.tag,
+            shiftingDate: new Date().toISOString().split('T')[0],
+            oldShed: "-",
+            newShed: data.shed,
+            reason: "Purchase Entry",
+            entryDate: new Date().toLocaleDateString("en-GB")
+          };
+          localStorage.setItem(shedKey, JSON.stringify([newShedEntry, ...existingShedLogs]));
+        }
+      }
+
+      if (current.id === "sale") {
+        const livestock = JSON.parse(localStorage.getItem("global_livestock_logs")) || [];
+        const exists = livestock.find(item => item.tag === data.tag);
+        if (!exists) {
+          alert(`Tag "${data.tag}" not found in Livestock`);
+          return;
+        }
+        const alreadySold = logs.some(
+          log => log.tag === data.tag && (!isEditing || log.id !== selectedEntry?.id)
+        );
+        if (alreadySold) {
+          alert(`Tag "${data.tag}" is already sold`);
+          return;
+        }
+      }
+
+      if (isEditing) {
+        const updated = logs.map(log => {
+          if (log.id === selectedEntry.id) {
+            const updatedData = { ...log, ...data };
+            if (updatedData.status === "Dead" && !updatedData.deadDate) {
+              updatedData.deadDate = new Date().toISOString();
+            }
+            if (updatedData.status === "Dead") {
+              const livestockKey = "global_livestock_logs";
+              const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
+              const updatedLivestock = livestock.map(item => {
+                if (item.tag === updatedData.tag) {
+                  return { ...item, status: "Dead", deadDate: updatedData.deadDate };
+                }
+                return item;
+              });
+              localStorage.setItem(livestockKey, JSON.stringify(updatedLivestock));
+            }
+            return { ...updatedData, age: calculateAge(updatedData.dob) };
+          }
+          return log;
+        });
+        saveToStorage(updated);
+      } else {
+        const now = new Date();
+        const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        const newLogs = [{
+          ...data,
+          age: calculateAge(data.dob),
+          id: new Date().getTime(),
+          entryDate: formattedDate
+        }, ...logs];
+        saveToStorage(newLogs);
+        syncToLivestock(data);
+
+        if (current.id === "livestock" && data.status === "Dead") {
+          const livestockKey = "global_livestock_logs";
+          const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
+          const updated = livestock.map(item => {
+            if (item.tag === data.tag) {
+              return { ...item, status: "Dead", deadDate: new Date().toISOString() };
+            }
+            return item;
+          });
+          localStorage.setItem(livestockKey, JSON.stringify(updated));
+        }
+
+        if (current.id === "sale") {
+          const livestockKey = "global_livestock_logs";
+          const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
+          const updated = livestock.map(item => {
+            if (item.tag === data.tag) {
+              return { ...item, status: "Sold", soldDate: new Date().toISOString() };
+            }
+            return item;
+          });
+          localStorage.setItem(livestockKey, JSON.stringify(updated));
+        }
+
+        if (current.id === "livestock" && data.shed) {
+          const shedKey = "global_shed_logs";
+          const existingShedLogs = JSON.parse(localStorage.getItem(shedKey)) || [];
+          const newShedEntry = {
+            id: new Date().getTime(),
+            tag: data.tag,
+            shiftingDate: new Date().toISOString().split('T')[0],
+            oldShed: "-",
+            newShed: data.shed,
+            reason: "New animal Entry",
+            entryDate: new Date().toLocaleDateString("en-GB")
+          };
+          localStorage.setItem(shedKey, JSON.stringify([newShedEntry, ...existingShedLogs]));
+        }
+      }
     }
-    return log;
-  });
-
-
-    saveToStorage(updated);
-  } else {
-    const now = new Date();
-    const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    const newLogs = [{
-      ...data,
-      age: calculateAge(data.dob),
-      id: new Date().getTime(),
-      entryDate: formattedDate
-    }, ...logs];
-    saveToStorage(newLogs);
-    syncToLivestock(data);
-
-
-    
-if (current.id === "livestock" && data.status === "Dead") {
-  const livestockKey = "global_livestock_logs";
-  const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
-
-  const updated = livestock.map(item => {
-    if (item.tag === data.tag) {
-      return {
-        ...item,
-        status: "Dead",
-        deadDate: new Date().toISOString()   
-      };
-    }
-    return item;
-  });
-
-  localStorage.setItem(livestockKey, JSON.stringify(updated));
-}
-
-
-
-
-// UPDATE LIVESTOCK ON SALE
-if (current.id === "sale") {
-  const livestockKey = "global_livestock_logs";
-  const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
-
-  const updated = livestock.map(item => {
-    if (item.tag === data.tag) {
-      return {
-        ...item,
-        status: "Sold",
-        soldDate: new Date().toISOString(), // for age stop
-      };
-    }
-    return item;
-  });
-
-  localStorage.setItem(livestockKey, JSON.stringify(updated));
-}
-
-
-    //  AUTO CREATE SHED ENTRY FROM LIVESTOCK
-if (current.id === "livestock" && data.shed) {
-  const shedKey = "global_shed_logs";
-  const existingShedLogs = JSON.parse(localStorage.getItem(shedKey)) || [];
-
-  const newShedEntry = {
-    id: new Date().getTime(),
-    tag: data.tag,
-    shiftingDate: new Date().toISOString().split('T')[0],
-    oldShed: "-",                  //  as required
-    newShed: data.shed,            //  from livestock
-    reason: "New animal Entry",       // optional (we can change)
-    entryDate: new Date().toLocaleDateString("en-GB")
-  };
-
-  localStorage.setItem(
-    shedKey,
-    JSON.stringify([newShedEntry, ...existingShedLogs])
-  );
-}
-
-
+    closeAllModals();
+  } catch (error) {
+    console.error("Save error:", error);
+  } finally {
+    setIsLoading(false);
   }
-  closeAllModals();
 };
 
 
@@ -673,11 +588,30 @@ if (current.id === "livestock" && data.shed) {
     };
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm("Permanent delete this record?")) {
-      const filtered = logs.filter(log => log.id !== selectedEntry.id);
-      saveToStorage(filtered);
-      closeAllModals();
+      setIsLoading(true);
+      try {
+        const entryId = selectedEntry.id || selectedEntry._id;
+        if (current.id === 'livestock') {
+          await api.cattle.delete(entryId);
+          toast.success("Cattle deleted successfully!");
+          await fetchLogs();
+        } else if (current.id === 'crossing') {
+          await api.crossing.delete(entryId);
+          toast.success("Crossing log deleted successfully!");
+          await fetchLogs();
+        } else {
+          const filtered = logs.filter(log => log.id !== selectedEntry.id);
+          saveToStorage(filtered);
+          toast.success("Record deleted successfully!");
+        }
+        closeAllModals();
+      } catch (error) {
+        console.error("Delete error:", error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -1040,7 +974,22 @@ const getShedFromLivestock = (tagValue) => {
             </tr>
           </thead>
          <tbody className="divide-y divide-gray-100">
-  {paginatedLogs.length > 0 ? (
+  {isLoading ? (
+    <tr>
+      <td
+        colSpan={current.fields.length + 2}
+        className="p-12 text-center text-black text-sm font-medium opacity-50"
+      >
+        <span className="flex items-center justify-center gap-2">
+          <svg className="animate-spin h-5 w-5 text-[#16223F]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading logs from live server...
+        </span>
+      </td>
+    </tr>
+  ) : paginatedLogs.length > 0 ? (
     paginatedLogs.map(log => (
       <tr 
         key={log.id}

@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import LogForm from './LogForm';
 import ExcelJS from "exceljs"; 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { api } from '@/utils/api';
+import { toast } from 'react-hot-toast';
 
 const FarmTDR = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('feeding');
   const [showForm, setShowForm] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -14,25 +18,103 @@ const FarmTDR = () => {
   const [hideFABNearBottom, setHideFABNearBottom] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [filters, setFilters] = useState([
-  { field: "date", value: "", from: "", to: "" }
-]);
+    { field: "date", value: "", from: "", to: "" }
+  ]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const modules = [
-    { id: 'health', name: 'Health Log', icon: '🩺', fields: [{name:'tag', label:'Animal ID'}, {name:'diag', label:'Diagnosis/Issue'}, {name:'action', label:'Action Taken'}] },
-    { id: 'feeding', name: 'Daily Feeding', icon: '🌾', fields: [{name:'shed', label:'Shed Number', type: 'select', options: ['5', '6']},{name:'Line', label:'Feeding Line', type: 'select', options: ['1', '2']},{name:'cattle', label:'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf']},{name:'type', label:'Feed Type'}, {name:'qty', label:'Qty (KG)', type: 'number'}] },
-    { id: 'medicine', name: 'Medicine Inventory', icon: '💊', fields: [{name:'medName', label:'Medicine Name'}, {name:'expiry', label:'Expiry Date', type:'date'}, {name:'stock', label:'Stock Count'}] },
+    {
+      id: 'health',
+      name: 'Health Log',
+      icon: '🩺',
+      fields: [
+        { name: 'tag', label: 'Tag ID' },
+        { name: 'animalId', label: 'Animal ID' },
+        { name: 'shed', label: 'Shed', type: 'select', options: ['5', '6'] },
+        { name: 'symptoms', label: 'Symptoms' },
+        { name: 'diag', label: 'Diagnosis/Issue' },
+        { name: 'action', label: 'Action Taken' },
+        { name: 'status', label: 'Health Status', type: 'select', options: ['Under Treatment', 'Recovered', 'Critical'] }
+      ]
+    },
+    {
+      id: 'feeding',
+      name: 'Daily Feeding',
+      icon: '🌾',
+      fields: [
+        { name: 'shed', label: 'Shed Number', type: 'select', options: ['5', '6'] },
+        { name: 'Line', label: 'Feeding Line', type: 'select', options: ['1', '2'] },
+        { name: 'cattle', label: 'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
+        { name: 'type', label: 'Feed Type' },
+        { name: 'qty', label: 'Qty (KG)', type: 'number' }
+      ]
+    },
+    {
+      id: 'medicine',
+      name: 'Medicine Inventory',
+      icon: '💊',
+      fields: [
+        { name: 'medName', label: 'Medicine Name' },
+        { name: 'type', label: 'Type', type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
+        { name: 'oldStock', label: 'Old Stock', type: 'number' },
+        { name: 'bought', label: 'Bought', type: 'number' },
+        { name: 'used', label: 'Used', type: 'number' },
+        { name: 'stock', label: 'Stock Count', type: 'number' },
+        { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
+        { name: 'expiry', label: 'Expiry Date', type: 'date' }
+      ]
+    }
   ];
 
   const current = modules.find(m => m.id === activeTab);
 
+  const fetchLogs = async () => {
+    setIsLoading(true);
+    try {
+      let data = [];
+      if (activeTab === 'health') {
+        data = await api.health.treatments.getAll();
+      } else if (activeTab === 'feeding') {
+        data = await api.operations.dailyFeeding.getAll();
+      } else if (activeTab === 'medicine') {
+        data = await api.inventory.medicines.getAll();
+      } else {
+        const savedData = localStorage.getItem(`tdr_${activeTab}_logs`);
+        data = savedData ? JSON.parse(savedData) : [];
+      }
+      if (Array.isArray(data)) {
+        const filtered = data.filter(log => !log.farm || log.farm === 'TDR');
+        setLogs(filtered);
+      } else {
+        setLogs([]);
+      }
+    } catch (e) {
+      console.error(`Error loading logs for ${activeTab}:`, e);
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const savedData = localStorage.getItem(`tdr_${activeTab}_logs`);
-    setLogs(savedData ? JSON.parse(savedData) : []);
+    if (router.query.tab) {
+      let tab = router.query.tab;
+      if (tab === 'med_inv') {
+        tab = 'medicine';
+      }
+      if (modules.some(m => m.id === tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, [router.query.tab]);
+
+  useEffect(() => {
+    fetchLogs();
     setCurrentPage(1);
   }, [activeTab]);
   useEffect(() => {
@@ -157,18 +239,42 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     localStorage.setItem(`tdr_${activeTab}_logs`, JSON.stringify(updatedLogs));
   };
 
-  const handleSave = (data) => {
-    if (isEditing) {
-      const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
-      saveToStorage(updated);
-    } else {
-      const now = new Date();
-      const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-      // eslint-disable-next-line react-hooks/purity
-      const newLogs = [{ ...data, id: Date.now(), date: formattedDate }, ...logs];
-      saveToStorage(newLogs);
+  const handleSave = async (data) => {
+    setIsLoading(true);
+    try {
+      const payload = { ...data, farm: 'TDR' };
+      const entryId = selectedEntry?.id || selectedEntry?._id;
+      
+      if (isEditing) {
+        if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
+        else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
+        else if (activeTab === 'medicine') await api.inventory.medicines.update(entryId, payload);
+        else {
+          const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
+          saveToStorage(updated);
+        }
+        toast.success(`${current.name} updated successfully!`);
+      } else {
+        const now = new Date();
+        const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        payload.date = formattedDate;
+        
+        if (activeTab === 'health') await api.health.treatments.create(payload);
+        else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
+        else if (activeTab === 'medicine') await api.inventory.medicines.create(payload);
+        else {
+          const newLogs = [{ ...data, id: Date.now(), date: formattedDate }, ...logs];
+          saveToStorage(newLogs);
+        }
+        toast.success(`${current.name} created successfully!`);
+      }
+      await fetchLogs();
+      closeAllModals();
+    } catch (e) {
+      console.error("Save error:", e);
+    } finally {
+      setIsLoading(false);
     }
-    closeAllModals();
   };
 
   /* ---------- EXPORT EXCEL ---------- */
@@ -372,11 +478,26 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     };
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm("Permanent delete this record?")) {
-      const filtered = logs.filter(log => log.id !== selectedEntry.id);
-      saveToStorage(filtered);
-      closeAllModals();
+      setIsLoading(true);
+      try {
+        const entryId = selectedEntry.id || selectedEntry._id;
+        if (activeTab === 'health') await api.health.treatments.delete(entryId);
+        else if (activeTab === 'feeding') await api.operations.dailyFeeding.delete(entryId);
+        else if (activeTab === 'medicine') await api.inventory.medicines.delete(entryId);
+        else {
+          const filtered = logs.filter(log => log.id !== selectedEntry.id);
+          saveToStorage(filtered);
+        }
+        toast.success(`${current.name} deleted successfully!`);
+        await fetchLogs();
+        closeAllModals();
+      } catch (e) {
+        console.error("Delete error:", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -505,6 +626,8 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         onClick={() => {
           setActiveTab(m.id);
           setShowTabDropdown(false);
+          const urlTab = m.id === 'medicine' ? 'med_inv' : m.id;
+          router.push({ query: { ...router.query, tab: urlTab } }, undefined, { shallow: true });
         }}
         className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
           activeTab === m.id ? "bg-[#D1867D]/10 text-[#16223F] font-bold" : ""
@@ -640,9 +763,24 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {paginatedLogs.length > 0 ? paginatedLogs.map(log => (
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={current.fields.length + 2}
+                  className="p-12 text-center text-black text-sm font-medium opacity-50"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5 text-[#16223F]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading logs from live server...
+                  </span>
+                </td>
+              </tr>
+            ) : paginatedLogs.length > 0 ? paginatedLogs.map(log => (
               <tr key={log.id} className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" onClick={() => setSelectedEntry(log)}>
-                <td className="p-4 text-sm text-gray-600 font-sans">{log.date}</td>
+                <td className="p-4 text-sm text-gray-600 font-sans">{log.date || log.entryDate}</td>
                 {current.fields.map(f => <td key={f.name} className="p-4 font-semibold text-gray-800">{log[f.name]}</td>)}
                 <td className="p-4 text-gray-300 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
               </tr>

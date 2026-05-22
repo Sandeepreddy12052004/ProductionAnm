@@ -20,20 +20,35 @@ export default function LoginPage() {
         body: JSON.stringify(formData),
       });
 
-    const clonedResponse = response.clone();
-      const rawText = await clonedResponse.text();
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        console.error("Response parsing failed:", jsonErr);
+      }
+
       console.log("Login Status:", response.status);
-      console.log("Response Body:", rawText);
+      console.log("Response Data:", data);
 
-
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.ok && data) {
+        const token = data.token || 
+                      (data.data && data.data.token) || 
+                      data.accessToken || 
+                      (data.data && data.data.accessToken) || 
+                      (data.data && data.data.tokens && data.data.tokens.accessToken) ||
+                      (data.tokens && data.tokens.accessToken);
+        if (!token) {
+          console.error("Login successful but no token found in response", data);
+          alert("Authentication succeeded, but the security token was not found in the server response.");
+          setLoading(false);
+          return;
+        }
         localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("token", token);
         router.replace("/dashboard");
       } else {
-        alert(data.message || "Invalid credentials");
+        const errorMsg = (data && (data.message || data.error || data.message)) || "Invalid credentials";
+        alert(errorMsg);
       }
     } catch (error) {
       alert("Server connection failed. Please try again later.");

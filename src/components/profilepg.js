@@ -117,6 +117,7 @@ const Profile = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
     router.replace('/login'); // ✅ prevents back navigation
   };
 
@@ -198,6 +199,7 @@ const Profile = () => {
         <button
           onClick={() => {
             localStorage.removeItem("isLoggedIn");
+            localStorage.removeItem("token");
             router.replace('/login');
           }}
           className="w-full py-2 rounded-lg bg-red-600 text-white font-semibold"

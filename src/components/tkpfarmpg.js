@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import LogForm from './LogForm';
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { api } from '@/utils/api';
+import { toast } from 'react-hot-toast';
 
 const FarmTKP = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('feeding');
   const [showForm, setShowForm] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -14,34 +18,192 @@ const FarmTKP = () => {
   const [viewMode, setViewMode] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [showFAB, setShowFAB] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
- const [filters, setFilters] = useState([
-  { field: "entryDate", value: "", from: "", to: "" }
-]);
+  const [filters, setFilters] = useState([
+    { field: "entryDate", value: "", from: "", to: "" }
+  ]);
 
-const clearAllFilters = () => {
-  setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);
-};
+  const clearAllFilters = () => {
+    setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const modules = [
-    { id: 'health', name: 'Health Log', icon: '🩺', fields: [{name:'tag', label:'Animal ID'}, {name:'diag', label:'Diagnosis'}] },
-    { id: 'feeding', name: 'Daily Feeding', icon: '🌾', fields: [{name:'shed', label:'Shed Number', type: 'select', options: ['1', '2', '3', '4']},{name:'Line', label:'Feeding Line', type: 'select', options: ['1', '2', '3', '4','5']},{name:'cattle', label:'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf']},{name:'type', label:'Feed time', type: 'select', options: ['Morning', 'Evening']}, {name:'Green Grass', label:'Green Grass', type: 'number'},{name:'Dry', label:'Dry', type: 'number'},{name:'C.Cake', label:'C.Cake', type: 'number'}, {name:'Chunni', label:'Chunni', type: 'number'},{name:'Maize', label:'Maize', type: 'number'},{name:'Wheat Bran', label:'Wheat Bran', type: 'number'},{name:'Mineral mixture', label:'Mineral mixture', type: 'number'}] },
-    { id: 'grass', name: 'Grass Collection', icon: '🌿', fields: [{name:'area', label:'Source'}, {name:'wt', label:'Weight'}] },
-    { id: 'med_inv', name: 'Medicine Inventory', icon: '💊', fields: [{name:'med', label:'Medicine Name'}, {name:'stock', label:'Units'}] },
-    { id: 'feed_inv', name: 'Feed Inventory', icon: '📦', fields: [{name:'item', label:'Feed Item'}, {name:'bags', label:'Bags'}] },
-    { id: 'milk_prod', name: 'Milk Production', icon: '🥛', fields: [{name:'shed', label:'Shed No.', type: 'select', options: ['1', '2', '3']},{ name: 'line', label: 'Line', type: 'select', options: ['L1', 'L2', 'L3', 'L4','L5']},{name:'tag', label:'Tag ID'}, {name:'liters', label:'Liters'}] },
-    { id: 'vaccine', name: 'Vaccination Log', icon: '💉', fields: [{name:'tag', label:'Animal ID'}, {name:'vax', label:'Vaccine Name'}] },
-    { id: 'components', name: 'Milk Components', icon: '🔬', fields: [{name:'fat', label:'Fat %'}, {name:'snf', label:'SNF %'}] },
-    { id: 'pashudhan', name: 'Bharat Pashudhan', icon: '🇮🇳', fields: [{name:'uid', label:'Pashu ID'}, {name:'status', label:'Portal Status'}] },
+    {
+      id: 'health',
+      name: 'Health Log',
+      icon: '🩺',
+      fields: [
+        { name: 'tag', label: 'Tag ID' },
+        { name: 'animalId', label: 'Animal ID' },
+        { name: 'shed', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'symptoms', label: 'Symptoms' },
+        { name: 'diag', label: 'Diagnosis' },
+        { name: 'treatment', label: 'Treatment' },
+        { name: 'status', label: 'Health Status', type: 'select', options: ['Under Treatment', 'Recovered', 'Critical'] }
+      ]
+    },
+    {
+      id: 'feeding',
+      name: 'Daily Feeding',
+      icon: '🌾',
+      fields: [
+        { name: 'shed', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'Line', label: 'Feeding Line', type: 'select', options: ['1', '2', '3', '4', '5'] },
+        { name: 'cattle', label: 'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
+        { name: 'type', label: 'Feed time', type: 'select', options: ['Morning', 'Evening'] },
+        { name: 'Green Grass', label: 'Green Grass (KG)', type: 'number' },
+        { name: 'Dry', label: 'Dry (KG)', type: 'number' },
+        { name: 'C.Cake', label: 'C.Cake (KG)', type: 'number' },
+        { name: 'Chunni', label: 'Chunni (KG)', type: 'number' },
+        { name: 'Maize', label: 'Maize (KG)', type: 'number' },
+        { name: 'Wheat Bran', label: 'Wheat Bran (KG)', type: 'number' },
+        { name: 'salt', label: 'Salt (G)', type: 'number' },
+        { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
+        { name: 'Mineral mixture', label: 'Mineral mixture (G)', type: 'number' }
+      ]
+    },
+    {
+      id: 'grass',
+      name: 'Grass Collection',
+      icon: '🌿',
+      fields: [
+        { name: 'area', label: 'Source' },
+        { name: 'loads', label: 'No. of Loads', type: 'number' },
+        { name: 'wt', label: 'Weight (KG)', type: 'number' }
+      ]
+    },
+    {
+      id: 'med_inv',
+      name: 'Medicine Inventory',
+      icon: '💊',
+      fields: [
+        { name: 'med', label: 'Medicine Name' },
+        { name: 'type', label: 'Type', type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
+        { name: 'oldStock', label: 'Old Stock', type: 'number' },
+        { name: 'bought', label: 'Bought', type: 'number' },
+        { name: 'used', label: 'Used', type: 'number' },
+        { name: 'stock', label: 'Present Stock', type: 'number' },
+        { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
+        { name: 'expiryDate', label: 'Expiry Date', type: 'date' }
+      ]
+    },
+    {
+      id: 'feed_inv',
+      name: 'Feed Inventory',
+      icon: '📦',
+      fields: [
+        { name: 'item', label: 'Feed Item', type: 'select', options: ['Green Grass', 'Dry Grass', 'Cotton Cake', 'Chunni', 'Maize', 'Wheat Bran'] },
+        { name: 'oldStock', label: 'Old Stock', type: 'number' },
+        { name: 'bought', label: 'Bought', type: 'number' },
+        { name: 'bags', label: 'Bags/Usage', type: 'number' },
+        { name: 'remainingStock', label: 'Remaining Stock', type: 'number' },
+        { name: 'purchaseDate', label: 'Purchase Date', type: 'date' }
+      ]
+    },
+    {
+      id: 'milk_prod',
+      name: 'Milk Production',
+      icon: '🥛',
+      fields: [
+        { name: 'shed', label: 'Shed No.', type: 'select', options: ['1', '2', '3'] },
+        { name: 'line', label: 'Line', type: 'select', options: ['L1', 'L2', 'L3', 'L4', 'L5'] },
+        { name: 'tag', label: 'Tag ID' },
+        { name: 'session', label: 'Session', type: 'select', options: ['Morning', 'Evening'] },
+        { name: 'liters', label: 'Quantity (L)', type: 'number' },
+        { name: 'selfConsumption', label: 'Self Consumption (L)', type: 'number' },
+        { name: 'dayTotal', label: 'Day Total (L)', type: 'number' }
+      ]
+    },
+    {
+      id: 'vaccine',
+      name: 'Vaccination Log',
+      icon: '💉',
+      fields: [
+        { name: 'tag', label: 'Animal ID' },
+        { name: 'shed', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'vax', label: 'Vaccine Name' },
+        { name: 'batchNo', label: 'Vaccine Batch No' },
+        { name: 'mfgDate', label: 'Manufacture Date', type: 'date' },
+        { name: 'expDate', label: 'Expiry Date', type: 'date' },
+        { name: 'status', label: 'Treatment/Status', type: 'select', options: ['Completed', 'Pending'] }
+      ]
+    },
+    {
+      id: 'components',
+      name: 'Milk Components',
+      icon: '🔬',
+      fields: [
+        { name: 'fat', label: 'Fat %', type: 'number' },
+        { name: 'snf', label: 'SNF %', type: 'number' },
+        { name: 'density', label: 'Density', type: 'number' },
+        { name: 'water', label: 'Water %', type: 'number' }
+      ]
+    },
+    {
+      id: 'pashudhan',
+      name: 'Bharat Pashudhan',
+      icon: '🇮🇳',
+      fields: [
+        { name: 'uid', label: 'Pashu ID' },
+        { name: 'status', label: 'Portal Status' }
+      ]
+    }
   ];
 
   const current = modules.find(m => m.id === activeTab);
 
+  const fetchLogs = async () => {
+    setIsLoading(true);
+    try {
+      let data = [];
+      if (activeTab === 'health') {
+        data = await api.health.treatments.getAll();
+      } else if (activeTab === 'vaccine') {
+        data = await api.health.vaccinations.getAll();
+      } else if (activeTab === 'med_inv') {
+        data = await api.inventory.medicines.getAll();
+      } else if (activeTab === 'feed_inv') {
+        data = await api.inventory.feed.getAll();
+      } else if (activeTab === 'grass') {
+        data = await api.operations.grassCollection.getAll();
+      } else if (activeTab === 'feeding') {
+        data = await api.operations.dailyFeeding.getAll();
+      } else if (activeTab === 'milk_prod') {
+        data = await api.milk.collections.getAll();
+      } else if (activeTab === 'components') {
+        data = await api.milk.quality.getAll();
+      } else {
+        const savedData = localStorage.getItem(`tkp_${activeTab}_logs`);
+        data = savedData ? JSON.parse(savedData) : [];
+      }
+      if (Array.isArray(data)) {
+        const filtered = data.filter(log => !log.farm || log.farm === 'TKP');
+        setLogs(filtered);
+      } else {
+        setLogs([]);
+      }
+    } catch (e) {
+      console.error(`Error loading logs for ${activeTab}:`, e);
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const savedData = localStorage.getItem(`tkp_${activeTab}_logs`);
-    setLogs(savedData ? JSON.parse(savedData) : []);
+    if (router.query.tab) {
+      const tab = router.query.tab;
+      if (modules.some(m => m.id === tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, [router.query.tab]);
+
+  useEffect(() => {
+    fetchLogs();
     setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);
     setCurrentPage(1);
   }, [activeTab]);
@@ -166,27 +328,79 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
 
 
-  const handleSave = (data) => {
-    if (isEditing) {
-      const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
-      saveToStorage(updated);
-    } else {
-      const now = new Date();
-      const formattedDate = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-      // CHANGED: Use 'entryDate' to match your UI filter and table column
-      // eslint-disable-next-line react-hooks/purity
-      const newLogs = [{ ...data, id: Date.now(), entryDate: formattedDate }, ...logs];
-      saveToStorage(newLogs);
-      // syncToLivestock(data);
+  const handleSave = async (data) => {
+    setIsLoading(true);
+    try {
+      const payload = { ...data, farm: 'TKP' };
+      const entryId = selectedEntry?.id || selectedEntry?._id;
+      
+      if (isEditing) {
+        if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
+        else if (activeTab === 'vaccine') await api.health.vaccinations.update(entryId, payload);
+        else if (activeTab === 'med_inv') await api.inventory.medicines.update(entryId, payload);
+        else if (activeTab === 'feed_inv') await api.inventory.feed.update(entryId, payload);
+        else if (activeTab === 'grass') await api.operations.grassCollection.update(entryId, payload);
+        else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
+        else if (activeTab === 'milk_prod') await api.milk.collections.update(entryId, payload);
+        else if (activeTab === 'components') await api.milk.quality.update(entryId, payload);
+        else {
+          const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
+          saveToStorage(updated);
+        }
+        toast.success(`${current.name} updated successfully!`);
+      } else {
+        const now = new Date();
+        const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        payload.entryDate = formattedDate;
+        
+        if (activeTab === 'health') await api.health.treatments.create(payload);
+        else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);
+        else if (activeTab === 'med_inv') await api.inventory.medicines.create(payload);
+        else if (activeTab === 'feed_inv') await api.inventory.feed.create(payload);
+        else if (activeTab === 'grass') await api.operations.grassCollection.create(payload);
+        else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
+        else if (activeTab === 'milk_prod') await api.milk.collections.create(payload);
+        else if (activeTab === 'components') await api.milk.quality.create(payload);
+        else {
+          const newLogs = [{ ...data, id: Date.now(), entryDate: formattedDate }, ...logs];
+          saveToStorage(newLogs);
+        }
+        toast.success(`${current.name} created successfully!`);
+      }
+      await fetchLogs();
+      closeAllModals();
+    } catch (e) {
+      console.error("Save error:", e);
+    } finally {
+      setIsLoading(false);
     }
-    closeAllModals();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm("Permanent delete this record?")) {
-      const filtered = logs.filter(log => log.id !== selectedEntry.id);
-      saveToStorage(filtered);
-      closeAllModals();
+      setIsLoading(true);
+      try {
+        const entryId = selectedEntry.id || selectedEntry._id;
+        if (activeTab === 'health') await api.health.treatments.delete(entryId);
+        else if (activeTab === 'vaccine') await api.health.vaccinations.delete(entryId);
+        else if (activeTab === 'med_inv') await api.inventory.medicines.delete(entryId);
+        else if (activeTab === 'feed_inv') await api.inventory.feed.delete(entryId);
+        else if (activeTab === 'grass') await api.operations.grassCollection.delete(entryId);
+        else if (activeTab === 'feeding') await api.operations.dailyFeeding.delete(entryId);
+        else if (activeTab === 'milk_prod') await api.milk.collections.delete(entryId);
+        else if (activeTab === 'components') await api.milk.quality.delete(entryId);
+        else {
+          const filtered = logs.filter(log => log.id !== selectedEntry.id);
+          saveToStorage(filtered);
+        }
+        toast.success(`${current.name} deleted successfully!`);
+        await fetchLogs();
+        closeAllModals();
+      } catch (e) {
+        console.error("Delete error:", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -496,6 +710,7 @@ const activeFilterCount = filters.filter(
         onClick={() => {
           setActiveTab(m.id);
           setShowTabDropdown(false);
+          router.push({ query: { ...router.query, tab: m.id } }, undefined, { shallow: true });
         }}
         className={`
           w-full text-left px-4 py-2 text-sm
@@ -713,7 +928,22 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {paginatedLogs.length > 0 ? (
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={current.fields.length + 2}
+                  className="p-12 text-center text-black text-sm font-medium opacity-50"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5 text-[#16223F]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading logs from live server...
+                  </span>
+                </td>
+              </tr>
+            ) : paginatedLogs.length > 0 ? (
               paginatedLogs.map(log => (
                 <tr 
                   key={log.id} 
