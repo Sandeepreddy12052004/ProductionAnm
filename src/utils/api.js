@@ -99,8 +99,14 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
     }
 
     // Handle empty responses
-    const text = await response.text();
-    return text ? JSON.parse(text) : { success: true };
+    const data = await response.json();
+    
+    // Auto-unwrap the backend response if it follows the { success: true, data: [...] } structure
+    if (data && typeof data === 'object' && data.success && data.data !== undefined) {
+      return data.data;
+    }
+    
+    return data;
   } catch (error) {
     console.error(`API Call failed [${method} ${endpoint}]:`, error);
     // Suppress redundant error toasts if we already displayed detailed authorization toast
