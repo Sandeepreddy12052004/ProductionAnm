@@ -36,13 +36,13 @@ const FarmTKP = () => {
       name: 'Health Log',
       icon: '🩺',
       fields: [
-        { name: 'tag', label: 'Tag ID' },
+        { name: 'tagId', label: 'Tag ID' },
         { name: 'animalId', label: 'Animal ID' },
-        { name: 'shed', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'shedId', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
         { name: 'symptoms', label: 'Symptoms' },
-        { name: 'diag', label: 'Diagnosis' },
+        { name: 'diagnosis', label: 'Diagnosis' },
         { name: 'treatment', label: 'Treatment' },
-        { name: 'status', label: 'Health Status', type: 'select', options: ['Under Treatment', 'Recovered', 'Critical'] }
+        { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
       ]
     },
     {
@@ -50,19 +50,17 @@ const FarmTKP = () => {
       name: 'Daily Feeding',
       icon: '🌾',
       fields: [
-        { name: 'shed', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4'] },
-        { name: 'Line', label: 'Feeding Line', type: 'select', options: ['1', '2', '3', '4', '5'] },
-        { name: 'cattle', label: 'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
-        { name: 'type', label: 'Feed time', type: 'select', options: ['Morning', 'Evening'] },
-        { name: 'Green Grass', label: 'Green Grass (KG)', type: 'number' },
-        { name: 'Dry', label: 'Dry (KG)', type: 'number' },
-        { name: 'C.Cake', label: 'C.Cake (KG)', type: 'number' },
-        { name: 'Chunni', label: 'Chunni (KG)', type: 'number' },
-        { name: 'Maize', label: 'Maize (KG)', type: 'number' },
-        { name: 'Wheat Bran', label: 'Wheat Bran (KG)', type: 'number' },
+        { name: 'shedId', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
+        { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
+        { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
+        { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
+        { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
+        { name: 'maize', label: 'Maize (KG)', type: 'number' },
+        { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
         { name: 'salt', label: 'Salt (G)', type: 'number' },
         { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
-        { name: 'Mineral mixture', label: 'Mineral mixture (G)', type: 'number' }
+        { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
       ]
     },
     {
@@ -70,9 +68,9 @@ const FarmTKP = () => {
       name: 'Grass Collection',
       icon: '🌿',
       fields: [
-        { name: 'area', label: 'Source' },
-        { name: 'loads', label: 'No. of Loads', type: 'number' },
-        { name: 'wt', label: 'Weight (KG)', type: 'number' }
+        { name: 'farmId', label: 'Farm ID (Source)' },
+        { name: 'noOfLoads', label: 'No. of Loads', type: 'number' },
+        { name: 'weight', label: 'Weight (KG)', type: 'number' }
       ]
     },
     {
@@ -80,12 +78,12 @@ const FarmTKP = () => {
       name: 'Medicine Inventory',
       icon: '💊',
       fields: [
-        { name: 'med', label: 'Medicine Name' },
+        { name: 'medicineName', label: 'Medicine Name' },
         { name: 'type', label: 'Type', type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
         { name: 'oldStock', label: 'Old Stock', type: 'number' },
         { name: 'bought', label: 'Bought', type: 'number' },
         { name: 'used', label: 'Used', type: 'number' },
-        { name: 'stock', label: 'Present Stock', type: 'number' },
+        { name: 'presentStock', label: 'Present Stock', type: 'number' },
         { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
         { name: 'expiryDate', label: 'Expiry Date', type: 'date' }
       ]
@@ -95,10 +93,10 @@ const FarmTKP = () => {
       name: 'Feed Inventory',
       icon: '📦',
       fields: [
-        { name: 'item', label: 'Feed Item', type: 'select', options: ['Green Grass', 'Dry Grass', 'Cotton Cake', 'Chunni', 'Maize', 'Wheat Bran'] },
+        { name: 'feedType', label: 'Feed Item', type: 'select', options: ['Green Grass', 'Dry Grass', 'Cotton Cake', 'Chunni', 'Maize', 'Wheat Bran'] },
         { name: 'oldStock', label: 'Old Stock', type: 'number' },
         { name: 'bought', label: 'Bought', type: 'number' },
-        { name: 'bags', label: 'Bags/Usage', type: 'number' },
+        { name: 'usage', label: 'Bags/Usage', type: 'number' },
         { name: 'remainingStock', label: 'Remaining Stock', type: 'number' },
         { name: 'purchaseDate', label: 'Purchase Date', type: 'date' }
       ]
@@ -108,11 +106,10 @@ const FarmTKP = () => {
       name: 'Milk Production',
       icon: '🥛',
       fields: [
-        { name: 'shed', label: 'Shed No.', type: 'select', options: ['1', '2', '3'] },
-        { name: 'line', label: 'Line', type: 'select', options: ['L1', 'L2', 'L3', 'L4', 'L5'] },
-        { name: 'tag', label: 'Tag ID' },
-        { name: 'session', label: 'Session', type: 'select', options: ['Morning', 'Evening'] },
-        { name: 'liters', label: 'Quantity (L)', type: 'number' },
+        { name: 'shedId', label: 'Shed No.', type: 'select', options: ['1', '2', '3'] },
+        { name: 'tagId', label: 'Tag ID' },
+        { name: 'session', label: 'Session', type: 'select', options: ['MORNING', 'EVENING'] },
+        { name: 'quantity', label: 'Quantity (L)', type: 'number' },
         { name: 'selfConsumption', label: 'Self Consumption (L)', type: 'number' },
         { name: 'dayTotal', label: 'Day Total (L)', type: 'number' }
       ]
@@ -122,13 +119,14 @@ const FarmTKP = () => {
       name: 'Vaccination Log',
       icon: '💉',
       fields: [
-        { name: 'tag', label: 'Animal ID' },
-        { name: 'shed', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
-        { name: 'vax', label: 'Vaccine Name' },
+        { name: 'tagId', label: 'Tag ID' },
+        { name: 'animalId', label: 'Animal ID' },
+        { name: 'shedId', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'vaccinationName', label: 'Vaccine Name' },
         { name: 'batchNo', label: 'Vaccine Batch No' },
-        { name: 'mfgDate', label: 'Manufacture Date', type: 'date' },
-        { name: 'expDate', label: 'Expiry Date', type: 'date' },
-        { name: 'status', label: 'Treatment/Status', type: 'select', options: ['Completed', 'Pending'] }
+        { name: 'manufactureDate', label: 'Manufacture Date', type: 'date' },
+        { name: 'expiryDate', label: 'Expiry Date', type: 'date' },
+        { name: 'treatmentOrStatus', label: 'Treatment/Status', type: 'select', options: ['Completed', 'Pending'] }
       ]
     },
     {
@@ -352,6 +350,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         const now = new Date();
         const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
         payload.entryDate = formattedDate;
+        payload.date = now.toISOString();
         
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);

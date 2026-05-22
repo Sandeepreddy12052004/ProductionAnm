@@ -33,13 +33,13 @@ const FarmTDR = () => {
       name: 'Health Log',
       icon: '🩺',
       fields: [
-        { name: 'tag', label: 'Tag ID' },
+        { name: 'tagId', label: 'Tag ID' },
         { name: 'animalId', label: 'Animal ID' },
-        { name: 'shed', label: 'Shed', type: 'select', options: ['5', '6'] },
+        { name: 'shedId', label: 'Shed', type: 'select', options: ['5', '6'] },
         { name: 'symptoms', label: 'Symptoms' },
-        { name: 'diag', label: 'Diagnosis/Issue' },
-        { name: 'action', label: 'Action Taken' },
-        { name: 'status', label: 'Health Status', type: 'select', options: ['Under Treatment', 'Recovered', 'Critical'] }
+        { name: 'diagnosis', label: 'Diagnosis/Issue' },
+        { name: 'treatment', label: 'Action Taken' },
+        { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
       ]
     },
     {
@@ -47,11 +47,17 @@ const FarmTDR = () => {
       name: 'Daily Feeding',
       icon: '🌾',
       fields: [
-        { name: 'shed', label: 'Shed Number', type: 'select', options: ['5', '6'] },
-        { name: 'Line', label: 'Feeding Line', type: 'select', options: ['1', '2'] },
-        { name: 'cattle', label: 'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
-        { name: 'type', label: 'Feed Type' },
-        { name: 'qty', label: 'Qty (KG)', type: 'number' }
+        { name: 'shedId', label: 'Shed Number', type: 'select', options: ['5', '6'] },
+        { name: 'animalId', label: 'Cattle', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
+        { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
+        { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
+        { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
+        { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
+        { name: 'maize', label: 'Maize (KG)', type: 'number' },
+        { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
+        { name: 'salt', label: 'Salt (G)', type: 'number' },
+        { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
+        { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
       ]
     },
     {
@@ -59,14 +65,14 @@ const FarmTDR = () => {
       name: 'Medicine Inventory',
       icon: '💊',
       fields: [
-        { name: 'medName', label: 'Medicine Name' },
+        { name: 'medicineName', label: 'Medicine Name' },
         { name: 'type', label: 'Type', type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
         { name: 'oldStock', label: 'Old Stock', type: 'number' },
         { name: 'bought', label: 'Bought', type: 'number' },
         { name: 'used', label: 'Used', type: 'number' },
-        { name: 'stock', label: 'Stock Count', type: 'number' },
+        { name: 'presentStock', label: 'Stock Count', type: 'number' },
         { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
-        { name: 'expiry', label: 'Expiry Date', type: 'date' }
+        { name: 'expiryDate', label: 'Expiry Date', type: 'date' }
       ]
     }
   ];
@@ -257,7 +263,8 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
       } else {
         const now = new Date();
         const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        payload.date = formattedDate;
+        payload.date = now.toISOString(); // Send ISO string for backend
+        payload.entryDate = formattedDate; // Keep formattedDate for frontend table display if needed
         
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);

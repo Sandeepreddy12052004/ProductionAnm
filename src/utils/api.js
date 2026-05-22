@@ -15,15 +15,14 @@ async function verifyTokenSession(token) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-        'authorization': `Bearer ${token}`,
       },
     });
 
-    // If the authentication endpoint rejects the token, it is dead
-    if (response.status === 401) {
+    // If the authentication endpoint rejects the token (401) or is missing (404), it is dead
+    if (!response.ok) {
       return false;
     }
-    return true; // Any other response means the token is active/valid!
+    return true; // Token is active/valid!
   } catch (error) {
     console.error('Session verify check failed due to network connection:', error);
     return true; // network failure shouldn't trigger an aggressive logout
@@ -44,7 +43,6 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 
   if (token && token !== 'undefined' && token !== 'null') {
     headers['Authorization'] = `Bearer ${token}`;
-    headers['authorization'] = `Bearer ${token}`;
   }
 
   const config = {
@@ -192,5 +190,31 @@ export const api = {
       update: (id, data) => apiRequest(`/api/milk/quality/${id}`, 'PUT', data),
       delete: (id) => apiRequest(`/api/milk/quality/${id}`, 'DELETE'),
     },
+  },
+
+  // Users, Departments, Sheds, Tags
+  users: {
+    getAll: () => apiRequest('/api/users'),
+    create: (data) => apiRequest('/api/users', 'POST', data),
+    update: (id, data) => apiRequest(`/api/users/${id}`, 'PUT', data),
+    delete: (id) => apiRequest(`/api/users/${id}`, 'DELETE'),
+  },
+  departments: {
+    getAll: () => apiRequest('/api/departments'),
+    create: (data) => apiRequest('/api/departments', 'POST', data),
+    update: (id, data) => apiRequest(`/api/departments/${id}`, 'PUT', data),
+    delete: (id) => apiRequest(`/api/departments/${id}`, 'DELETE'),
+  },
+  sheds: {
+    getAll: () => apiRequest('/api/sheds'),
+    create: (data) => apiRequest('/api/sheds', 'POST', data),
+    update: (id, data) => apiRequest(`/api/sheds/${id}`, 'PUT', data),
+    delete: (id) => apiRequest(`/api/sheds/${id}`, 'DELETE'),
+  },
+  tags: {
+    getAll: () => apiRequest('/api/tags'),
+    create: (data) => apiRequest('/api/tags', 'POST', data),
+    update: (id, data) => apiRequest(`/api/tags/${id}`, 'PUT', data),
+    delete: (id) => apiRequest(`/api/tags/${id}`, 'DELETE'),
   },
 };

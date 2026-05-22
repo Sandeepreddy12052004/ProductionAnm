@@ -55,20 +55,66 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const isNormalRoute = ["/animals"].includes(router.pathname) || (isFarmRoute && router.query.tab);
 
+  const isHealthActive = isFarmRoute && ["health", "vaccine"].includes(router.query.tab);
+  const isInventoryActive = isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab);
+  const isMilkActive = isFarmRoute && ["milk_prod", "components"].includes(router.query.tab);
+
   // States
   const [coreOpen, setCoreOpen] = useState(isCoreRoute || true);
   const [farmOpen, setFarmOpen] = useState(isFarmRoute && !router.query.tab);
-  
   const [normalOpen, setNormalOpen] = useState(isNormalRoute || false);
-
-  const isHealthActive = isFarmRoute && ["health", "vaccine"].includes(router.query.tab);
   const [healthOpen, setHealthOpen] = useState(isHealthActive);
-
-  const isInventoryActive = isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab);
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
-
-  const isMilkActive = isFarmRoute && ["milk_prod", "components"].includes(router.query.tab);
   const [milkOpen, setMilkOpen] = useState(isMilkActive);
+
+  // 1. Hydrate state safely from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar_dropdown_state");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.coreOpen !== undefined) setCoreOpen(parsed.coreOpen);
+        if (parsed.farmOpen !== undefined) setFarmOpen(parsed.farmOpen);
+        if (parsed.normalOpen !== undefined) setNormalOpen(parsed.normalOpen);
+        if (parsed.healthOpen !== undefined) setHealthOpen(parsed.healthOpen);
+        if (parsed.inventoryOpen !== undefined) setInventoryOpen(parsed.inventoryOpen);
+        if (parsed.milkOpen !== undefined) setMilkOpen(parsed.milkOpen);
+      }
+    } catch (err) {}
+  }, []);
+
+  // 2. Auto-expand based on active route
+  useEffect(() => {
+    if (isCoreRoute) setCoreOpen(true);
+    if (isFarmRoute && !router.query.tab) {
+      setCoreOpen(true);
+      setFarmOpen(true);
+    }
+    if (isNormalRoute) setNormalOpen(true);
+    if (isHealthActive) {
+      setNormalOpen(true);
+      setHealthOpen(true);
+    }
+    if (isInventoryActive) {
+      setNormalOpen(true);
+      setInventoryOpen(true);
+    }
+    if (isMilkActive) {
+      setNormalOpen(true);
+      setMilkOpen(true);
+    }
+  }, [router.pathname, router.query.tab]);
+
+  // 3. Helper to toggle and save
+  const toggleState = (setter, key, currentVal) => {
+    const newVal = !currentVal;
+    setter(newVal);
+    try {
+      const existing = JSON.parse(localStorage.getItem("sidebar_dropdown_state") || "{}");
+      existing[key] = newVal;
+      localStorage.setItem("sidebar_dropdown_state", JSON.stringify(existing));
+    } catch (e) {}
+  };
 
   const activeStyle = "bg-[#D1867D]/10 border-[#D1867D] text-[#16223F] font-extrabold transition-all duration-200";
   const normalStyle = "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:shadow-sm hover:translate-x-1 transition-all duration-200 cursor-pointer";
@@ -146,7 +192,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {/* CORE MODULES GROUP */}
           <li className="mt-4">
             <button
-              onClick={() => setCoreOpen(!coreOpen)}
+              onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
               className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
             >
               <span>Core Modules</span>
@@ -164,12 +210,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   transition={{ duration: 0.25, ease: "easeInOut" }}
                   className="mt-2 space-y-2 pl-2 overflow-hidden"
                 >
-                  <li>
-                    <Link href="/profile" onClick={() => setIsOpen(false)}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/profile") ? activeStyle : normalStyle}`}>
-                      👤 Profile
-                    </Link>
-                  </li>
+
 
                   <li>
                     <Link href="/users" onClick={() => setIsOpen(false)}
@@ -188,7 +229,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   {/* Farm Management Collapsible Dropdown */}
                   <li>
                     <button
-                      onClick={() => setFarmOpen(!farmOpen)}
+                      onClick={() => toggleState(setFarmOpen, 'farmOpen', farmOpen)}
                       className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
                     >
                       <span>🏠 Farm Management</span>
@@ -258,7 +299,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {/* NORMAL MODULES GROUP */}
           <li className="mt-4 border-t border-slate-100 pt-4">
             <button
-              onClick={() => setNormalOpen(!normalOpen)}
+              onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
               className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
             >
               <span>Normal Modules</span>
@@ -287,7 +328,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   {/* Health Dropdown */}
                   <li>
                     <button
-                      onClick={() => setHealthOpen(!healthOpen)}
+                      onClick={() => toggleState(setHealthOpen, 'healthOpen', healthOpen)}
                       className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
                     >
                       <span>🩺 Health</span>
@@ -329,7 +370,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   {/* Inventory Dropdown */}
                   <li>
                     <button
-                      onClick={() => setInventoryOpen(!inventoryOpen)}
+                      onClick={() => toggleState(setInventoryOpen, 'inventoryOpen', inventoryOpen)}
                       className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
                     >
                       <span>📦 Inventory</span>
@@ -391,7 +432,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   {/* Milk Production Dropdown */}
                   <li>
                     <button
-                      onClick={() => setMilkOpen(!milkOpen)}
+                      onClick={() => toggleState(setMilkOpen, 'milkOpen', milkOpen)}
                       className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
                     >
                       <span>🥛 Milk Production</span>
