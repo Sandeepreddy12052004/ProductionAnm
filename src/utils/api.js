@@ -91,7 +91,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
         : 'Module Restricted: You are not authorized to view this operational section.';
       
       toast.error(errorMsg);
-      throw new Error(errorMsg);
+      return { success: false, error: errorMsg };
     }
 
     if (!response.ok) {
