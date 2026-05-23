@@ -6,40 +6,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const router = useRouter();
 
-  const isFarmRoute = ["/tkp", "/tdr"].includes(router.pathname);
+  const isFarmRoute = router.pathname.startsWith("/farm/[code]");
+  const activeFarmCode = router.query.code || "tkp";
 
   const getTabPath = (tabId) => {
-    const isCurrentlyTdr = router.pathname === "/tdr";
-    
-    if (isCurrentlyTdr) {
-      if (tabId === "health") return "/tdr?tab=health";
-      if (tabId === "feeding") return "/tdr?tab=feeding";
-      if (tabId === "med_inv") return "/tdr?tab=medicine";
-    }
-    
-    // Default to TKP
-    if (tabId === "health") return "/tkp?tab=health";
-    if (tabId === "vaccine") return "/tkp?tab=vaccine";
-    if (tabId === "feed_inv") return "/tkp?tab=feed_inv";
-    if (tabId === "med_inv") return "/tkp?tab=med_inv";
-    if (tabId === "grass") return "/tkp?tab=grass";
-    if (tabId === "feeding") return "/tkp?tab=feeding";
-    if (tabId === "milk_prod") return "/tkp?tab=milk_prod";
-    if (tabId === "components") return "/tkp?tab=components";
-    if (tabId === "pashudhan") return "/tkp?tab=pashudhan";
-    
-    return "/tkp";
+    return `/farm/${activeFarmCode}?tab=${tabId}`;
   };
 
   const isLinkActive = (path, tabId = null) => {
     if (tabId) {
-      if (tabId === "med_inv") {
-        return (router.pathname === "/tkp" && router.query.tab === "med_inv") || 
-               (router.pathname === "/tdr" && router.query.tab === "medicine");
-      }
-      const targetTab = (tabId === "health" && router.pathname === "/tdr") ? "health" : tabId;
-      return router.pathname === path && router.query.tab === targetTab;
+      // Dynamic route matching
+      return router.pathname.startsWith("/farm/[code]") && router.query.tab === tabId;
     }
+    // Strict match for standard routes
     return router.pathname === path && !router.query.tab;
   };
 
@@ -47,10 +26,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     "/profile",
     "/users",
     "/department",
-    "/tkp",
-    "/tdr",
     "/shed",
-    "/animals"
+    "/animals",
+    "/farms"
   ].includes(router.pathname) && !router.query.tab;
 
   const isNormalRoute = ["/animals"].includes(router.pathname) || (isFarmRoute && router.query.tab);
@@ -58,6 +36,16 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const isHealthActive = isFarmRoute && ["health", "vaccine"].includes(router.query.tab);
   const isInventoryActive = isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab);
   const isMilkActive = isFarmRoute && ["milk_prod", "components"].includes(router.query.tab);
+
+  // Dynamic Farms State
+  const [farmsList, setFarmsList] = useState([]);
+  useEffect(() => {
+    import('../utils/api').then(({ api }) => {
+      api.farms.getAll().then(res => {
+        if (res && Array.isArray(res)) setFarmsList(res);
+      }).catch(err => console.error("Error fetching farms:", err));
+    });
+  }, []);
 
   // States
   const [coreOpen, setCoreOpen] = useState(isCoreRoute || true);
@@ -247,21 +235,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           transition={{ duration: 0.25, ease: "easeInOut" }}
                           className="mt-1 space-y-1 pl-3 overflow-hidden"
                         >
-                          <li>
-                            <Link href="/tkp" onClick={() => setIsOpen(false)}
+                          {farmsList.map((farm) => (
+                            <li key={farm.code}>
+                              <Link href={`/farm/${farm.code.toLowerCase()}`} onClick={() => setIsOpen(false)}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  router.pathname.includes(`/farm/${farm.code.toLowerCase()}`) && !router.query.tab ? activeStyle : normalStyle
+                                }`}>
+                                🏠 {farm.name}
+                              </Link>
+                            </li>
+                          ))}
+                          
+                          <li className="mt-2 border-t border-slate-200 pt-2">
+                            <Link href="/farms" onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                router.pathname === "/tkp" && !router.query.tab ? activeStyle : normalStyle
+                                router.pathname === "/farms" ? activeStyle : normalStyle
                               }`}>
-                              🏠 TKP Farm
-                            </Link>
-                          </li>
-
-                          <li>
-                            <Link href="/tdr" onClick={() => setIsOpen(false)}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                router.pathname === "/tdr" && !router.query.tab ? activeStyle : normalStyle
-                              }`}>
-                              🏡 TDR Farm
+                              ⚙️ Manage Farms
                             </Link>
                           </li>
                         </motion.ul>
@@ -273,15 +263,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     <Link href="/shed" onClick={() => setIsOpen(false)}
                       className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
                       🪵 Shed Management
-                    </Link>
-                  </li>
-
-                  <li>
-                    <Link href={getTabPath("pashudhan")} onClick={() => setIsOpen(false)}
-                      className={`block p-2 rounded border-l-4 ${
-                        (router.pathname === "/tkp" && router.query.tab === "pashudhan") ? activeStyle : normalStyle
-                      }`}>
-                      🏷️ Tag Management
                     </Link>
                   </li>
 
@@ -349,7 +330,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           <li>
                             <Link href={getTabPath("health")} onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/tkp", "health") || isLinkActive("/tdr", "health") ? activeStyle : normalStyle
+                                isLinkActive("/farm", "health") ? activeStyle : normalStyle
                               }`}>
                               📋 Treatment Log
                             </Link>
@@ -357,7 +338,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           <li>
                             <Link href={getTabPath("vaccine")} onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/tkp", "vaccine") ? activeStyle : normalStyle
+                                isLinkActive("/farm", "vaccine") ? activeStyle : normalStyle
                               }`}>
                               💉 Vaccination Log
                             </Link>
@@ -391,7 +372,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           <li>
                             <Link href={getTabPath("feed_inv")} onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/tkp", "feed_inv") ? activeStyle : normalStyle
+                                isLinkActive("/farm", "feed_inv") ? activeStyle : normalStyle
                               }`}>
                               🌾 Feed Inventory
                             </Link>
@@ -399,7 +380,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           <li>
                             <Link href={getTabPath("med_inv")} onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/tkp", "med_inv") || isLinkActive("/tdr", "medicine") ? activeStyle : normalStyle
+                                isLinkActive("/farm", "med_inv") ? activeStyle : normalStyle
                               }`}>
                               💊 Medicine Inventory
                             </Link>
@@ -413,7 +394,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   <li>
                     <Link href={getTabPath("grass")} onClick={() => setIsOpen(false)}
                       className={`block p-2 rounded border-l-4 ${
-                        isLinkActive("/tkp", "grass") ? activeStyle : normalStyle
+                        isLinkActive("/farm", "grass") ? activeStyle : normalStyle
                       }`}>
                       🌿 Grass Collection
                     </Link>
@@ -423,7 +404,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   <li>
                     <Link href={getTabPath("feeding")} onClick={() => setIsOpen(false)}
                       className={`block p-2 rounded border-l-4 ${
-                        isLinkActive("/tkp", "feeding") || isLinkActive("/tdr", "feeding") ? activeStyle : normalStyle
+                        isLinkActive("/farm", "feeding") ? activeStyle : normalStyle
                       }`}>
                       🌾 Daily Feeding
                     </Link>
@@ -453,7 +434,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           <li>
                             <Link href={getTabPath("milk_prod")} onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/tkp", "milk_prod") ? activeStyle : normalStyle
+                                isLinkActive("/farm", "milk_prod") ? activeStyle : normalStyle
                               }`}>
                               🥛 Daily Milk Collection
                             </Link>
@@ -461,7 +442,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           <li>
                             <Link href={getTabPath("components")} onClick={() => setIsOpen(false)}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/tkp", "components") ? activeStyle : normalStyle
+                                isLinkActive("/farm", "components") ? activeStyle : normalStyle
                               }`}>
                               🔬 Milk Q and A
                             </Link>

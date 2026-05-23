@@ -219,6 +219,12 @@ export const api = {
     update: (id, data) => apiRequest(`/api/departments/${id}`, 'PUT', data),
     delete: (id) => apiRequest(`/api/departments/${id}`, 'DELETE'),
   },
+  farms: {
+    getAll: () => apiRequest('/api/farms'),
+    create: (data) => apiRequest('/api/farms', 'POST', data),
+    update: (id, data) => apiRequest(`/api/farms/${id}`, 'PUT', data),
+    delete: (id) => apiRequest(`/api/farms/${id}`, 'DELETE'),
+  },
   sheds: {
     getAll: () => apiRequest('/api/sheds'),
     create: (data) => apiRequest('/api/sheds', 'POST', data),

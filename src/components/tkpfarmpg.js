@@ -7,7 +7,7 @@ import autoTable from "jspdf-autotable";
 import { api } from '@/utils/api';
 import { toast } from 'react-hot-toast';
 
-const FarmTKP = () => {
+const FarmTKP = ({ farmCode = 'TKP' }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('feeding');
   const [showForm, setShowForm] = useState(false);
@@ -178,7 +178,7 @@ const FarmTKP = () => {
         data = savedData ? JSON.parse(savedData) : [];
       }
       if (Array.isArray(data)) {
-        const filtered = data.filter(log => !log.farm || log.farm === 'TKP');
+        const filtered = data.filter(log => !log.farm || log.farm === farmCode || !log.farmId || log.farmId === farmCode);
         setLogs(filtered);
       } else {
         setLogs([]);
@@ -329,7 +329,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   const handleSave = async (data) => {
     setIsLoading(true);
     try {
-      const payload = { ...data, farm: 'TKP' };
+      const payload = { ...data, farm: farmCode };
       const entryId = selectedEntry?.id || selectedEntry?._id;
       
       if (isEditing) {
@@ -518,7 +518,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
       doc.setFontSize(16);
       doc.setTextColor(22, 34, 63); // Brand Navy
       doc.setFont("helvetica", "bold");
-      doc.text(`TKP Farm - ${current.name}`, 75, 26);
+      doc.text(`${farmCode} Farm - ${current.name}`, 75, 26);
 
       doc.setFontSize(9);
       doc.setTextColor(209, 134, 125); // Brand Rose
@@ -561,7 +561,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
       doc.setFontSize(16);
       doc.setTextColor(22, 34, 63);
       doc.setFont("helvetica", "bold");
-      doc.text(`TKP Farm - ${current.name}`, 20, 25);
+      doc.text(`${farmCode} Farm - ${current.name}`, 20, 25);
 
       doc.setFontSize(9);
       doc.setTextColor(100);
@@ -608,8 +608,8 @@ const activeFilterCount = filters.filter(
     <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-[#16223F] font-sans">TKP Farm</h1>
-          <p className="text-black opacity-60 italic">Module: {current.name}</p>
+          <h1 className="text-3xl font-bold text-[#16223F] font-sans">{farmCode} Farm</h1>
+          <p className="text-slate-500 mt-1">{current?.name}</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           {/* Export Buttons Added to your custom header */}
