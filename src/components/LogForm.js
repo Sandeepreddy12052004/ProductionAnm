@@ -208,9 +208,18 @@
       //   <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
 
         <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-7 rounded-3xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto border border-slate-100">
+          <div className="bg-white p-7 rounded-3xl shadow-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto border border-slate-100 relative">
 
-          <h2 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight flex-shrink-0">{title}</h2>
+            {/* CLOSE ICON */}
+            <button
+              onClick={onClose}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold z-10"
+              type="button"
+            >
+              ✕
+            </button>
+
+          <h2 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight flex-shrink-0 pr-10">{title}</h2>
           <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
             {fields.map((field) => (
               <div key={field.name}>

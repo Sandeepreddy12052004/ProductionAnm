@@ -1,4 +1,4 @@
-import { toast } from 'react-hot-toast';
+import { swalError } from './swal';
 
 const BASE_URL = 'https://farm.agasthyanutromilk.com';
 
@@ -65,38 +65,21 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
   try {
     const response = await fetch(`${BASE_URL}${finalEndpoint}`, config);
 
-    // Differentiate session invalidation (401) and resource authorization (401/403)
-    if (response.status === 401 || response.status === 403) {
-      // 1. If we are already verifying the token, check status directly
-      if (endpoint === '/api/auth/verify' || endpoint === '/api/auth/me') {
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('token');
-        toast.error('Session expired. Please login again.');
-        if (window.location.pathname !== '/login') {
-          window.location.replace('/login');
-        }
-        return null;
+    // Strictly handle 401 Unauthorized (Token dead/missing)
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      swalError("Session Expired", "Please login again.");
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
       }
+      return { success: false, error: 'Session expired.' };
+    }
 
-      // 2. Perform a lazy validation of the user token session
-      const isSessionActive = await verifyTokenSession(token);
-
-      if (!isSessionActive) {
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('token');
-        toast.error('Session expired. Please login again.');
-        if (window.location.pathname !== '/login') {
-          window.location.replace('/login');
-        }
-        return null;
-      }
-
-      // 3. Session is valid, but the user is unauthorized/forbidden for this specific operational module
-      const errorMsg = response.status === 403
-        ? 'Access Forbidden: You do not have permissions to view this module.'
-        : 'Module Restricted: You are not authorized to view this operational section.';
-      
-      toast.error(errorMsg);
+    // Strictly handle 403 Forbidden (Role permissions insufficient)
+    if (response.status === 403) {
+      const errorMsg = 'Access Forbidden: You do not have permissions to view this module.';
+      swalError("Access Denied", errorMsg);
       return { success: false, error: errorMsg };
     }
 
@@ -119,7 +102,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
     console.error(`API Call failed [${method} ${endpoint}]:`, error);
     // Suppress redundant error toasts if we already displayed detailed authorization toast
     if (!error.message.includes('Access Forbidden') && !error.message.includes('Module Restricted')) {
-      toast.error(error.message || 'Network connection failed.');
+      swalError("Error", error.message || 'Network connection failed.');
     }
     throw error;
   }

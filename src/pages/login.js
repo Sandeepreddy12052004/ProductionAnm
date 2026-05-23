@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { motion } from "framer-motion"; // For that premium smooth entrance
+import { swalError } from "@/utils/swal";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function LoginPage() {
                       (data.tokens && data.tokens.accessToken);
         if (!token) {
           console.error("Login successful but no token found in response", data);
-          alert("Authentication succeeded, but the security token was not found in the server response.");
+          swalError("Error", "Authentication succeeded, but the security token was not found in the server response.");
           setLoading(false);
           return;
         }
@@ -48,10 +49,10 @@ export default function LoginPage() {
         router.replace("/dashboard");
       } else {
         const errorMsg = (data && (data.message || data.error || data.message)) || "Invalid credentials";
-        alert(errorMsg);
+        swalError("Error", errorMsg);
       }
     } catch (error) {
-      alert("Server connection failed. Please try again later.");
+      swalError("Error", "Server connection failed. Please try again later.");
     } finally {
       setLoading(false);
     }

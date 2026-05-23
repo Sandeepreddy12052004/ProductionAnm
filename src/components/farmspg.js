@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
-import toast from "react-hot-toast";
+import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 
 const FarmsPg = () => {
   const [farms, setFarms] = useState([]);
@@ -36,14 +36,14 @@ const FarmsPg = () => {
 
   const handleSave = async () => {
     if (!formData.name || !formData.code) {
-      toast.error("Farm Name and Code are required.");
+      swalError("Error", "Farm Name and Code are required.");
       return;
     }
 
     setIsLoading(true);
     try {
       await api.farms.create(formData);
-      toast.success("Farm created successfully!");
+      swalSuccess("Success", "Farm created successfully!");
       setFormData({
         name: "",
         code: "",
@@ -54,19 +54,23 @@ const FarmsPg = () => {
       fetchFarms();
     } catch (err) {
       console.error(err);
+      swalError("Error", "Failed to save farm.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this farm?")) return;
+    const confirmed = await swalConfirm("Delete Farm?", "This action cannot be undone.");
+    if (!confirmed) return;
+    
     try {
       await api.farms.delete(id);
-      toast.success("Farm deleted successfully");
+      swalSuccess("Deleted", "Farm deleted successfully");
       fetchFarms();
     } catch (err) {
       console.error(err);
+      swalError("Error", "Failed to delete farm.");
     }
   };
 
@@ -146,8 +150,17 @@ const FarmsPg = () => {
         <div className="fixed inset-0 bg-black/40
         backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[30px]
-          p-8 w-full max-w-lg shadow-2xl">
-            <h2 className="text-3xl font-black text-[#071437] mb-8">
+          p-8 w-full max-w-lg shadow-2xl relative">
+            
+            {/* CLOSE ICON */}
+            <button
+              onClick={() => setShowForm(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-3xl font-black text-[#071437] mb-8 pr-10">
               Create Farm
             </h2>
             <div className="space-y-5">

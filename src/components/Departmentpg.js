@@ -1,80 +1,75 @@
 import React, { useState, useEffect } from "react";
+import { api } from "../utils/api";
+import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 
 const DepartmentPg = ({ moduleConfig }) => {
 
-  const current = moduleConfig;
-  const storageKey = `global_${current.id}_logs`;
-
   const [departments, setDepartments] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    departmentName: "",
-    status: "ACTIVE"
+    name: "",
+    status: true
   });
 
-  useEffect(() => {
-    const saved =
-      JSON.parse(localStorage.getItem(storageKey)) || [];
+  const fetchDepartments = async () => {
+    try {
+      const data = await api.departments.getAll();
+      setDepartments(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-    setDepartments(saved);
-  }, [storageKey]);
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
 
   const handleChange = (e) => {
+    const value = e.target.name === 'status' 
+      ? e.target.value === 'true'
+      : e.target.value;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: value
     });
   };
 
-  const handleSave = () => {
-
-    const exists = departments.some(
-      item =>
-        item.departmentName.toLowerCase() ===
-        formData.departmentName.toLowerCase()
-    );
-
-    if (exists) {
-      alert("Department already exists");
+  const handleSave = async () => {
+    if (!formData.name) {
+      swalError("Error", "Department Name is required");
       return;
     }
 
-    const newDepartment = {
-      id: new Date().getTime(),
-      ...formData,
-      createdDate: new Date().toLocaleDateString("en-GB")
-    };
-
-    const updated = [newDepartment, ...departments];
-
-    setDepartments(updated);
-
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(updated)
-    );
-
-    setFormData({
-      departmentName: "",
-      status: "ACTIVE"
-    });
-
-    setShowForm(false);
+    setIsLoading(true);
+    try {
+      await api.departments.create(formData);
+      swalSuccess("Success", "Department created successfully");
+      setFormData({ name: "", status: true });
+      setShowForm(false);
+      fetchDepartments();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", err.response?.data?.message || err.message || "Failed to create department");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id) => {
-
-    if (!window.confirm("Delete this department?")) return;
-
-    const updated = departments.filter(dep => dep.id !== id);
-
-    setDepartments(updated);
-
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(updated)
-    );
+  const handleDelete = async (id) => {
+    const confirmed = await swalConfirm("Delete Department?", "This action cannot be undone.");
+    if (!confirmed) return;
+    
+    try {
+      await api.departments.delete(id);
+      swalSuccess("Deleted", "Department deleted successfully");
+      fetchDepartments();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", "Failed to delete department");
+    }
   };
 
   return (
@@ -130,21 +125,17 @@ const DepartmentPg = ({ moduleConfig }) => {
 
               {/* NAME */}
               <div className="font-bold text-sm text-[#071437]">
-                {dep.departmentName}
+                {dep.name}
               </div>
 
-              {/* STATUS */}
-              <div>
-                <span
-                  className={`
-                  px-3 py-1 rounded-xl text-xs font-black uppercase
-                  ${dep.status === "ACTIVE"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                  }
-                `}
+              <div className="flex items-center">
+                <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wide
+                  ${dep.status
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-100 text-slate-600'
+                  }`}
                 >
-                  {dep.status}
+                  {dep.status ? 'ACTIVE' : 'INACTIVE'}
                 </span>
               </div>
 
@@ -152,6 +143,7 @@ const DepartmentPg = ({ moduleConfig }) => {
               <div className="flex gap-3">
 
                 <button
+                  onClick={() => handleDelete(dep._id || dep.id)}
                   className="px-3 py-1.5 rounded-xl
                   bg-blue-50 text-blue-600 font-bold
                   hover:bg-blue-100 transition-all"
@@ -191,9 +183,17 @@ const DepartmentPg = ({ moduleConfig }) => {
         backdrop-blur-sm flex items-center justify-center z-50 p-4">
 
           <div className="bg-white rounded-[30px]
-          p-8 w-full max-w-lg shadow-2xl">
+          p-8 w-full max-w-lg shadow-2xl relative">
 
-            <h2 className="text-3xl font-black text-[#071437] mb-8">
+            {/* CLOSE ICON */}
+            <button
+              onClick={() => setShowForm(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-3xl font-black text-[#071437] mb-8 pr-10">
               Create Department
             </h2>
 
@@ -207,15 +207,12 @@ const DepartmentPg = ({ moduleConfig }) => {
 
                 <input
                   type="text"
-                  name="departmentName"
-                  value={formData.departmentName}
+                  name="name"
+                  value={formData.name}
                   onChange={handleChange}
-                  placeholder="Enter department name"
+                  placeholder="e.g. Health & Treatment"
                   className="w-full border border-[#dbe4f0]
-                  rounded-2xl px-5 py-4
-                  outline-none focus:ring-2
-                  focus:ring-[#071437]
-                  text-[#071437]"
+                  rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
                 />
               </div>
 
@@ -230,13 +227,10 @@ const DepartmentPg = ({ moduleConfig }) => {
                   value={formData.status}
                   onChange={handleChange}
                   className="w-full border border-[#dbe4f0]
-                  rounded-2xl px-5 py-4
-                  outline-none focus:ring-2
-                  focus:ring-[#071437]
-                  text-[#071437]"
+                  rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437] appearance-none"
                 >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
+                  <option value={true}>ACTIVE</option>
+                  <option value={false}>INACTIVE</option>
                 </select>
               </div>
 
@@ -247,12 +241,12 @@ const DepartmentPg = ({ moduleConfig }) => {
 
               <button
                 onClick={handleSave}
-                className="flex-1 bg-[#071437]
-                hover:bg-[#0d1f4d]
+                disabled={isLoading}
+                className="flex-1 bg-[#071437] hover:bg-[#0d1f4d]
                 text-white py-4 rounded-2xl
-                font-black text-lg transition-all"
+                font-black text-lg transition-all disabled:opacity-50"
               >
-                Save Department
+                {isLoading ? "Saving..." : "Save Department"}
               </button>
 
               <button

@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { api } from '@/utils/api';
-import { toast } from 'react-hot-toast';
+import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
 
 
 
@@ -218,18 +218,18 @@ const handleSave = async (data) => {
       if (isEditing) {
         if (current.id === 'livestock') {
           await api.cattle.update(selectedEntry.id || selectedEntry._id, data);
-          toast.success("Cattle details updated successfully!");
+          swalSuccess("Success", "Cattle details updated successfully!");
         } else if (current.id === 'crossing') {
           await api.crossing.update(selectedEntry.id || selectedEntry._id, data);
-          toast.success("Crossing log updated successfully!");
+          swalSuccess("Success", "Crossing log updated successfully!");
         }
       } else {
         if (current.id === 'livestock') {
           await api.cattle.create(data);
-          toast.success("Cattle registered successfully!");
+          swalSuccess("Success", "Cattle registered successfully!");
         } else if (current.id === 'crossing') {
           await api.crossing.create(data);
-          toast.success("Crossing log created successfully!");
+          swalSuccess("Success", "Crossing log created successfully!");
         }
       }
       await fetchLogs();
@@ -252,7 +252,7 @@ const handleSave = async (data) => {
         const livestock = JSON.parse(localStorage.getItem(livestockKey)) || [];
         const alreadyExists = livestock.some(item => item.tag === data.tag);
         if (alreadyExists) {
-          alert(`Tag "${data.tag}" already exists in Livestock`);
+          swalError("Error", `Tag "${data.tag}" already exists in Livestock`);
           return;
         }
         const newAnimal = {
@@ -287,14 +287,14 @@ const handleSave = async (data) => {
         const livestock = JSON.parse(localStorage.getItem("global_livestock_logs")) || [];
         const exists = livestock.find(item => item.tag === data.tag);
         if (!exists) {
-          alert(`Tag "${data.tag}" not found in Livestock`);
+          swalError("Error", `Tag "${data.tag}" not found in Livestock`);
           return;
         }
         const alreadySold = logs.some(
           log => log.tag === data.tag && (!isEditing || log.id !== selectedEntry?.id)
         );
         if (alreadySold) {
-          alert(`Tag "${data.tag}" is already sold`);
+          swalError("Error", `Tag "${data.tag}" is already sold`);
           return;
         }
       }
@@ -589,26 +589,28 @@ const handleSave = async (data) => {
   };
 
   const handleDelete = async () => {
-    if (window.confirm("Permanent delete this record?")) {
+    const confirmed = await swalConfirm("Delete Record?", "Permanent delete this record?");
+    if (confirmed) {
       setIsLoading(true);
       try {
         const entryId = selectedEntry.id || selectedEntry._id;
         if (current.id === 'livestock') {
           await api.cattle.delete(entryId);
-          toast.success("Cattle deleted successfully!");
+          swalSuccess("Deleted", "Cattle deleted successfully!");
           await fetchLogs();
         } else if (current.id === 'crossing') {
           await api.crossing.delete(entryId);
-          toast.success("Crossing log deleted successfully!");
+          swalSuccess("Deleted", "Crossing log deleted successfully!");
           await fetchLogs();
         } else {
           const filtered = logs.filter(log => log.id !== selectedEntry.id);
           saveToStorage(filtered);
-          toast.success("Record deleted successfully!");
+          swalSuccess("Deleted", "Record deleted successfully!");
         }
         closeAllModals();
       } catch (error) {
         console.error("Delete error:", error);
+        swalError("Error", "Failed to delete record.");
       } finally {
         setIsLoading(false);
       }

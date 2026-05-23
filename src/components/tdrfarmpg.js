@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { api } from '@/utils/api';
-import { toast } from 'react-hot-toast';
+import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
 
 const FarmTDR = () => {
   const router = useRouter();
@@ -259,7 +259,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
           saveToStorage(updated);
         }
-        toast.success(`${current.name} updated successfully!`);
+        swalSuccess("Success", `${current.name} updated successfully!`);
       } else {
         const now = new Date();
         const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -273,7 +273,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           const newLogs = [{ ...data, id: Date.now(), date: formattedDate }, ...logs];
           saveToStorage(newLogs);
         }
-        toast.success(`${current.name} created successfully!`);
+        swalSuccess("Success", `${current.name} created successfully!`);
       }
       await fetchLogs();
       closeAllModals();
@@ -485,8 +485,9 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     };
   };
 
-  const handleDelete = async () => {
-    if (window.confirm("Permanent delete this record?")) {
+  const handleDelete = async (id) => {
+    const confirmed = await swalConfirm("Delete Record?", "Permanent delete this record?");
+    if (confirmed) {
       setIsLoading(true);
       try {
         const entryId = selectedEntry.id || selectedEntry._id;
@@ -497,11 +498,12 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           const filtered = logs.filter(log => log.id !== selectedEntry.id);
           saveToStorage(filtered);
         }
-        toast.success(`${current.name} deleted successfully!`);
+        swalSuccess("Deleted", `${current.name} deleted successfully!`);
         await fetchLogs();
         closeAllModals();
       } catch (e) {
         console.error("Delete error:", e);
+        swalError("Error", "Failed to delete record.");
       } finally {
         setIsLoading(false);
       }

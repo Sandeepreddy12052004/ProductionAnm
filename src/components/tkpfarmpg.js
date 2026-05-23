@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { api } from '@/utils/api';
-import { toast } from 'react-hot-toast';
+import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
 
 const FarmTKP = ({ farmCode = 'TKP' }) => {
   const router = useRouter();
@@ -19,6 +19,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [showFAB, setShowFAB] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [availableFarms, setAvailableFarms] = useState([]);
 
   const [filters, setFilters] = useState([
     { field: "entryDate", value: "", from: "", to: "" }
@@ -204,7 +205,19 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
     fetchLogs();
     setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);
     setCurrentPage(1);
-  }, [activeTab]);
+  }, [activeTab, farmCode]);
+
+  useEffect(() => {
+    const fetchFarms = async () => {
+      try {
+        const farms = await api.farms.getAll();
+        setAvailableFarms(farms || []);
+      } catch (err) {
+        console.error("Failed to load farms for dropdown:", err);
+      }
+    };
+    fetchFarms();
+  }, []);
 
 
   useEffect(() => {
@@ -342,10 +355,12 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'milk_prod') await api.milk.collections.update(entryId, payload);
         else if (activeTab === 'components') await api.milk.quality.update(entryId, payload);
         else {
-          const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
-          saveToStorage(updated);
+          const index = logs.findIndex(log => (log.id || log._id) === entryId);
+          const newLogs = [...logs];
+          newLogs[index] = { ...newLogs[index], ...data };
+          saveToStorage(newLogs);
         }
-        toast.success(`${current.name} updated successfully!`);
+        swalSuccess("Success", `${current.name} updated successfully!`);
       } else {
         const now = new Date();
         const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -364,7 +379,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           const newLogs = [{ ...data, id: Date.now(), entryDate: formattedDate }, ...logs];
           saveToStorage(newLogs);
         }
-        toast.success(`${current.name} created successfully!`);
+        swalSuccess("Success", `${current.name} created successfully!`);
       }
       await fetchLogs();
       closeAllModals();
@@ -375,8 +390,9 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm("Permanent delete this record?")) {
+  const handleDelete = async (id) => {
+    const confirmed = await swalConfirm("Delete Record?", "Permanent delete this record?");
+    if (confirmed) {
       setIsLoading(true);
       try {
         const entryId = selectedEntry.id || selectedEntry._id;
@@ -392,11 +408,12 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           const filtered = logs.filter(log => log.id !== selectedEntry.id);
           saveToStorage(filtered);
         }
-        toast.success(`${current.name} deleted successfully!`);
+        swalSuccess("Deleted", `${current.name} deleted successfully!`);
         await fetchLogs();
         closeAllModals();
       } catch (e) {
         console.error("Delete error:", e);
+        swalError("Error", "Failed to delete record.");
       } finally {
         setIsLoading(false);
       }
@@ -671,7 +688,7 @@ const activeFilterCount = filters.filter(
       shadow-sm
     "
   >
-    <span>{current.icon} {current.name}</span>
+    <span>🏢 {availableFarms.find(f => f.code === farmCode)?.name || `${farmCode} Farm`}</span>
 
     {/* 🔽 ROTATING ARROW */}
     <span
@@ -703,21 +720,20 @@ const activeFilterCount = filters.filter(
         : "opacity-0 -translate-y-6 pointer-events-none"}
     `}
   >
-    {modules.map(m => (
+    {availableFarms.map(f => (
       <button
-        key={m.id}
+        key={f._id || f.id}
         onClick={() => {
-          setActiveTab(m.id);
           setShowTabDropdown(false);
-          router.push({ query: { ...router.query, tab: m.id } }, undefined, { shallow: true });
+          router.push(`/farm/${f.code}?tab=${activeTab}`);
         }}
         className={`
           w-full text-left px-4 py-2 text-sm
           hover:bg-gray-100 transition
-          ${activeTab === m.id ? 'bg-[#D1867D]/10 text-[#16223F] font-bold' : ''}
+          ${farmCode === f.code ? 'bg-[#D1867D]/10 text-[#16223F] font-bold' : ''}
         `}
       >
-        {m.icon} {m.name}
+        🏢 {f.name}
       </button>
     ))}
   </div>
