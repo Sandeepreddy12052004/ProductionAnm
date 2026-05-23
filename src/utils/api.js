@@ -48,14 +48,22 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
   const config = {
     method,
     headers,
+    cache: 'no-store', // Force no caching in Next.js/Browser
   };
 
   if (body && (method === 'POST' || method === 'PUT')) {
     config.body = JSON.stringify(body);
   }
 
+  // Add cache-busting timestamp to GET requests
+  let finalEndpoint = endpoint;
+  if (method === 'GET') {
+    const separator = finalEndpoint.includes('?') ? '&' : '?';
+    finalEndpoint += `${separator}t=${Date.now()}`;
+  }
+
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, config);
+    const response = await fetch(`${BASE_URL}${finalEndpoint}`, config);
 
     // Differentiate session invalidation (401) and resource authorization (401/403)
     if (response.status === 401 || response.status === 403) {
