@@ -11,7 +11,9 @@ const userConfig = {
     // OPTIONAL EMAIL
     { name: 'email', label: 'Email', optional: true },
 
-    { name: 'mobile', label: 'Mobile No', type: 'number' },
+    { name: 'password', label: 'Password' },
+
+    { name: 'phone', label: 'Phone No', type: 'number' },
 
     {
       name: 'farm',

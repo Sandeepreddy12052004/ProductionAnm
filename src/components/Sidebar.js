@@ -40,6 +40,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   // Dynamic Farms State
   const [farmsList, setFarmsList] = useState([]);
   const [userRole, setUserRole] = useState(null);
+  
+  // Collapse states
+  const [shedOpen, setShedOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -268,11 +271,46 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     </AnimatePresence>
                   </li>
 
-                  <li>
-                    <Link href="/shed" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
-                      🪵 Shed Management
-                    </Link>
+                  {/* SHED OPERATIONS DROPDOWN */}
+                  <li className="mt-2 border-t border-slate-200 pt-2">
+                    <button
+                      onClick={() => toggleState(setShedOpen, 'shedOpen', shedOpen)}
+                      className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                    >
+                      <span>🪵 Shed Operations</span>
+                      <motion.span animate={{ rotate: shedOpen ? 180 : 0 }}>
+                        ▼
+                      </motion.span>
+                    </button>
+
+                    <AnimatePresence>
+                      {shedOpen && (
+                        <motion.ul
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="mt-1 space-y-1 pl-3 overflow-hidden"
+                        >
+                          <li>
+                            <Link href="/shed" onClick={handleCloseSidebar}
+                              className={`block p-1.5 text-sm rounded border-l-4 ${
+                                router.pathname === "/shed" ? activeStyle : normalStyle
+                              }`}>
+                              📝 Shed Log
+                            </Link>
+                          </li>
+                          <li>
+                            <Link href="/shed-management" onClick={handleCloseSidebar}
+                              className={`block p-1.5 text-sm rounded border-l-4 ${
+                                router.pathname === "/shed-management" ? activeStyle : normalStyle
+                              }`}>
+                              ⚙️ Shed Management
+                            </Link>
+                          </li>
+                        </motion.ul>
+                      )}
+                    </AnimatePresence>
                   </li>
 
                   <li>
@@ -293,7 +331,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
               className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
             >
-              <span>Normal Modules</span>
+              <span>Modules</span>
               <motion.span animate={{ rotate: normalOpen ? 180 : 0 }}>
                 ▼
               </motion.span>

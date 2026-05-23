@@ -286,11 +286,46 @@ const UserManagementPg = ({ moduleConfig }) => {
   const handleSave = async (data) => {
     setIsLoadingForm(true);
     try {
+      const payload = { ...data };
+      
+      if (!isEditing && !payload.password) {
+        payload.password = "agasthya123";
+      }
+      
+      // Ensure phone is a string if it exists
+      if (payload.phone !== undefined && payload.phone !== null) {
+        payload.phone = String(payload.phone);
+      }
+      if (payload.mobile !== undefined && payload.mobile !== null) {
+        payload.phone = String(payload.mobile);
+        delete payload.mobile;
+      }
+      
+      // Convert status string to boolean for backend validation
+      if (typeof payload.status === 'string') {
+        payload.status = payload.status === 'Active' || payload.status === 'ACTIVE';
+      }
+      
+      // Look up the Farm ID if a farm name string is passed instead of an ObjectId
+      if (payload.farm && typeof payload.farm === 'string' && !payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
+        try {
+          const farms = await api.farms.getAll();
+          const targetFarm = farms.find(f => f.code === payload.farm || f.name === payload.farm);
+          if (targetFarm) {
+            payload.farmId = targetFarm.id || targetFarm._id;
+          }
+        } catch (farmErr) {
+          console.error("Failed to lookup farm ID:", farmErr);
+        }
+      } else if (payload.farm && typeof payload.farm === 'string' && payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
+        payload.farmId = payload.farm;
+      }
+
       if (isEditing) {
-        await api.users.update(selectedEntry.id || selectedEntry._id, data);
+        await api.users.update(selectedEntry.id || selectedEntry._id, payload);
         swalSuccess("Success", "User updated successfully");
       } else {
-        await api.users.create(data);
+        await api.users.create(payload);
         swalSuccess("Success", "User created successfully");
       }
       mutate();

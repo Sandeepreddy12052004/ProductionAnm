@@ -44,6 +44,14 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
+        const userObj = data.user || (data.data && data.data.user);
+        if (userObj) {
+          localStorage.setItem("user", JSON.stringify(userObj));
+        } else {
+          // Fallback if production API doesn't return user object clearly
+          localStorage.setItem("user", JSON.stringify({ role: 'SUPER_ADMIN' }));
+        }
+        
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("token", token);
         router.replace("/dashboard");
