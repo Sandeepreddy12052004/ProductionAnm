@@ -31,7 +31,11 @@ const userConfig = {
       name: 'role',
       label: 'Role',
       type: 'select',
-      options: ['Admin', 'Supervisor', 'Operator']
+      options: [
+        { label: 'Super Admin', value: 'SUPER_ADMIN' },
+        { label: 'Farm Admin', value: 'FARM_ADMIN' },
+        { label: 'Incharge', value: 'INCHARGE' }
+      ]
     }
   ]
 };

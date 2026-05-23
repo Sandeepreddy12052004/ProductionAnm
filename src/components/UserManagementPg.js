@@ -229,16 +229,19 @@
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import useSWR from 'swr';
+import { api } from '../utils/api';
+import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import LogForm from './LogForm';
 
 const UserManagementPg = ({ moduleConfig }) => {
 
-  const [users, setUsers] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState(false);
+  const [isLoadingForm, setIsLoadingForm] = useState(false);
 
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
@@ -251,59 +254,66 @@ const UserManagementPg = ({ moduleConfig }) => {
   // 👉 NEW STATE FOR STATUS EDIT
   const [statusEditId, setStatusEditId] = useState(null);
 
-  const storageKey = `global_${moduleConfig.id}_logs`;
+  // SWR Caching Logic
+  const fetcher = async () => {
+    const data = await api.users.getAll();
+    return data || [];
+  };
 
-  useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    setUsers(saved ? JSON.parse(saved) : []);
-  }, [storageKey]);
+  const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000
+  });
 
   // FILTER LOGIC
-  const filteredUsers = users.filter(user => {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const filteredUsers = safeUsers.filter(user => {
 
     const matchSearch =
       user.name?.toLowerCase().includes(search.toLowerCase()) ||
       user.userId?.toLowerCase().includes(search.toLowerCase());
 
-    const matchFarm = filters.farm ? user.farm === filters.farm : true;
+    const userFarmName = typeof user.farmId === 'object' ? user.farmId?.name : user.farm;
+    const matchFarm = filters.farm ? userFarmName === filters.farm : true;
     const matchDept = filters.department ? user.department === filters.department : true;
     const matchRole = filters.role ? user.role === filters.role : true;
-    const matchStatus = filters.status ? user.status === filters.status : true;
+    const matchStatus = filters.status ? (user.status || 'Active') === filters.status : true;
 
     return matchSearch && matchFarm && matchDept && matchRole && matchStatus;
   });
 
   // SAVE USER
-  const handleSave = (data) => {
-    if (isEditing) {
-      const updated = users.map(u =>
-        u.id === selectedEntry.id ? { ...u, ...data } : u
-      );
-      setUsers(updated);
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } else {
-      const newUser = {
-        ...data,
-        id: Date.now(),
-        status: "Active"
-      };
-      const updated = [newUser, ...users];
-      setUsers(updated);
-      localStorage.setItem(storageKey, JSON.stringify(updated));
+  const handleSave = async (data) => {
+    setIsLoadingForm(true);
+    try {
+      if (isEditing) {
+        await api.users.update(selectedEntry.id || selectedEntry._id, data);
+        swalSuccess("Success", "User updated successfully");
+      } else {
+        await api.users.create(data);
+        swalSuccess("Success", "User created successfully");
+      }
+      mutate();
+      closeAll();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", err.response?.data?.message || err.message || "Failed to save user");
+    } finally {
+      setIsLoadingForm(false);
     }
-
-    closeAll();
   };
 
   // 🔥 STATUS CHANGE FUNCTION
-  const handleStatusChange = (id, newStatus) => {
-    const updated = users.map(u =>
-      u.id === id ? { ...u, status: newStatus } : u
-    );
-
-    setUsers(updated);
-    localStorage.setItem(storageKey, JSON.stringify(updated));
-    setStatusEditId(null);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await api.users.update(id, { status: newStatus });
+      mutate();
+      setStatusEditId(null);
+      swalSuccess("Success", "User status updated");
+    } catch (err) {
+      console.error(err);
+      swalError("Error", "Failed to update status");
+    }
   };
 
   const closeAll = () => {
@@ -359,22 +369,24 @@ const UserManagementPg = ({ moduleConfig }) => {
         </select>
 
         <select
+          value={filters.role}
           onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
+          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] font-semibold focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 cursor-pointer"
         >
           <option value="">All Roles</option>
-          <option>Admin</option>
-          <option>Supervisor</option>
-          <option>Operator</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
+          <option value="FARM_ADMIN">Farm Admin</option>
+          <option value="INCHARGE">Incharge</option>
         </select>
 
         <select
+          value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
-          <option value="">All Status</option>
-          <option>Active</option>
-          <option>Inactive</option>
+          <option value="">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
         </select>
 
       </div>
@@ -399,25 +411,52 @@ const UserManagementPg = ({ moduleConfig }) => {
           </thead>
 
           <tbody className="divide-y divide-gray-100">
-            {filteredUsers.length > 0 ? (
+            {error ? (
+              <tr>
+                <td colSpan="10" className="p-8">
+                  <div className="flex flex-col justify-center items-center gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                    <span className="text-red-600 font-bold">Failed to load users</span>
+                    <span className="text-red-500 text-sm font-mono">{error.message || "Unknown error"}</span>
+                  </div>
+                </td>
+              </tr>
+            ) : isLoading ? (
+              // SKELETON LOADER
+              <>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="animate-pulse border-b border-gray-100">
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-6"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
+                    <td className="p-4 text-center"><div className="h-6 bg-slate-200 rounded-full w-16 mx-auto"></div></td>
+                    <td className="p-4"><div className="h-8 bg-slate-200 rounded-lg w-32"></div></td>
+                  </tr>
+                ))}
+              </>
+            ) : filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
-                <tr key={user.id} className="hover:bg-[#D1867D]/5 transition-colors cursor-pointer">
+                <tr key={user.id || user._id} className="hover:bg-[#D1867D]/5 transition-colors cursor-pointer">
 
                   <td className="p-4 text-sm font-medium text-black">{index + 1}</td>
                   <td className="p-4 text-sm font-semibold text-black">{user.userId}</td>
                   <td className="p-4 text-sm font-bold text-black">{user.name}</td>
                   <td className="p-4 text-sm text-gray-500 font-sans">{user.email || "-"}</td>
-                  <td className="p-4 text-sm text-gray-500 font-sans">{user.mobile}</td>
-                  <td className="p-4 text-sm font-semibold text-black">{user.farm}</td>
+                  <td className="p-4 text-sm text-gray-500 font-sans">{user.phone || user.mobile || "-"}</td>
+                  <td className="p-4 text-sm font-semibold text-black">{typeof user.farmId === 'object' ? user.farmId?.name : user.farm || "-"}</td>
                   <td className="p-4 text-sm font-semibold text-gray-600">{user.department}</td>
                   <td className="p-4 text-sm font-semibold text-gray-600">{user.role}</td>
 
                   {/* ✅ STATUS CLICKABLE */}
                   <td className="p-4 text-center">
-                    {statusEditId === user.id ? (
+                    {statusEditId === (user.id || user._id) ? (
                       <select
-                        value={user.status}
-                        onChange={(e) => handleStatusChange(user.id, e.target.value)}
+                        value={user.status || 'Active'}
+                        onChange={(e) => handleStatusChange(user.id || user._id, e.target.value)}
                         className="px-2 py-1 rounded-xl bg-gray-50 border border-gray-200 text-sm font-semibold outline-none focus:border-[#D1867D]"
                       >
                         <option>Active</option>
@@ -425,9 +464,9 @@ const UserManagementPg = ({ moduleConfig }) => {
                       </select>
                     ) : (
                       <span
-                        onClick={() => setStatusEditId(user.id)}
+                        onClick={() => setStatusEditId(user.id || user._id)}
                         className={`cursor-pointer px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
-                          user.status === "Inactive"
+                          (user.status || 'Active') === "Inactive"
                             ? "bg-red-50 text-red-700 border-red-100/50"
                             : "bg-emerald-50 text-emerald-700 border-emerald-100/50"
                         }`}

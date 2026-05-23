@@ -39,6 +39,18 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   // Dynamic Farms State
   const [farmsList, setFarmsList] = useState([]);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setUserRole(parsed.role || null);
+      }
+    } catch (e) {}
+  }, []);
+
   useEffect(() => {
     import('../utils/api').then(({ api }) => {
       api.farms.getAll().then(res => {
@@ -47,7 +59,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     });
   }, []);
 
-  // States
+  // 1. Initialize dropdowns based on the server-side route to prevent hydration slide-down flicker
   const [coreOpen, setCoreOpen] = useState(isCoreRoute || true);
   const [farmOpen, setFarmOpen] = useState(isFarmRoute && !router.query.tab);
   const [normalOpen, setNormalOpen] = useState(isNormalRoute || false);
@@ -55,43 +67,31 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
   const [milkOpen, setMilkOpen] = useState(isMilkActive);
 
-  // 1. Hydrate state safely from localStorage on mount
+  // 2. Hydrate user preferences from localStorage safely after the client mounts
   useEffect(() => {
+
     try {
       const saved = localStorage.getItem("sidebar_dropdown_state");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.coreOpen !== undefined) setCoreOpen(parsed.coreOpen);
-        if (parsed.farmOpen !== undefined) setFarmOpen(parsed.farmOpen);
-        if (parsed.normalOpen !== undefined) setNormalOpen(parsed.normalOpen);
-        if (parsed.healthOpen !== undefined) setHealthOpen(parsed.healthOpen);
-        if (parsed.inventoryOpen !== undefined) setInventoryOpen(parsed.inventoryOpen);
-        if (parsed.milkOpen !== undefined) setMilkOpen(parsed.milkOpen);
+        setCoreOpen(parsed.coreOpen ?? (isCoreRoute || true));
+        setFarmOpen(parsed.farmOpen ?? (isFarmRoute && !router.query.tab));
+        setNormalOpen(parsed.normalOpen ?? (isNormalRoute || false));
+        setHealthOpen(parsed.healthOpen ?? isHealthActive);
+        setInventoryOpen(parsed.inventoryOpen ?? isInventoryActive);
+        setMilkOpen(parsed.milkOpen ?? isMilkActive);
+        return;
       }
     } catch (err) {}
-  }, []);
 
-  // 2. Auto-expand based on active route
-  useEffect(() => {
-    if (isCoreRoute) setCoreOpen(true);
-    if (isFarmRoute && !router.query.tab) {
-      setCoreOpen(true);
-      setFarmOpen(true);
-    }
-    if (isNormalRoute) setNormalOpen(true);
-    if (isHealthActive) {
-      setNormalOpen(true);
-      setHealthOpen(true);
-    }
-    if (isInventoryActive) {
-      setNormalOpen(true);
-      setInventoryOpen(true);
-    }
-    if (isMilkActive) {
-      setNormalOpen(true);
-      setMilkOpen(true);
-    }
-  }, [router.pathname, router.query.tab]);
+    // Fallback: auto-expand based on route if no localStorage
+    setCoreOpen(isCoreRoute || true);
+    setFarmOpen(isFarmRoute && !router.query.tab);
+    setNormalOpen(isNormalRoute || false);
+    setHealthOpen(isHealthActive);
+    setInventoryOpen(isInventoryActive);
+    setMilkOpen(isMilkActive);
+  }, [router.pathname, router.query.tab, isFarmRoute]);
 
   // 3. Helper to toggle and save
   const toggleState = (setter, key, currentVal) => {
@@ -120,13 +120,19 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     };
   }, [isOpen]);
 
+  const handleCloseSidebar = () => {
+    if (typeof setIsOpen === 'function') {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <>
       {/* OVERLAY (MOBILE) */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-[100] md:hidden"
-          onClick={() => setIsOpen(false)}
+          onClick={handleCloseSidebar}
         />
       )}
 
@@ -140,11 +146,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           md:translate-x-0
         `}
       >
-        {/* MOBILE HEADER */}
         <div className="flex justify-between items-center mb-6 md:hidden">
           <span className="text-lg font-bold text-[#16223F]">Menu</span>
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={handleCloseSidebar}
             className="text-gray-800 text-xl font-bold"
           >
             ✕
@@ -170,7 +175,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {/* Dashboard Link */}
           <li>
             <motion.div whileHover={{ scale: 1.02, x: 3 }}>
-              <Link href="/dashboard" onClick={() => setIsOpen(false)}
+              <Link href="/dashboard" onClick={handleCloseSidebar}
                 className={`block p-2 rounded border-l-4 ${isLinkActive("/dashboard") ? activeStyle : normalStyle}`}>
                 📊 Dashboard
               </Link>
@@ -178,6 +183,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </li>
 
           {/* CORE MODULES GROUP */}
+          {userRole && ['SUPER_ADMIN', 'FARM_ADMIN'].includes(userRole) && (
           <li className="mt-4">
             <button
               onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
@@ -199,20 +205,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   className="mt-2 space-y-2 pl-2 overflow-hidden"
                 >
 
+                  {userRole === 'SUPER_ADMIN' && (
+                    <>
+                      <li>
+                        <Link href="/users" onClick={handleCloseSidebar}
+                          className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
+                          👥 User Management
+                        </Link>
+                      </li>
 
-                  <li>
-                    <Link href="/users" onClick={() => setIsOpen(false)}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
-                      👥 User Management
-                    </Link>
-                  </li>
-
-                  <li>
-                    <Link href="/department" onClick={() => setIsOpen(false)}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
-                      🏢 Department
-                    </Link>
-                  </li>
+                      <li>
+                        <Link href="/department" onClick={handleCloseSidebar}
+                          className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
+                          🏢 Department
+                        </Link>
+                      </li>
+                    </>
+                  )}
 
                   {/* Farm Management Collapsible Dropdown */}
                   <li>
@@ -237,7 +246,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         >
                           {farmsList.map((farm) => (
                             <li key={farm.code}>
-                              <Link href={`/farm/${farm.code.toLowerCase()}`} onClick={() => setIsOpen(false)}
+                              <Link href={`/farm/${farm.code.toLowerCase()}`} onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
                                   router.pathname.includes(`/farm/${farm.code.toLowerCase()}`) && !router.query.tab ? activeStyle : normalStyle
                                 }`}>
@@ -247,7 +256,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           ))}
                           
                           <li className="mt-2 border-t border-slate-200 pt-2">
-                            <Link href="/farms" onClick={() => setIsOpen(false)}
+                            <Link href="/farms" onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 router.pathname === "/farms" ? activeStyle : normalStyle
                               }`}>
@@ -260,14 +269,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   </li>
 
                   <li>
-                    <Link href="/shed" onClick={() => setIsOpen(false)}
+                    <Link href="/shed" onClick={handleCloseSidebar}
                       className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
                       🪵 Shed Management
                     </Link>
                   </li>
 
                   <li>
-                    <Link href="/animals" onClick={() => setIsOpen(false)}
+                    <Link href="/animals" onClick={handleCloseSidebar}
                       className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
                       🐄 Cattle Management
                     </Link>
@@ -276,6 +285,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               )}
             </AnimatePresence>
           </li>
+          )}
 
           {/* NORMAL MODULES GROUP */}
           <li className="mt-4 border-t border-slate-100 pt-4">
@@ -300,7 +310,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 >
                   {/* Live Stock */}
                   <li>
-                    <Link href="/animals" onClick={() => setIsOpen(false)}
+                    <Link href="/animals" onClick={handleCloseSidebar}
                       className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
                       🐄 Live Stock
                     </Link>
@@ -328,7 +338,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           className="mt-1 space-y-1 pl-3 overflow-hidden"
                         >
                           <li>
-                            <Link href={getTabPath("health")} onClick={() => setIsOpen(false)}
+                            <Link href={getTabPath("health")} onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 isLinkActive("/farm", "health") ? activeStyle : normalStyle
                               }`}>
@@ -336,7 +346,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             </Link>
                           </li>
                           <li>
-                            <Link href={getTabPath("vaccine")} onClick={() => setIsOpen(false)}
+                            <Link href={getTabPath("vaccine")} onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 isLinkActive("/farm", "vaccine") ? activeStyle : normalStyle
                               }`}>
@@ -370,7 +380,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           className="mt-1 space-y-1 pl-3 overflow-hidden"
                         >
                           <li>
-                            <Link href={getTabPath("feed_inv")} onClick={() => setIsOpen(false)}
+                            <Link href={getTabPath("feed_inv")} onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 isLinkActive("/farm", "feed_inv") ? activeStyle : normalStyle
                               }`}>
@@ -378,7 +388,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             </Link>
                           </li>
                           <li>
-                            <Link href={getTabPath("med_inv")} onClick={() => setIsOpen(false)}
+                            <Link href={getTabPath("med_inv")} onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 isLinkActive("/farm", "med_inv") ? activeStyle : normalStyle
                               }`}>
@@ -392,7 +402,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
                   {/* Grass Collection */}
                   <li>
-                    <Link href={getTabPath("grass")} onClick={() => setIsOpen(false)}
+                    <Link href={getTabPath("grass")} onClick={handleCloseSidebar}
                       className={`block p-2 rounded border-l-4 ${
                         isLinkActive("/farm", "grass") ? activeStyle : normalStyle
                       }`}>
@@ -402,7 +412,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
                   {/* Daily Feeding */}
                   <li>
-                    <Link href={getTabPath("feeding")} onClick={() => setIsOpen(false)}
+                    <Link href={getTabPath("feeding")} onClick={handleCloseSidebar}
                       className={`block p-2 rounded border-l-4 ${
                         isLinkActive("/farm", "feeding") ? activeStyle : normalStyle
                       }`}>
@@ -432,7 +442,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                           className="mt-1 space-y-1 pl-3 overflow-hidden"
                         >
                           <li>
-                            <Link href={getTabPath("milk_prod")} onClick={() => setIsOpen(false)}
+                            <Link href={getTabPath("milk_prod")} onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 isLinkActive("/farm", "milk_prod") ? activeStyle : normalStyle
                               }`}>
@@ -440,7 +450,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             </Link>
                           </li>
                           <li>
-                            <Link href={getTabPath("components")} onClick={() => setIsOpen(false)}
+                            <Link href={getTabPath("components")} onClick={handleCloseSidebar}
                               className={`block p-1.5 text-sm rounded border-l-4 ${
                                 isLinkActive("/farm", "components") ? activeStyle : normalStyle
                               }`}>

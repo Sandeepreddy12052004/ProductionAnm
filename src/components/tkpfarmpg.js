@@ -179,7 +179,15 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         data = savedData ? JSON.parse(savedData) : [];
       }
       if (Array.isArray(data)) {
-        const filtered = data.filter(log => !log.farm || log.farm === farmCode || !log.farmId || log.farmId === farmCode);
+        const filtered = data.filter(log => {
+          const sId = log.shedId || log.shed;
+          if (sId) return ['1', '2', '3', '4'].includes(sId.toString());
+          
+          const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
+          if (fId) return typeof fId === 'string' && fId.toUpperCase().includes('TKP');
+          
+          return false; // Safely hide unassociated data
+        });
         setLogs(filtered);
       } else {
         setLogs([]);

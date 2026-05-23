@@ -233,11 +233,16 @@
         onChange={handleChange}
       >
         <option value="">Select {field.label}</option>
-        {field.options?.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
+        {field.options?.map((opt) => {
+          const isObj = typeof opt === 'object' && opt !== null;
+          const val = isObj ? opt.value : opt;
+          const label = isObj ? opt.label : opt;
+          return (
+            <option key={val} value={val}>
+              {label}
+            </option>
+          );
+        })}
       </select>
 ) : field.name === "tag"  ? (
   <>

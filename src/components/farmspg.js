@@ -13,6 +13,7 @@ const FarmsPg = () => {
     address: "",
     location: ""
   });
+  const [editingId, setEditingId] = useState(null);
 
   const fetchFarms = async () => {
     try {
@@ -42,14 +43,15 @@ const FarmsPg = () => {
 
     setIsLoading(true);
     try {
-      await api.farms.create(formData);
-      swalSuccess("Success", "Farm created successfully!");
-      setFormData({
-        name: "",
-        code: "",
-        address: "",
-        location: ""
-      });
+      if (editingId) {
+        await api.farms.update(editingId, formData);
+        swalSuccess("Success", "Farm updated successfully!");
+      } else {
+        await api.farms.create(formData);
+        swalSuccess("Success", "Farm created successfully!");
+      }
+      setFormData({ name: "", code: "", address: "", location: "" });
+      setEditingId(null);
       setShowForm(false);
       fetchFarms();
     } catch (err) {
@@ -58,6 +60,17 @@ const FarmsPg = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEdit = (farm) => {
+    setFormData({
+      name: farm.name || "",
+      code: farm.code || "",
+      address: farm.address || "",
+      location: farm.location || ""
+    });
+    setEditingId(farm._id || farm.id);
+    setShowForm(true);
   };
 
   const handleDelete = async (id) => {
@@ -87,7 +100,11 @@ const FarmsPg = () => {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setFormData({ name: "", code: "", address: "", location: "" });
+            setEditingId(null);
+            setShowForm(true);
+          }}
           className="bg-[#071437] hover:bg-[#0d1f4d]
           text-white px-5 py-2.5 rounded-2xl
           font-bold text-lg shadow-lg
@@ -127,6 +144,14 @@ const FarmsPg = () => {
                 {farm.address} {farm.location ? `(${farm.location})` : ''}
               </div>
               <div className="flex gap-3">
+                <button
+                  onClick={() => handleEdit(farm)}
+                  className="px-3 py-1.5 rounded-xl
+                  bg-blue-50 text-blue-600 font-bold
+                  hover:bg-blue-100 transition-all"
+                >
+                  ✏️ Edit
+                </button>
                 <button
                   onClick={() => handleDelete(farm._id || farm.id)}
                   className="px-3 py-1.5 rounded-xl

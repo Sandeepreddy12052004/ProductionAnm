@@ -94,7 +94,15 @@ const FarmTDR = () => {
         data = savedData ? JSON.parse(savedData) : [];
       }
       if (Array.isArray(data)) {
-        const filtered = data.filter(log => !log.farm || log.farm === 'TDR');
+        const filtered = data.filter(log => {
+          const sId = log.shedId || log.shed;
+          if (sId) return ['5', '6'].includes(sId.toString());
+          
+          const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
+          if (fId) return typeof fId === 'string' && fId.toUpperCase().includes('TDR');
+          
+          return false; // Safely hide unassociated data
+        });
         setLogs(filtered);
       } else {
         setLogs([]);
