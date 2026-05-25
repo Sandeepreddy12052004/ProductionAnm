@@ -71,50 +71,47 @@ const DepartmentPg = ({ moduleConfig }) => {
   };
 
   return (
-    <div className="p-8 bg-[#f7f9fc] min-h-screen">
-
-      {/* HEADER */}
-      <div className="flex justify-between items-start mb-10">
-
+    <div className="p-4 md:p-8 w-full bg-transparent text-slate-800">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[#071437] tracking-tight">
+          <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
             Departments
           </h1>
-
-          <p className="text-[#5d7399] mt-3 text-sm font-semibold">
+          <p className="text-sm text-gray-500 font-medium mt-1">
             Create, view, edit, and delete departments.
           </p>
         </div>
 
         <button
-          onClick={() => setShowForm(true)}
-          className="bg-[#071437] hover:bg-[#0d1f4d]
-          text-white px-5 py-2.5 rounded-2xl
-          font-bold text-lg shadow-lg
-          transition-all duration-200 hover:scale-[1.02]"
+          onClick={() => {
+            setIsEditing(false);
+            setEditId(null);
+            setFormData({ name: "", status: true });
+            setShowForm(true);
+          }}
+          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
         >
-          + Create New Department
+          <span>+ Create New Department</span>
         </button>
       </div>
 
-        {/* LOADING SKELETON */}
-        {isLoading && (
-          <div className="bg-white rounded-[30px] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-[#eff3f8] animate-pulse">
-            <div className="h-6 bg-slate-200 rounded w-1/4 mb-4"></div>
-            <div className="h-10 bg-slate-100 rounded w-full mb-4"></div>
-            <div className="h-10 bg-slate-100 rounded w-full mb-4"></div>
-            <div className="h-10 bg-slate-100 rounded w-full"></div>
-          </div>
-        )}
+      {/* ERROR */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 font-medium flex items-center gap-3">
+          ⚠️ {error}
+        </div>
+      )}
+
+      {/* CONTENT WRAPPER */}
+      <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto bg-white">
 
         {/* EMPTY STATE */}
         {!isLoading && (!departments || departments.length === 0) && (
-          <div className="bg-white rounded-[30px] p-16 shadow-[0_10px_30px_rgba(0,0,0,0.03)]
-          border border-[#eff3f8] text-center">
-            <h3 className="text-xl font-bold text-[#53698c]">
+          <div className="p-16 text-center">
+            <h3 className="text-lg font-bold text-gray-700">
               No Departments Found
             </h3>
-            <p className="text-[#899bb5] mt-2">
+            <p className="text-gray-500 mt-2 text-sm">
               Get started by creating a new department above.
             </p>
           </div>
@@ -122,57 +119,40 @@ const DepartmentPg = ({ moduleConfig }) => {
 
         {/* DATA TABLE */}
         {!isLoading && departments && departments.length > 0 && (
-          <div className="bg-white rounded-[30px] shadow-[0_10px_30px_rgba(0,0,0,0.03)]
-          border border-[#eff3f8] overflow-hidden">
-
-            {/* TABLE HEADER */}
-            <div className="grid grid-cols-3 px-6 py-4 bg-[#f8fafc]
-            text-[#53698c] text-[11px] font-black uppercase tracking-wide">
-              <div>Department</div>
-              <div>Status</div>
-              <div>Actions</div>
-            </div>
-
-            {/* DATA */}
-            {departments.map(dep => (
-              <div
-                key={dep.id || dep._id}
-                className="grid grid-cols-3 items-center
-                px-6 py-5 border-t border-[#edf1f7]
-                hover:bg-[#fafcff] transition-all"
-              >
-                {/* NAME */}
-                <div className="font-bold text-sm text-[#071437]">
-                  {dep.name}
-                </div>
-
-                {/* STATUS */}
-                <div className="flex items-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wide
-                    ${dep.status === true
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {dep.status === true ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
-                </div>
-
-                {/* ACTIONS */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleDelete(dep.id || dep._id)}
-                    className="px-3 py-1.5 rounded-xl
-                    bg-red-50 text-red-600 font-bold
-                    hover:bg-red-100 transition-all"
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <table className="w-full text-left min-w-[600px]">
+            <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
+              <tr>
+                <th className="p-4 border-b">Department</th>
+                <th className="p-4 border-b text-center">Status</th>
+                <th className="p-4 border-b text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {departments.map(dep => (
+                <tr key={dep.id || dep._id} className="hover:bg-[#D1867D]/5 transition-colors">
+                  <td className="p-4 text-sm font-bold text-black">{dep.name}</td>
+                  <td className="p-4 text-center">
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm border
+                      ${dep.status === true 
+                        ? 'text-emerald-600 bg-emerald-100/50 border-emerald-200/50' 
+                        : 'text-slate-600 bg-slate-100 border-slate-200'}`}>
+                      {dep.status === true ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <button
+                      onClick={() => handleDelete(dep.id || dep._id)}
+                      className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5 ml-auto"
+                    >
+                      <span>🗑️</span> Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
+      </div>
 
       {/* MODAL */}
       {showForm && (

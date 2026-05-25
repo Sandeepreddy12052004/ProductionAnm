@@ -113,14 +113,14 @@ const ShedManagementPg = () => {
   };
 
   return (
-    <div className="p-8 bg-[#f7f9fc] min-h-screen">
-      {/* HEADER */}
-      <div className="flex justify-between items-start mb-10">
+    <div className="p-4 md:p-8 w-full bg-transparent text-slate-800">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[#071437] tracking-tight">
+          <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
             Shed Management
           </h1>
-          <p className="text-[#5d7399] mt-3 text-sm font-semibold">
+          <p className="text-sm text-gray-500 font-medium mt-1">
             Create, view, edit, and manage sheds.
           </p>
         </div>
@@ -130,63 +130,59 @@ const ShedManagementPg = () => {
             setEditingId(null);
             setShowForm(true);
           }}
-          className="bg-[#D1867D] hover:bg-[#b06f67] text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all"
+          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2"
         >
-          + Add Shed
+          <span>+ Add Shed</span>
         </button>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left text-sm text-gray-700">
-          <thead className="bg-[#f9fafb] text-xs uppercase text-gray-500 font-black border-b border-gray-200 tracking-wider">
+      <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto bg-white">
+        <table className="w-full text-left min-w-[800px]">
+          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
-              <th className="p-4">Farm</th>
-              <th className="p-4">Shed No</th>
-              <th className="p-4">Rows</th>
-              <th className="p-4">Capacity</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right">Actions</th>
+              <th className="p-4 border-b">Farm</th>
+              <th className="p-4 border-b">Shed No</th>
+              <th className="p-4 border-b">Rows</th>
+              <th className="p-4 border-b">Capacity</th>
+              <th className="p-4 border-b">Status</th>
+              <th className="p-4 border-b text-right">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {sheds.map((shed, idx) => (
               <tr
                 key={shed._id || shed.id || idx}
-                className="border-b border-gray-100 hover:bg-slate-50 transition-colors"
+                className="hover:bg-[#D1867D]/5 transition-colors"
               >
-                <td className="p-4 font-bold">{getFarmName(shed.farmId)}</td>
-                <td className="p-4 font-bold text-[#D1867D]">Shed {shed.code}</td>
-                <td className="p-4">{shed.lines}</td>
-                <td className="p-4">{shed.capacity}</td>
+                <td className="p-4 text-sm font-bold text-black">{getFarmName(shed.farmId)}</td>
+                <td className="p-4 text-sm font-bold text-[#D1867D]">Shed {shed.code}</td>
+                <td className="p-4 text-sm">{shed.lines}</td>
+                <td className="p-4 text-sm">{shed.capacity}</td>
                 <td className="p-4">
-                  <span className={`px-2 py-1 text-xs font-bold rounded ${shed.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm border
+                    ${shed.status === 'ACTIVE' 
+                      ? 'text-emerald-600 bg-emerald-100/50 border-emerald-200/50' 
+                      : 'text-slate-600 bg-slate-100 border-slate-200'}`}>
                     {shed.status}
                   </span>
                 </td>
-                <td className="p-4 text-right space-x-2">
+                <td className="p-4 text-right flex justify-end gap-2">
                   <button
                     onClick={() => handleEdit(shed)}
-                    className="text-blue-600 hover:text-blue-800 font-bold px-2"
+                    className="text-[11px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-100 flex items-center gap-1.5"
                   >
-                    Edit
+                    <span>✏️</span> Edit
                   </button>
                   <button
                     onClick={() => handleDelete(shed._id || shed.id)}
-                    className="text-red-600 hover:text-red-800 font-bold px-2"
+                    className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5"
                   >
-                    Delete
+                    <span>🗑️</span> Delete
                   </button>
                 </td>
               </tr>
             ))}
-            {sheds.length === 0 && (
-              <tr>
-                <td colSpan="6" className="p-8 text-center text-gray-400 font-semibold">
-                  No sheds found. Create one to get started!
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>

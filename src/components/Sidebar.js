@@ -270,7 +270,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             <li key={farm.code}>
                               <Link href={`/farm/${farm.code.toLowerCase()}`} onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  router.pathname.includes(`/farm/${farm.code.toLowerCase()}`) && !router.query.tab ? activeStyle : normalStyle
+                                  router.asPath.includes(`/farm/${farm.code.toLowerCase()}`) && !router.query.tab ? activeStyle : normalStyle
                                 }`}>
                                 🏠 {farm.name}
                               </Link>

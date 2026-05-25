@@ -968,7 +968,7 @@ const getShedFromLivestock = (tagValue) => {
       {/* Table Section */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
         <table className="w-full text-left min-w-[600px]">
-          <thead className="bg-gray-50 text-black uppercase text-[10px] font-black tracking-widest">
+          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
               <th className="p-4 border-b">Date</th>
               {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}

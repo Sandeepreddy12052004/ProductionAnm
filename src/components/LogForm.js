@@ -442,10 +442,10 @@
   <button
     type="submit"
     disabled={tagError !== "" || dobError !== ""}
-    className={`flex-1 py-3 rounded-xl font-bold transition-all duration-200 shadow-md
+    className={`flex-1 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2
     ${(tagError || dobError)
       ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
-      : "bg-[#16223F] text-white hover:bg-[#16223F]/90 hover:shadow-lg hover:shadow-[#16223F]/10 hover:-translate-y-[1px]"
+      : "bg-[#16223F] hover:bg-[#2a3f75] text-white hover:-translate-y-0.5 active:scale-95"
     }`}
   >
     Save
@@ -454,9 +454,7 @@
   <button
     type="button"
     onClick={onClose}
-    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold
-    transition-all duration-200 ease-out
-    hover:bg-slate-200 hover:shadow-md hover:-translate-y-[1px]"
+    className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-3 rounded-xl font-bold shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all border border-red-100"
   >
     Cancel
   </button>
