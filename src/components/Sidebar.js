@@ -51,15 +51,20 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         const parsed = JSON.parse(storedUser);
         setUserRole(parsed.role || null);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("[Sidebar Error] Failed to parse user session:", e);
+      localStorage.removeItem("user");
+    }
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
     import('../utils/api').then(({ api }) => {
       api.farms.getAll().then(res => {
-        if (res && Array.isArray(res)) setFarmsList(res);
+        if (isMounted && res && Array.isArray(res)) setFarmsList(res);
       }).catch(err => console.error("Error fetching farms:", err));
     });
+    return () => { isMounted = false; };
   }, []);
 
   // 1. Initialize dropdowns based on the server-side route to prevent hydration slide-down flicker
@@ -85,7 +90,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         setMilkOpen(parsed.milkOpen ?? isMilkActive);
         return;
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error("[Sidebar Error] Failed to parse dropdown state:", err);
+      localStorage.removeItem("sidebar_dropdown_state");
+    }
 
     // Fallback: auto-expand based on route if no localStorage
     setCoreOpen(isCoreRoute || true);
@@ -104,8 +112,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       const existing = JSON.parse(localStorage.getItem("sidebar_dropdown_state") || "{}");
       existing[key] = newVal;
       localStorage.setItem("sidebar_dropdown_state", JSON.stringify(existing));
-    } catch (e) {}
+    } catch (e) {
+      console.error("[Sidebar Error] Failed to save dropdown state:", e);
+    }
   };
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const activeStyle = "bg-[#D1867D]/10 border-[#D1867D] text-[#16223F] font-extrabold transition-all duration-200";
   const normalStyle = "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:shadow-sm hover:translate-x-1 transition-all duration-200 cursor-pointer";
@@ -149,15 +162,21 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           md:translate-x-0
         `}
       >
-        <div className="flex justify-between items-center mb-6 md:hidden">
-          <span className="text-lg font-bold text-[#16223F]">Menu</span>
-          <button
-            onClick={handleCloseSidebar}
-            className="text-gray-800 text-xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
+        {!mounted ? (
+          <div className="flex h-full items-center justify-center opacity-50">
+            <span className="text-xs font-bold text-gray-400">Loading...</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-6 md:hidden">
+              <span className="text-lg font-bold text-[#16223F]">Menu</span>
+              <button
+                onClick={handleCloseSidebar}
+                className="text-gray-800 text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
 
         {/* BRAND LOGO HEADER */}
         <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
@@ -504,6 +523,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </AnimatePresence>
           </li>
         </ul>
+        </>
+        )}
       </nav>
     </>
   );

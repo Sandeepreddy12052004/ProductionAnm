@@ -85,7 +85,8 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const message = errorData.message || `Server error (${response.status})`;
+      // Some backend responses put the generic message in "message" and the specific detail in "error".
+      const message = errorData.error || errorData.message || `Server error (${response.status})`;
       throw new Error(message);
     }
 

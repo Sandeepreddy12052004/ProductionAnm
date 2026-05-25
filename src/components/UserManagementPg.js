@@ -321,7 +321,21 @@ const UserManagementPg = ({ moduleConfig }) => {
         payload.farmId = payload.farm;
       }
 
+      // Cleanup empty strings that break backend validation
+      if (payload.email === "") delete payload.email;
+      if (payload.password === "") delete payload.password;
+      
+      // Remove backend-generated MongoDB keys that cause "Unrecognized keys" in Zod
+      delete payload._id;
+      delete payload.id;
+      delete payload.createdAt;
+      delete payload.updatedAt;
+      delete payload.__v;
+      delete payload.farm;
+
       if (isEditing) {
+        // The backend's updateUserSchema strictly rejects the 'password' field.
+        delete payload.password;
         await api.users.update(selectedEntry.id || selectedEntry._id, payload);
         swalSuccess("Success", "User updated successfully");
       } else {
@@ -331,7 +345,6 @@ const UserManagementPg = ({ moduleConfig }) => {
       mutate();
       closeAll();
     } catch (err) {
-      console.error(err);
       swalError("Error", err.response?.data?.message || err.message || "Failed to save user");
     } finally {
       setIsLoadingForm(false);
@@ -356,6 +369,19 @@ const UserManagementPg = ({ moduleConfig }) => {
     setSelectedEntry(null);
     setIsEditing(false);
     setViewMode(false);
+  };
+
+  const openEdit = (user) => {
+    // Map the backend farmId object back to the string name so the dropdown pre-selects correctly
+    const formUser = { ...user };
+    if (user.farmId && typeof user.farmId === 'object') {
+      formUser.farm = user.farmId.name || user.farmId.code;
+    } else if (user.farm) {
+      formUser.farm = user.farm;
+    }
+    setSelectedEntry(formUser);
+    setIsEditing(true);
+    setShowForm(true);
   };
 
   return (

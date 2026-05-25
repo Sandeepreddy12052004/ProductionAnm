@@ -5,6 +5,14 @@ const Header = ({ toggleSidebar }) => {
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      if (stored) setUser(JSON.parse(stored));
+    } catch (e) {}
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -46,6 +54,15 @@ const Header = ({ toggleSidebar }) => {
         </div>
       </div>
 
+      {/* CENTER → WELCOME NOTE (Hidden on mobile) */}
+      <div className="hidden md:flex flex-1 items-center px-4">
+        {user && (
+          <h2 className="text-[#16223F] font-extrabold text-lg tracking-tight animate-in fade-in slide-in-from-left-4 duration-500">
+            Welcome back, <span className="text-[#D1867D]">{user.name}</span> 👋
+          </h2>
+        )}
+      </div>
+
       {/* RIGHT → ACTIONS */}
       <div className="flex flex-1 justify-end items-center gap-4">
         
@@ -57,7 +74,7 @@ const Header = ({ toggleSidebar }) => {
             className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 pl-2 pr-3 rounded-full border border-slate-200 shadow-sm transition-all bg-white"
           >
             <div className="w-7 h-7 bg-gradient-to-br from-[#16223F] to-[#2a3f75] rounded-full flex items-center justify-center text-white text-[12px] font-bold shadow-inner">
-              A
+              {user?.name ? user.name[0].toUpperCase() : 'A'}
             </div>
             <span className="hidden sm:block text-xs font-bold text-[#16223F] uppercase tracking-wider">Profile</span>
           </div>
@@ -69,11 +86,11 @@ const Header = ({ toggleSidebar }) => {
               {/* Header */}
               <div className="flex items-center gap-4 mb-5 pb-5 border-b border-gray-100">
                 <div className="w-14 h-14 bg-gradient-to-br from-[#16223F] to-[#2a3f75] rounded-full flex items-center justify-center text-white text-2xl font-black shadow-md ring-4 ring-slate-50">
-                  A
+                  {user?.name ? user.name[0].toUpperCase() : 'A'}
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-gray-900 leading-tight">Admin User</h3>
-                  <p className="text-[10px] font-bold text-[#D1867D] uppercase tracking-widest mt-1">Agasthya Manager</p>
+                  <h3 className="text-lg font-black text-gray-900 leading-tight truncate max-w-[150px]">{user?.name || 'Admin'}</h3>
+                  <p className="text-[10px] font-bold text-[#D1867D] uppercase tracking-widest mt-1 truncate max-w-[150px]">{user?.role || 'Manager'}</p>
                 </div>
               </div>
 
