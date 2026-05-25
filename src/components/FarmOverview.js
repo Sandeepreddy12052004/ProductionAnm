@@ -1,0 +1,124 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '@/utils/api';
+
+export default function FarmOverview({ farmCode }) {
+  const [metrics, setMetrics] = useState({
+    totalCattle: 0,
+    activeSheds: 0,
+    sickAnimals: 0,
+    milkProduction: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setLoading(true);
+      try {
+        const [cattle, sheds, treatments, milk] = await Promise.all([
+          api.cattle.getAll().catch(() => []),
+          api.sheds.getAll().catch(() => []),
+          api.health.treatments.getAll().catch(() => []),
+          api.milk.collections.getAll().catch(() => [])
+        ]);
+
+        const isCurrentFarm = (item) => {
+          const fId = item.farmId?.code || item.farmId?.name || item.farmId || item.farm;
+          return typeof fId === 'string' && fId.toUpperCase().includes(farmCode);
+        };
+
+        const totalCattle = (cattle || []).filter(isCurrentFarm).length;
+        const activeSheds = (sheds || []).filter(s => isCurrentFarm(s) && s.status === 'ACTIVE').length;
+        const sickAnimals = (treatments || []).filter(t => isCurrentFarm(t) && t.healthStatus === 'Pending').length;
+        
+        // Sum total milk volume from recent collections
+        const farmMilk = (milk || []).filter(isCurrentFarm);
+        const milkProduction = farmMilk.reduce((sum, record) => sum + (Number(record.quantity) || 0), 0);
+
+        setMetrics({
+          totalCattle,
+          activeSheds,
+          sickAnimals,
+          milkProduction
+        });
+      } catch (err) {
+        console.error("Failed to fetch farm overview metrics", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (farmCode) {
+      fetchMetrics();
+    }
+  }, [farmCode]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <span className="flex items-center justify-center gap-2 text-gray-400 font-bold">
+          <svg className="animate-spin h-5 w-5 text-[#16223F]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading Farm Overview...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
+      {/* TOTAL CATTLE CARD */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+            🐄
+          </div>
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-emerald-600 bg-emerald-100/50 border border-emerald-200/50">ACTIVE</span>
+        </div>
+        <h3 className="text-3xl font-black text-[#16223F] tracking-tight">{metrics.totalCattle}</h3>
+        <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Total Cattle</p>
+      </div>
+
+      {/* MILK PRODUCTION CARD */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+            🥛
+          </div>
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-blue-600 bg-blue-100/50 border border-blue-200/50">ALL TIME</span>
+        </div>
+        <h3 className="text-3xl font-black text-[#16223F] tracking-tight">{metrics.milkProduction} <span className="text-lg text-gray-400 font-bold tracking-normal">Ltr</span></h3>
+        <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Milk Collected</p>
+      </div>
+
+      {/* ACTIVE SHEDS CARD */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+            🏠
+          </div>
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-emerald-600 bg-emerald-100/50 border border-emerald-200/50">ONLINE</span>
+        </div>
+        <h3 className="text-3xl font-black text-[#16223F] tracking-tight">{metrics.activeSheds}</h3>
+        <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Active Sheds</p>
+      </div>
+
+      {/* SICK ANIMALS CARD */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+            🏥
+          </div>
+          {metrics.sickAnimals > 0 ? (
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-red-600 bg-red-100/50 border border-red-200/50">NEEDS ATTENTION</span>
+          ) : (
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-emerald-600 bg-emerald-100/50 border border-emerald-200/50">ALL HEALTHY</span>
+          )}
+        </div>
+        <h3 className="text-3xl font-black text-[#16223F] tracking-tight">{metrics.sickAnimals}</h3>
+        <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Pending Treatments</p>
+      </div>
+    </div>
+  );
+}

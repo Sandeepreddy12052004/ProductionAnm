@@ -37,9 +37,9 @@ const Header = ({ toggleSidebar }) => {
       {/* LEFT → LOGO (Hidden on Desktop to prevent duplicate with Sidebar) */}
       <div
         onClick={() => router.push('/dashboard')}
-        className="flex items-center gap-2.5 cursor-pointer group md:hidden"
+        className="flex items-center gap-3.5 cursor-pointer group md:hidden"
       >
-        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100 shadow-sm transition-transform group-hover:scale-105">
+        <div className="w-12 h-12 bg-white rounded-[14px] flex items-center justify-center p-1 border border-slate-100 shadow-sm transition-transform group-hover:scale-105">
           <img
             src="/LOGO.png"
             alt="logo"
@@ -49,8 +49,8 @@ const Header = ({ toggleSidebar }) => {
 
         {/* BRAND NAME */}
         <div className="flex flex-col">
-          <span className="font-extrabold text-[#16223F] text-[15px] leading-none mb-0.5">AGASTHYA</span>
-          <span className="font-black text-[9px] text-[#D1867D] uppercase tracking-widest leading-none">Nutro Milk</span>
+          <span className="font-black text-[#16223F] text-[18px] leading-none mb-1 tracking-tight">AGASTHYA</span>
+          <span className="font-black text-[10px] text-[#D1867D] uppercase tracking-[0.2em] leading-none">Nutro Milk</span>
         </div>
       </div>
 

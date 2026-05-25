@@ -6,10 +6,11 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { api } from '@/utils/api';
 import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
+import FarmOverview from './FarmOverview';
 
 const FarmTKP = ({ farmCode = 'TKP' }) => {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('feeding');
+  const [activeTab, setActiveTab] = useState('overview');
   const [showForm, setShowForm] = useState(false);
   const [logs, setLogs] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -32,6 +33,12 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const itemsPerPage = 10;
 
   const modules = [
+    {
+      id: 'overview',
+      name: 'Farm Overview',
+      icon: '📊',
+      fields: []
+    },
     {
       id: 'health',
       name: 'Health Log',
@@ -636,6 +643,7 @@ const activeFilterCount = filters.filter(
           <h1 className="text-3xl font-bold text-[#16223F] font-sans">{farmCode} Farm</h1>
           <p className="text-slate-500 mt-1">{current?.name}</p>
         </div>
+        {activeTab !== 'overview' && (
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           {/* Export Buttons Added to your custom header */}
           <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all">📊 Excel</button>
@@ -674,12 +682,13 @@ const activeFilterCount = filters.filter(
             onClick={() => { setIsEditing(false); setShowForm(true); }} 
             className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all"
           >
-            + Add Entry
           </button>
         </div>
+        )}
       </header>
 
       {/* PILL TABS */}
+      {activeTab !== 'overview' && (
       <div className="relative mb-6 w-full md:w-auto">
 
   {/* CAPSULE BUTTON */}
@@ -747,6 +756,7 @@ const activeFilterCount = filters.filter(
   </div>
 
 </div>
+)}
         
       
 
@@ -940,9 +950,12 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
     </div>
   )}
 
-      {/* Data Table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
-        <table className="w-full text-left min-w-full md:min-w-[600px]">
+      {/* Data Table or Overview */}
+      {activeTab === 'overview' ? (
+        <FarmOverview farmCode={farmCode} />
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full text-left min-w-full md:min-w-[600px]">
           <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
               <th className="p-4 border-b">Date</th>
@@ -990,8 +1003,11 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
           </tbody>
         </table>
       </div>
+      )}
 
 
+      {/* Pagination Controls */}
+      {activeTab !== 'overview' && (
       <div className="flex justify-between items-center mt-4">
 
   <p className="text-sm text-black opacity-60">
@@ -1023,6 +1039,7 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
 
   </div>
 </div>
+)}
 
 
       {/* Popover Action Menu (MODAL) */}
@@ -1110,7 +1127,8 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
  !selectedEntry &&
  !viewMode &&
  !showFilters &&
- !showTabDropdown && (
+ !showTabDropdown &&
+ activeTab !== 'overview' && (
   <div
     className={`
       md:hidden

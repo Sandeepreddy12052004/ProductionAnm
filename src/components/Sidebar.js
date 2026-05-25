@@ -179,8 +179,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </div>
 
         {/* BRAND LOGO HEADER */}
-        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1 border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3.5 mb-8 pb-5 border-b border-slate-100">
+          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
             <img
               src="/LOGO.png"
               alt="logo"
@@ -188,8 +188,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             />
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold text-[#16223F] text-[16px] leading-none mb-0.5">AGASTHYA</span>
-            <span className="font-black text-[9px] text-[#D1867D] uppercase tracking-widest leading-none">Nutro Milk</span>
+            <span className="font-black text-[#16223F] text-[20px] leading-none mb-1 tracking-tight">AGASTHYA</span>
+            <span className="font-black text-[11px] text-[#D1867D] uppercase tracking-[0.2em] leading-none">Nutro Milk</span>
           </div>
         </div>
 
