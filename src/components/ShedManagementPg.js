@@ -7,6 +7,7 @@ const ShedManagementPg = () => {
   const [farms, setFarms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
 
   const [formData, setFormData] = useState({
     farmId: "",
@@ -18,6 +19,7 @@ const ShedManagementPg = () => {
   const [editingId, setEditingId] = useState(null);
 
   const fetchShedsAndFarms = async () => {
+    setIsFetching(true);
     try {
       const [shedsData, farmsData] = await Promise.all([
         api.sheds.getAll(),
@@ -27,6 +29,8 @@ const ShedManagementPg = () => {
       setFarms(farmsData || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -150,7 +154,32 @@ const ShedManagementPg = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {sheds.map((shed, idx) => (
+            {isFetching ? (
+              // SKELETON LOADER
+              <>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="animate-pulse border-b border-gray-100">
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-12"></div></td>
+                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
+                    <td className="p-4"><div className="h-6 bg-slate-200 rounded-full w-20"></div></td>
+                    <td className="p-4 text-right flex justify-end gap-2">
+                      <div className="h-8 bg-slate-200 rounded-lg w-16"></div>
+                      <div className="h-8 bg-slate-200 rounded-lg w-20"></div>
+                    </td>
+                  </tr>
+                ))}
+              </>
+            ) : sheds.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="p-16 text-center">
+                  <h3 className="text-lg font-bold text-gray-700">No Sheds Found</h3>
+                  <p className="text-gray-500 mt-2 text-sm">Get started by creating a new shed above.</p>
+                </td>
+              </tr>
+            ) : (
+              sheds.map((shed, idx) => (
               <tr
                 key={shed._id || shed.id || idx}
                 className="hover:bg-[#D1867D]/5 transition-colors"
@@ -182,7 +211,7 @@ const ShedManagementPg = () => {
                   </button>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

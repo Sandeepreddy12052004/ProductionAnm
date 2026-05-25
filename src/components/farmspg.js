@@ -6,6 +6,7 @@ const FarmsPg = () => {
   const [farms, setFarms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -16,11 +17,14 @@ const FarmsPg = () => {
   const [editingId, setEditingId] = useState(null);
 
   const fetchFarms = async () => {
+    setIsFetching(true);
     try {
       const data = await api.farms.getAll();
       setFarms(data || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsFetching(false);
     }
   };
 
