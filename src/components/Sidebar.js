@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'; // ✅ added useEffect
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const router = useRouter();
@@ -155,13 +156,13 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
       {/* SIDEBAR */}
       <nav
         className={`
-          flex-shrink-0 fixed top-0 left-0 h-screen ${isCollapsed ? 'w-20 px-3' : 'w-64 px-6'} bg-white text-gray-800 py-6 shadow-xl border-r border-gray-200
-          overflow-y-auto overflow-x-hidden whitespace-nowrap z-[110]
-          transform transition-all duration-300 ease-in-out
+          flex-shrink-0 fixed top-0 left-0 h-screen ${isCollapsed ? 'w-20' : 'w-64'} bg-white text-gray-800 shadow-xl border-r border-gray-200
+          z-[110] transform transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
       >
+        <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden whitespace-nowrap px-4 py-6">
         {!mounted ? (
           <div className="flex h-full items-center justify-center opacity-50">
             <span className="text-xs font-bold text-gray-400">Loading...</span>
@@ -179,7 +180,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
             </div>
 
         {/* BRAND LOGO HEADER */}
-        <div className={`flex items-center gap-3.5 mb-8 pb-5 border-b border-slate-100 ${isCollapsed ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-3 mb-6 pb-5 border-b border-slate-100 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
           <div className="w-14 h-14 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
             <img
               src="/LOGO.png"
@@ -195,22 +196,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
           )}
         </div>
 
-        {/* DESKTOP TOGGLE BUTTON */}
-        <div className="hidden md:flex justify-end mb-4 pr-2">
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="bg-gray-50 border border-gray-200 rounded-full p-1.5 shadow-sm text-gray-500 hover:text-[#16223F] hover:bg-gray-100 transition-colors"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
-            )}
-          </button>
-        </div>
-
-        <ul className="space-y-2">
+        <ul className="space-y-1.5 px-1">
           {/* Dashboard Link */}
           <li>
             <motion.div whileHover={{ scale: 1.02, x: 3 }}>
@@ -542,6 +528,20 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
         </ul>
         </>
         )}
+        </div>
+        
+        {/* DESKTOP TOGGLE BUTTON (Absolute on the right edge) */}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="hidden md:flex absolute top-10 -right-3.5 bg-white border border-gray-200 rounded-full p-1 shadow-md text-gray-500 hover:text-[#16223F] hover:bg-gray-50 z-[120] transition-colors"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
       </nav>
     </>
   );

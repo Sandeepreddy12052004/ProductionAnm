@@ -217,7 +217,8 @@ const handleSave = async (data) => {
     if (current.id === 'livestock' || current.id === 'crossing') {
       if (isEditing) {
         if (current.id === 'livestock') {
-          await api.cattle.update(selectedEntry.id || selectedEntry._id, data);
+          const payload = { ...data, tagId: data.tag || data.tagId };
+          await api.cattle.update(selectedEntry.id || selectedEntry._id, payload);
           swalSuccess("Success", "Cattle details updated successfully!");
         } else if (current.id === 'crossing') {
           await api.crossing.update(selectedEntry.id || selectedEntry._id, data);
@@ -227,9 +228,10 @@ const handleSave = async (data) => {
         if (current.id === 'livestock') {
           // Prevent MongoDB duplicate key error on farmId_1_code_1 by ensuring uniqueness
           const payload = { 
-            ...data, 
+            ...data,
+            tagId: data.tag || data.tagId,
             code: data.code || `CTL-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-            farmId: data.farmId || farmCode || 'UNKNOWN_FARM'
+            farmId: data.farmId || (moduleConfig.farmCode) || (router.query.code) || 'UNKNOWN_FARM'
           };
           await api.cattle.create(payload);
           swalSuccess("Success", "Cattle registered successfully!");
