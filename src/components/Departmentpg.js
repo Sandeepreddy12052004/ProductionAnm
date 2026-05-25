@@ -118,7 +118,7 @@ const DepartmentPg = ({ moduleConfig }) => {
         )}
 
         {/* DATA TABLE */}
-        {!isLoading && departments && departments.length > 0 && (
+        {(!isLoading || departments?.length > 0) && (
           <table className="w-full text-left min-w-[600px]">
             <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
               <tr>
@@ -128,7 +128,19 @@ const DepartmentPg = ({ moduleConfig }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {departments.map(dep => (
+              {isLoading ? (
+                // SKELETON LOADER
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i} className="animate-pulse border-b border-gray-100">
+                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-48"></div></td>
+                      <td className="p-4 text-center"><div className="h-6 bg-slate-200 rounded-full w-20 mx-auto"></div></td>
+                      <td className="p-4 text-right flex justify-end"><div className="h-8 bg-slate-200 rounded-lg w-24"></div></td>
+                    </tr>
+                  ))}
+                </>
+              ) : (
+                departments.map(dep => (
                 <tr key={dep.id || dep._id} className="hover:bg-[#D1867D]/5 transition-colors">
                   <td className="p-4 text-sm font-bold text-black">{dep.name}</td>
                   <td className="p-4 text-center">
@@ -148,7 +160,7 @@ const DepartmentPg = ({ moduleConfig }) => {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         )}
