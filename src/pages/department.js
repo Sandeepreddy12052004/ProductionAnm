@@ -1,4 +1,4 @@
-import Sidebar from "@/components/Sidebar";
+
 import DepartmentPg from "@/components/Departmentpg";
 
 export default function DepartmentPage() {
@@ -9,16 +9,8 @@ export default function DepartmentPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-
-      <Sidebar />
-
-      <main className="flex-1 overflow-auto">
-
-        <DepartmentPg moduleConfig={config} />
-
-      </main>
-
+    <div className="w-full">
+      <DepartmentPg moduleConfig={config} />
     </div>
   );
 }

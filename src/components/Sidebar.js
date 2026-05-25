@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Sidebar = ({ isOpen, setIsOpen }) => {
+const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const router = useRouter();
 
   const isFarmRoute = router.pathname.startsWith("/farm/[code]");
@@ -75,34 +75,34 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
   const [milkOpen, setMilkOpen] = useState(isMilkActive);
 
-  // 2. Hydrate user preferences from localStorage safely after the client mounts
+  // 2. Hydrate user preferences from localStorage safely (ONCE on mount)
   useEffect(() => {
-
     try {
       const saved = localStorage.getItem("sidebar_dropdown_state");
       if (saved) {
         const parsed = JSON.parse(saved);
-        setCoreOpen(parsed.coreOpen ?? (isCoreRoute || true));
-        setFarmOpen(parsed.farmOpen ?? (isFarmRoute && !router.query.tab));
-        setNormalOpen(parsed.normalOpen ?? (isNormalRoute || false));
-        setHealthOpen(parsed.healthOpen ?? isHealthActive);
-        setInventoryOpen(parsed.inventoryOpen ?? isInventoryActive);
-        setMilkOpen(parsed.milkOpen ?? isMilkActive);
-        return;
+        if (parsed.coreOpen !== undefined) setCoreOpen(parsed.coreOpen);
+        if (parsed.farmOpen !== undefined) setFarmOpen(parsed.farmOpen);
+        if (parsed.normalOpen !== undefined) setNormalOpen(parsed.normalOpen);
+        if (parsed.healthOpen !== undefined) setHealthOpen(parsed.healthOpen);
+        if (parsed.inventoryOpen !== undefined) setInventoryOpen(parsed.inventoryOpen);
+        if (parsed.milkOpen !== undefined) setMilkOpen(parsed.milkOpen);
       }
     } catch (err) {
       console.error("[Sidebar Error] Failed to parse dropdown state:", err);
       localStorage.removeItem("sidebar_dropdown_state");
     }
+  }, []);
 
-    // Fallback: auto-expand based on route if no localStorage
-    setCoreOpen(isCoreRoute || true);
-    setFarmOpen(isFarmRoute && !router.query.tab);
-    setNormalOpen(isNormalRoute || false);
-    setHealthOpen(isHealthActive);
-    setInventoryOpen(isInventoryActive);
-    setMilkOpen(isMilkActive);
-  }, [router.pathname, router.query.tab, isFarmRoute]);
+  // 2.5 Auto-expand active sections on route change, without collapsing others
+  useEffect(() => {
+    if (isCoreRoute) setCoreOpen(true);
+    if (isFarmRoute && !router.query.tab) setFarmOpen(true);
+    if (isNormalRoute) setNormalOpen(true);
+    if (isHealthActive) setHealthOpen(true);
+    if (isInventoryActive) setInventoryOpen(true);
+    if (isMilkActive) setMilkOpen(true);
+  }, [router.pathname, router.query.tab, isCoreRoute, isFarmRoute, isNormalRoute, isHealthActive, isInventoryActive, isMilkActive]);
 
   // 3. Helper to toggle and save
   const toggleState = (setter, key, currentVal) => {
@@ -155,9 +155,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       {/* SIDEBAR */}
       <nav
         className={`
-          fixed top-0 left-0 h-screen w-64 bg-white text-gray-800 p-6 shadow-xl border-r border-gray-200
-          overflow-y-auto z-[110]
-          transform transition-transform duration-300 ease-in-out
+          flex-shrink-0 fixed top-0 left-0 h-screen ${isCollapsed ? 'w-20 px-3' : 'w-64 px-6'} bg-white text-gray-800 py-6 shadow-xl border-r border-gray-200
+          overflow-y-auto overflow-x-hidden whitespace-nowrap z-[110]
+          transform transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
@@ -179,18 +179,35 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </div>
 
         {/* BRAND LOGO HEADER */}
-        <div className="flex items-center gap-3.5 mb-8 pb-5 border-b border-slate-100">
-          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
+        <div className={`flex items-center gap-3.5 mb-8 pb-5 border-b border-slate-100 ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className="w-14 h-14 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
             <img
               src="/LOGO.png"
               alt="logo"
               className="w-full h-full object-contain"
             />
           </div>
-          <div className="flex flex-col">
-            <span className="font-black text-[#16223F] text-[20px] leading-none mb-1 tracking-tight">AGASTHYA</span>
-            <span className="font-black text-[11px] text-[#D1867D] uppercase tracking-[0.2em] leading-none">Nutro Milk</span>
-          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="font-black text-[#16223F] text-[20px] leading-none mb-1 tracking-tight">AGASTHYA</span>
+              <span className="font-black text-[11px] text-[#D1867D] uppercase tracking-[0.2em] leading-none">Nutro Milk</span>
+            </div>
+          )}
+        </div>
+
+        {/* DESKTOP TOGGLE BUTTON */}
+        <div className="hidden md:flex justify-end mb-4 pr-2">
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="bg-gray-50 border border-gray-200 rounded-full p-1.5 shadow-sm text-gray-500 hover:text-[#16223F] hover:bg-gray-100 transition-colors"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+            )}
+          </button>
         </div>
 
         <ul className="space-y-2">

@@ -385,7 +385,7 @@ const UserManagementPg = ({ moduleConfig }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full bg-transparent text-slate-800">
+    <div className="w-full bg-transparent text-slate-800">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
@@ -516,23 +516,23 @@ const UserManagementPg = ({ moduleConfig }) => {
                   <td className="p-4 text-center">
                     {statusEditId === (user.id || user._id) ? (
                       <select
-                        value={user.status || 'Active'}
+                        value={user.status === false || user.status === 'Inactive' ? 'Inactive' : 'Active'}
                         onChange={(e) => handleStatusChange(user.id || user._id, e.target.value)}
                         className="px-2 py-1 rounded-xl bg-gray-50 border border-gray-200 text-sm font-semibold outline-none focus:border-[#D1867D]"
                       >
-                        <option>Active</option>
-                        <option>Inactive</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
                       </select>
                     ) : (
                       <span
                         onClick={() => setStatusEditId(user.id || user._id)}
                         className={`cursor-pointer px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
-                          (user.status || 'Active') === "Inactive"
+                          user.status === false || user.status === 'Inactive'
                             ? "bg-red-50 text-red-700 border-red-100/50"
                             : "bg-emerald-50 text-emerald-700 border-emerald-100/50"
                         }`}
                       >
-                        {user.status || "Active"}
+                        {user.status === false || user.status === 'Inactive' ? "Inactive" : "Active"}
                       </span>
                     )}
                   </td>

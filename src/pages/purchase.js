@@ -59,7 +59,7 @@ export default function PurchaseLogPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full">
+    <div className="w-full">
       <AnimalDetailsPg moduleConfig={config} />
     </div>
   );

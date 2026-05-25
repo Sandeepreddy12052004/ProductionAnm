@@ -42,23 +42,24 @@ export default function App({ Component, pageProps }) {
 
   // Pages WITHOUT layout
   const noLayoutRoutes = ['/login'];
-
   const isNoLayout = noLayoutRoutes.includes(router.pathname);
 
-  // ✅ FORCE WHITE BACKGROUND HERE
-  if (isNoLayout) {
+  // Use the layout defined at the page level, if available
+  // Otherwise, fallback to the global persistent Layout
+  const getLayout = Component.getLayout ?? ((page) => {
+    if (isNoLayout) {
+      return (
+        <div className="bg-white text-black min-h-screen">
+          {page}
+        </div>
+      );
+    }
     return (
-      <div className="bg-white text-black min-h-screen">
-        <Component {...pageProps} />
+      <div className="bg-[#f8fafc] text-black min-h-screen">
+        <Layout>{page}</Layout>
       </div>
     );
-  }
+  });
 
-  return (
-    <div className="bg-white text-black min-h-screen">
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
-    </div>
-  );
+  return getLayout(<Component {...pageProps} />);
 }

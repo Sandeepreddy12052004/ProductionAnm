@@ -69,7 +69,7 @@ const ClientOnly = ({ children }) => {
 const Layout = ({ children }) => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hideFooter, setHideFooter] = useState(false);
 
   useEffect(() => {
@@ -102,20 +102,22 @@ const Layout = ({ children }) => {
       <Sidebar
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        setIsCollapsed={setSidebarCollapsed}
       />
 
       {/* MAIN */}
-      <main className="flex-1 md:ml-64 w-full">
+      <main className={`flex-1 w-full transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
         {/* HEADER */}
-        <div className="fixed top-0 right-0 left-0 md:left-64 z-[40]">
+        <div className={`fixed top-0 right-0 left-0 z-[40] transition-all duration-300 ${sidebarCollapsed ? 'md:left-20' : 'md:left-64'}`}>
           <Header
             toggleSidebar={() => setSidebarOpen(true)}
           />
         </div>
 
         {/* CONTENT */}
-        <div className="pt-16 pb-16 px-0 md:px-4 flex flex-col min-h-screen">
+        <div className="pt-24 pb-16 px-4 md:px-8 flex flex-col min-h-screen">
 
           <div className="flex-grow">
             <ErrorBoundary>

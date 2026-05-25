@@ -68,7 +68,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full">
+    <div className="w-full">
       <UserManagementPg moduleConfig={userConfig} />
     </div>
   );
