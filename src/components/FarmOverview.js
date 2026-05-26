@@ -45,7 +45,12 @@ export default function FarmOverview({ farmCode }) {
 
           // Fallback check on code directly if exists
           const itemCode = item.farmId?.code || item.farmId?.name || rawId;
-          return typeof itemCode === 'string' && itemCode.toUpperCase().includes(farmCode);
+          if (typeof itemCode === 'string' && itemCode.toUpperCase().includes(farmCode)) return true;
+
+          // Check if shed name contains farm code (since shed names are now globally unique like "TKP - Shed 2")
+          if (typeof item.shed === 'string' && item.shed.toUpperCase().includes(farmCode)) return true;
+          
+          return false;
         };
 
         const totalCattle = (cattle || []).filter(isCurrentFarm).length;
