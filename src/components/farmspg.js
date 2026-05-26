@@ -176,7 +176,6 @@ const FarmsPg = () => {
           <div className="p-20 text-center text-[#94a3b8] font-semibold text-lg">
             No Farms Found
           </div>
-          </div>
         )}
       </div>
 
