@@ -15,16 +15,37 @@ export default function FarmOverview({ farmCode }) {
     const fetchMetrics = async () => {
       setLoading(true);
       try {
-        const [cattle, sheds, treatments, milk] = await Promise.all([
+        const [cattle, sheds, treatments, milk, farms] = await Promise.all([
           api.cattle.getAll().catch(() => []),
           api.sheds.getAll().catch(() => []),
           api.health.treatments.getAll().catch(() => []),
-          api.milk.collections.getAll().catch(() => [])
+          api.milk.collections.getAll().catch(() => []),
+          api.farms.getAll().catch(() => [])
         ]);
 
+        const currentFarm = (farms || []).find(f => 
+          f.code?.toUpperCase() === farmCode || 
+          f.name?.toUpperCase().includes(farmCode)
+        );
+        const currentFarmId = currentFarm?._id || currentFarm?.id;
+
         const isCurrentFarm = (item) => {
-          const fId = item.farmId?.code || item.farmId?.name || item.farmId || item.farm;
-          return typeof fId === 'string' && fId.toUpperCase().includes(farmCode);
+          // For populated objects
+          if (item.farmId && typeof item.farmId === 'object') {
+            const fCode = item.farmId.code || item.farmId.name || '';
+            if (fCode.toUpperCase().includes(farmCode)) return true;
+            if (currentFarmId && (item.farmId._id === currentFarmId || item.farmId.id === currentFarmId)) return true;
+          }
+          
+          // For raw string IDs (like Shed model)
+          const rawId = typeof item.farmId === 'string' ? item.farmId : (typeof item.farm === 'string' ? item.farm : null);
+          if (rawId && currentFarmId && rawId === currentFarmId) {
+            return true;
+          }
+
+          // Fallback check on code directly if exists
+          const itemCode = item.farmId?.code || item.farmId?.name || rawId;
+          return typeof itemCode === 'string' && itemCode.toUpperCase().includes(farmCode);
         };
 
         const totalCattle = (cattle || []).filter(isCurrentFarm).length;

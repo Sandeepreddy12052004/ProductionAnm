@@ -36,7 +36,25 @@ const modules = [
   { id: 'sale', name: 'Sale Log', icon: '📤', path: '/sale' }
 ];
 
+const [dynamicShedOptions, setDynamicShedOptions] = useState(null);
+
+useEffect(() => {
+  const hasShedField = (moduleConfig?.fields || []).some(f => ['shed', 'oldShed', 'newShed'].includes(f.name));
+  if (hasShedField) {
+    api.sheds.getAll().then(sheds => {
+      setDynamicShedOptions(sheds.map(s => s.name));
+    }).catch(console.error);
+  }
+}, [moduleConfig?.id]);
+
 const current = moduleConfig || { id: 'unknown', name: 'Unknown', fields: [] };
+const currentFields = current.fields.map(f => {
+  if (['shed', 'oldShed', 'newShed'].includes(f.name) && dynamicShedOptions) {
+    return { ...f, options: dynamicShedOptions.length > 0 ? dynamicShedOptions : ['-'] };
+  }
+  return f;
+});
+
 const storageKey = `global_${current.id}_logs`;
 
 const fetchLogs = async () => {
@@ -403,7 +421,7 @@ const handleSave = async (data) => {
 
     worksheet.columns = [
       { header: "Date", key: "entryDate", width: 15 },
-      ...current.fields.map(field => ({
+      ...currentFields.map(field => ({
         header: field.label,
         key: field.name,
         width: 20
@@ -413,7 +431,7 @@ const handleSave = async (data) => {
     filteredLogs.forEach(log => {
       worksheet.addRow({
         entryDate: log.entryDate,
-        ...current.fields.reduce((acc, field) => {
+        ...currentFields.reduce((acc, field) => {
           acc[field.name] = log[field.name];
           return acc;
         }, {})
@@ -498,10 +516,10 @@ const handleSave = async (data) => {
       format: "A4"
     });
 
-    const columns = ["Date", ...current.fields.map(f => f.label)];
+    const columns = ["Date", ...currentFields.map(f => f.label)];
     const rows = filteredLogs.map(log => [
       log.entryDate,
-      ...current.fields.map(f => log[f.name])
+      ...currentFields.map(f => log[f.name])
     ]);
 
     const img = new Image();
@@ -809,7 +827,7 @@ const getShedFromLivestock = (tagValue) => {
               }}
             >
               <option value="entryDate">Date</option>
-              {current.fields.map(field => (
+              {currentFields.map(field => (
                 <option key={field.name} value={field.name}>
                   {field.label}
                 </option>
@@ -818,7 +836,7 @@ const getShedFromLivestock = (tagValue) => {
 
             {/* VALUE */}
             {(() => {
-              const fieldConfig = current.fields.find(field => field.name === f.field);
+              const fieldConfig = currentFields.find(field => field.name === f.field);
 
               // 📅 DATE RANGE FIELD
               if (f.field.toLowerCase().includes("date")) {
@@ -980,7 +998,7 @@ const getShedFromLivestock = (tagValue) => {
           <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
               <th className="p-4 border-b">Date</th>
-              {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
+              {currentFields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
               <th className="p-4 border-b w-10 text-center"></th>
             </tr>
           </thead>
@@ -1015,7 +1033,7 @@ const getShedFromLivestock = (tagValue) => {
           {log.entryDate}
         </td>
 
-        {current.fields.map(f => {
+        {currentFields.map(f => {
 
           // AGE
           if (f.name === "age") {
@@ -1095,7 +1113,7 @@ const getShedFromLivestock = (tagValue) => {
   ) : (
     <tr>
       <td
-        colSpan={current.fields.length + 2}
+        colSpan={currentFields.length + 2}
         className="p-12 text-center text-black text-sm font-medium opacity-50"
       >
         No records found for {current.name}.
@@ -1200,7 +1218,7 @@ const getShedFromLivestock = (tagValue) => {
   </div>
 
   {/* FIELDS */}
-  {current.fields.map(field => (
+  {currentFields.map(field => (
     <div key={field.name} className="flex justify-between border-b pb-2">
       <span className="font-semibold text-gray-500">
         {field.label}
@@ -1236,7 +1254,7 @@ const getShedFromLivestock = (tagValue) => {
       
       <LogForm 
         title={isEditing ? `Update ${current.name}` : `New ${current.name}`} 
-        fields={current.fields} 
+        fields={currentFields} 
         initialData={isEditing ? selectedEntry : {}} 
         onSubmit={handleSave} 
         onClose={closeAllModals} 
