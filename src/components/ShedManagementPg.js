@@ -91,7 +91,8 @@ const ShedManagementPg = () => {
       fetchShedsAndFarms();
     } catch (err) {
       console.error(err);
-      swalError("Error", err.response?.data?.message || err.message || "Failed to save shed.");
+      const errorMsg = typeof err === 'string' ? err : (err.response?.data?.message || err.message || "Failed to save shed.");
+      swalError("Error", errorMsg);
     } finally {
       setIsLoading(false);
     }
