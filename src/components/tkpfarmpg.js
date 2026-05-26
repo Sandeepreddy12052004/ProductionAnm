@@ -58,6 +58,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       name: 'Daily Feeding',
       icon: '🌾',
       fields: [
+        { name: 'date', label: 'Date', type: 'date' },
         { name: 'shedId', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4'] },
         { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
         { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
@@ -76,6 +77,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       name: 'Grass Collection',
       icon: '🌿',
       fields: [
+        { name: 'date', label: 'Date', type: 'date' },
         { name: 'farmId', label: 'Farm ID (Source)' },
         { name: 'noOfLoads', label: 'No. of Loads', type: 'number' },
         { name: 'weight', label: 'Weight (KG)', type: 'number' }
@@ -142,9 +144,10 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       name: 'Milk Components',
       icon: '🔬',
       fields: [
+        { name: 'date', label: 'Date', type: 'date' },
         { name: 'fat', label: 'Fat %', type: 'number' },
         { name: 'snf', label: 'SNF %', type: 'number' },
-        { name: 'density', label: 'Density', type: 'number' },
+        { name: 'density', label: 'CLR / Density', type: 'number' },
         { name: 'water', label: 'Water %', type: 'number' }
       ]
     },
@@ -187,7 +190,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       }
       if (Array.isArray(data)) {
         const filtered = data.filter(log => {
-          if (activeTab === 'feed_inv' || activeTab === 'med_inv') return true;
+          if (activeTab === 'feed_inv' || activeTab === 'med_inv' || activeTab === 'components') return true;
 
           const sId = log.shedId || log.shed;
           if (sId) return ['1', '2', '3', '4'].includes(sId.toString());
