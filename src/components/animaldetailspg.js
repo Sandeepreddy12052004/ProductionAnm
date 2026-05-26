@@ -384,7 +384,8 @@ const handleSave = async (data) => {
     }
     closeAllModals();
   } catch (error) {
-    console.error("Save error:", error);
+    console.error("Save error:", error.message || error);
+    swalError("Backend Error", error.message || "Failed to save data. Please check backend schema.");
   } finally {
     setIsLoading(false);
   }

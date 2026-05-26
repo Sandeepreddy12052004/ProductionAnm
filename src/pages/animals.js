@@ -5,7 +5,7 @@ const livestockConfig = {
   name: 'Live Stock',
   icon: '🐄',
   fields: [
-    { name: 'tagId', label: 'Tag ID' },
+    { name: 'tag', label: 'Tag ID' },
     { name: 'cattleType', label: 'Cattle Type',type: 'select', options: ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf'] },
     { name: 'shed', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4', '5', '6', '-'] },
     { name: 'dateOfBirth', label: 'Date of Birth', type: 'date' },

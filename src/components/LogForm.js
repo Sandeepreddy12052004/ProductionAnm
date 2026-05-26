@@ -2,7 +2,17 @@
 
   const LogForm = ({ title, fields, onSubmit, onClose, initialData = {} }) => {
 
-    const [formData, setFormData] = useState(initialData);
+    const formatInitialData = (data, fields) => {
+      const formatted = { ...data };
+      fields.forEach(field => {
+        if (field.type === 'date' && formatted[field.name]) {
+          formatted[field.name] = formatted[field.name].split('T')[0];
+        }
+      });
+      return formatted;
+    };
+
+    const [formData, setFormData] = useState(() => formatInitialData(initialData, fields));
     const [tagError, setTagError] = useState("");
     const [dobError, setDobError] = useState("");
 

@@ -156,31 +156,31 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
       {/* SIDEBAR */}
       <nav
         className={`
-          flex-shrink-0 fixed top-0 left-0 h-screen ${isCollapsed ? 'w-20' : 'w-64'} bg-white text-gray-800 shadow-xl border-r border-gray-200
+          flex-shrink-0 fixed top-0 left-0 h-screen flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} bg-white text-gray-800 shadow-xl border-r border-gray-200
           z-[110] transform transition-all duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
       >
-        <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden whitespace-nowrap px-4 py-6">
         {!mounted ? (
           <div className="flex h-full items-center justify-center opacity-50">
             <span className="text-xs font-bold text-gray-400">Loading...</span>
           </div>
         ) : (
           <>
-            <div className="flex justify-between items-center mb-6 md:hidden">
-              <span className="text-lg font-bold text-[#16223F]">Menu</span>
-              <button
-                onClick={handleCloseSidebar}
-                className="text-gray-800 text-xl font-bold"
-              >
-                ✕
-              </button>
-            </div>
+            <div className="flex-shrink-0 px-4 pt-6">
+              <div className="flex justify-between items-center mb-6 md:hidden">
+                <span className="text-lg font-bold text-[#16223F]">Menu</span>
+                <button
+                  onClick={handleCloseSidebar}
+                  className="text-gray-800 text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
 
-        {/* BRAND LOGO HEADER */}
-        <div className={`flex items-center gap-3 mb-6 pb-5 border-b border-slate-100 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
+              {/* BRAND LOGO HEADER */}
+              <div className={`flex items-center gap-3 mb-6 pb-5 border-b border-slate-100 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
           <div className="w-14 h-14 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
             <img
               src="/LOGO.png"
@@ -195,9 +195,12 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
             </div>
           )}
         </div>
+      </div>
 
-        <ul className="space-y-1.5 px-1">
-          {/* Dashboard Link */}
+      {/* SCROLLABLE LINKS */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden whitespace-nowrap px-4 pb-6 custom-scrollbar">
+              <ul className="space-y-1.5 px-1">
+                {/* Dashboard Link */}
           <li>
             <motion.div whileHover={{ scale: 1.02, x: 3 }}>
               <Link href="/dashboard" onClick={handleCloseSidebar}
@@ -526,9 +529,9 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
             </AnimatePresence>
           </li>
         </ul>
-        </>
+            </div>
+          </>
         )}
-        </div>
         
         {/* DESKTOP TOGGLE BUTTON (Absolute on the right edge) */}
         <button 
