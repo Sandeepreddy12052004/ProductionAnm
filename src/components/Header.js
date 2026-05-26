@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { swalConfirm } from '../utils/swal';
 
 const Header = ({ toggleSidebar }) => {
   const router = useRouter();
@@ -25,7 +26,9 @@ const Header = ({ toggleSidebar }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const confirm = await swalConfirm("Logout", "Are you sure you want to securely logout?");
+    if (!confirm) return;
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("token");
     router.replace('/login');
