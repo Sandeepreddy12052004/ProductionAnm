@@ -113,7 +113,7 @@ export default function FarmOverview({ farmCode }) {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full overflow-auto pb-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
       {/* TOTAL CATTLE CARD */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">

@@ -133,9 +133,9 @@ const ShedManagementPg = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full bg-transparent text-slate-800">
+    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
             Shed Management
@@ -157,9 +157,9 @@ const ShedManagementPg = () => {
       </div>
 
       {/* TABLE */}
-      <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto bg-white">
-        <table className="w-full text-left min-w-[800px]">
-          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">
+        <table className="w-full text-left min-w-[800px] relative">
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
             <tr>
               <th className="p-4 border-b">Farm</th>
               <th className="p-4 border-b">Shed No</th>

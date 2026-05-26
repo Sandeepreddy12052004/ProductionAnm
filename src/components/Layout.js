@@ -96,7 +96,7 @@ const Layout = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-transparent">
+    <div className="flex h-screen overflow-hidden bg-transparent">
 
       {/* SIDEBAR */}
       <Sidebar
@@ -107,7 +107,7 @@ const Layout = ({ children }) => {
       />
 
       {/* MAIN */}
-      <main className={`flex-1 w-full transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+      <main className={`flex-1 flex flex-col h-screen overflow-hidden w-full transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
 
         {/* HEADER */}
         <div className={`fixed top-0 right-0 left-0 z-[40] transition-all duration-300 ${sidebarCollapsed ? 'md:left-20' : 'md:left-64'}`}>
@@ -117,9 +117,9 @@ const Layout = ({ children }) => {
         </div>
 
         {/* CONTENT */}
-        <div className="pt-24 pb-16 px-4 md:px-8 flex flex-col min-h-screen">
+        <div className="pt-24 pb-4 px-4 md:px-8 flex flex-col flex-1 overflow-hidden">
 
-          <div className="flex-grow">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <ErrorBoundary>
               <ClientOnly>
                 {children}
@@ -128,7 +128,11 @@ const Layout = ({ children }) => {
           </div>
 
           {/* FOOTER */}
-          {!hideFooter && <Footer />}
+          {!hideFooter && (
+            <div className="flex-none">
+              <Footer />
+            </div>
+          )}
 
         </div>
 

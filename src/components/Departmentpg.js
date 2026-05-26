@@ -72,8 +72,8 @@ const DepartmentPg = ({ moduleConfig }) => {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full bg-transparent text-slate-800">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
+      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
             Departments
@@ -102,7 +102,7 @@ const DepartmentPg = ({ moduleConfig }) => {
       )}
 
       {/* CONTENT WRAPPER */}
-      <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto bg-white">
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">
 
         {/* EMPTY STATE */}
         {!isLoading && (!departments || departments.length === 0) && (
@@ -118,8 +118,8 @@ const DepartmentPg = ({ moduleConfig }) => {
 
         {/* DATA TABLE */}
         {(isLoading || departments?.length > 0) && (
-          <table className="w-full text-left min-w-[600px]">
-            <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
+          <table className="w-full text-left min-w-[600px] relative">
+            <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
               <tr>
                 <th className="p-4 border-b">Department</th>
                 <th className="p-4 border-b text-center">Status</th>

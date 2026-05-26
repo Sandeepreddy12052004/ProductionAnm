@@ -384,10 +384,8 @@ const UserManagementPg = ({ moduleConfig }) => {
   };
 
   return (
-    <div className="w-full bg-transparent text-slate-800">
-
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
+      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-black text-[#16223F]">👥 User Management</h1>
 
         <button
@@ -451,11 +449,10 @@ const UserManagementPg = ({ moduleConfig }) => {
 
       </div>
 
-      {/* TABLE */}
-      <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto bg-white">
-        <table className="w-full text-left min-w-[800px]">
-
-          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
+      {/* TABLE WRAPPER */}
+      <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">
+        <table className="w-full text-left min-w-[1000px] relative">
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
             <tr>
               <th className="p-4 border-b">S.no</th>
               <th className="p-4 border-b">User ID</th>

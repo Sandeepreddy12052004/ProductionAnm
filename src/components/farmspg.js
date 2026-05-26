@@ -93,9 +93,9 @@ const FarmsPg = () => {
   };
 
   return (
-    <div className="p-8 bg-[#f7f9fc] min-h-screen">
+    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-[#f7f9fc]">
       {/* HEADER */}
-      <div className="flex justify-between items-start mb-10">
+      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-black text-[#071437] tracking-tight">
             Farm Management
@@ -120,17 +120,19 @@ const FarmsPg = () => {
       </div>
 
       {/* TABLE CARD */}
-      <div className="bg-white rounded-[30px] overflow-hidden border border-[#e3e8f2] shadow-sm">
+      <div className="flex-1 flex flex-col bg-white rounded-[30px] overflow-hidden border border-[#e3e8f2] shadow-sm relative">
         {/* TABLE HEADER */}
-        <div className="grid grid-cols-4 px-6 py-4 bg-[#f8fafc]
-        text-[#53698c] text-[11px] font-black uppercase tracking-wide">
+        <div className="flex-none grid grid-cols-4 px-6 py-4 bg-[#f8fafc]
+        text-[#53698c] text-[11px] font-black uppercase tracking-wide border-b border-[#e3e8f2]">
           <div>Farm Name</div>
           <div>Farm Code</div>
           <div>Address / Location</div>
           <div>Actions</div>
         </div>
 
-        {/* DATA */}
+        {/* DATA CONTAINER */}
+        <div className="flex-1 overflow-auto">
+          {/* DATA */}
         {isFetching ? (
           <SkeletonLoader type="grid-row" columns={4} />
         ) : farms.length > 0 ? (
@@ -173,6 +175,7 @@ const FarmsPg = () => {
         ) : (
           <div className="p-20 text-center text-[#94a3b8] font-semibold text-lg">
             No Farms Found
+          </div>
           </div>
         )}
       </div>

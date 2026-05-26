@@ -531,8 +531,8 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 ).length;
 
   return (
-    <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
-        {/* // <div className="w-full text-black bg-white min-h-screen px-0 md:px-0"> */}
+    <div className="w-full h-full flex flex-col text-black bg-white px-0 md:px-0">
+      <div className="flex-none">
 
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
@@ -769,11 +769,12 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     </div>
   </div>
 )}
+      </div>
 
-      
-      <div className="bg-white rounded-2xl shadow-md overflow-x-auto border border-gray-100">
-        <table className="w-full text-left min-w-[600px]">
-          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
+      {/* Table Section */}
+      <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
+        <table className="w-full text-left min-w-[600px] relative">
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
             <tr>
               <th className="p-4 border-b">Date</th>
               {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
