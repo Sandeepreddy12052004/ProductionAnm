@@ -50,6 +50,37 @@
         }
       }
 
+      if (name === "dateOfBirth") {
+        if (value) {
+          const dob = new Date(value);
+          const today = new Date();
+          
+          let years = today.getFullYear() - dob.getFullYear();
+          let months = today.getMonth() - dob.getMonth();
+          
+          if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
+              years--;
+              months += 12;
+          }
+          if (today.getDate() < dob.getDate()) {
+              months--;
+              if (months < 0) {
+                 months += 12;
+              }
+          }
+          
+          if (years > 0) {
+              updated.age = `${years} Yrs ${months} Mos`;
+          } else if (months > 0) {
+              updated.age = `${months} Mos`;
+          } else {
+              updated.age = `0 Mos`;
+          }
+        } else {
+          updated.age = "";
+        }
+      }
+
 
       if (type === 'number' && (name === 'attemptNo' || name === 'shed')) {
         updated[name] = value.replace(/[^0-9]/g, '');
