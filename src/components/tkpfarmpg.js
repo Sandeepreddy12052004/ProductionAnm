@@ -78,7 +78,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       icon: '🌿',
       fields: [
         { name: 'date', label: 'Date', type: 'date' },
-        { name: 'farmId', label: 'Farm ID (Source)' },
         { name: 'noOfLoads', label: 'No. of Loads', type: 'number' },
         { name: 'weight', label: 'Weight (KG)', type: 'number' }
       ]
@@ -190,15 +189,19 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       }
       if (Array.isArray(data)) {
         const filtered = data.filter(log => {
-          if (activeTab === 'feed_inv' || activeTab === 'med_inv' || activeTab === 'components') return true;
-
-          const sId = log.shedId || log.shed;
-          if (sId) return ['1', '2', '3', '4'].includes(sId.toString());
-          
           const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
-          if (fId) return typeof fId === 'string' && fId.toUpperCase().includes('TKP');
           
-          return false; // Safely hide unassociated data
+          // Strict Match
+          if (fId && typeof fId === 'string' && fId.toUpperCase() === farmCode.toUpperCase()) {
+            return true;
+          }
+          
+          // Legacy Match: If a record has NO farmId, assume it belongs to TKP (as Tandur is new)
+          if (!fId && farmCode.toUpperCase() === 'TKP') {
+            return true;
+          }
+          
+          return false;
         });
         setLogs(filtered);
       } else {
@@ -362,7 +365,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   const handleSave = async (data) => {
     setIsLoading(true);
     try {
-      const payload = { ...data, farm: farmCode };
+      const payload = { ...data, farm: farmCode, farmId: farmCode };
       const entryId = selectedEntry?.id || selectedEntry?._id;
       
       if (isEditing) {
