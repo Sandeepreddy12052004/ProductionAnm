@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { api } from '@/utils/api';
 import SkeletonLoader from './SkeletonLoader';
-import { api } from '@/utils/api';
 
 export default function FarmOverview({ farmCode }) {
   const [metrics, setMetrics] = useState({
