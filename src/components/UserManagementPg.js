@@ -227,13 +227,12 @@
 
 // export default UserManagementPg;
 
-
-
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import LogForm from './LogForm';
+import SkeletonLoader from './SkeletonLoader';
 
 const UserManagementPg = ({ moduleConfig }) => {
 
@@ -482,23 +481,7 @@ const UserManagementPg = ({ moduleConfig }) => {
                 </td>
               </tr>
             ) : isLoading ? (
-              // SKELETON LOADER
-              <>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <tr key={i} className="animate-pulse border-b border-gray-100">
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-6"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-                    <td className="p-4 text-center"><div className="h-6 bg-slate-200 rounded-full w-16 mx-auto"></div></td>
-                    <td className="p-4"><div className="h-8 bg-slate-200 rounded-lg w-32"></div></td>
-                  </tr>
-                ))}
-              </>
+              <SkeletonLoader type="table" columns={10} />
             ) : filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
                 <tr key={user.id || user._id} className="hover:bg-[#D1867D]/5 transition-colors cursor-pointer">

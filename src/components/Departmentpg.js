@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import useSWR from 'swr';
+import SkeletonLoader from './SkeletonLoader';
 
 const DepartmentPg = ({ moduleConfig }) => {
 
@@ -127,16 +128,7 @@ const DepartmentPg = ({ moduleConfig }) => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                // SKELETON LOADER
-                <>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <tr key={i} className="animate-pulse border-b border-gray-100">
-                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-48"></div></td>
-                      <td className="p-4 text-center"><div className="h-6 bg-slate-200 rounded-full w-20 mx-auto"></div></td>
-                      <td className="p-4 text-right flex justify-end"><div className="h-8 bg-slate-200 rounded-lg w-24"></div></td>
-                    </tr>
-                  ))}
-                </>
+                <SkeletonLoader type="table" columns={3} />
               ) : (
                 departments.map(dep => (
                 <tr key={dep.id || dep._id} className="hover:bg-[#D1867D]/5 transition-colors">

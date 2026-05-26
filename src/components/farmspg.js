@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
+import SkeletonLoader from './SkeletonLoader';
 
 const FarmsPg = () => {
   const [farms, setFarms] = useState([]);
@@ -130,7 +131,9 @@ const FarmsPg = () => {
         </div>
 
         {/* DATA */}
-        {farms.length > 0 ? (
+        {isFetching ? (
+          <SkeletonLoader type="grid-row" columns={4} />
+        ) : farms.length > 0 ? (
           farms.map(farm => (
             <div
               key={farm._id || farm.id}

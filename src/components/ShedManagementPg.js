@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
+import SkeletonLoader from './SkeletonLoader';
 
 const ShedManagementPg = () => {
   const [sheds, setSheds] = useState([]);
@@ -170,22 +171,7 @@ const ShedManagementPg = () => {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isFetching ? (
-              // SKELETON LOADER
-              <>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <tr key={i} className="animate-pulse border-b border-gray-100">
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-12"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
-                    <td className="p-4"><div className="h-6 bg-slate-200 rounded-full w-20"></div></td>
-                    <td className="p-4 text-right flex justify-end gap-2">
-                      <div className="h-8 bg-slate-200 rounded-lg w-16"></div>
-                      <div className="h-8 bg-slate-200 rounded-lg w-20"></div>
-                    </td>
-                  </tr>
-                ))}
-              </>
+              <SkeletonLoader type="table" columns={6} />
             ) : sheds.length === 0 ? (
               <tr>
                 <td colSpan="6" className="p-16 text-center">

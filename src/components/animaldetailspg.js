@@ -4,8 +4,9 @@ import LogForm from './LogForm';
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { api } from '@/utils/api';
-import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
+import { api } from "../utils/api";
+import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
+import SkeletonLoader from './SkeletonLoader';
 
 
 
@@ -1004,17 +1005,7 @@ const getShedFromLivestock = (tagValue) => {
           </thead>
          <tbody className="divide-y divide-gray-100">
   {isLoading ? (
-    <>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <tr key={i} className="animate-pulse border-b border-gray-100">
-          <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
-          <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-          <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
-          <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
-          <td className="p-4"><div className="h-4 bg-slate-200 rounded w-full max-w-[120px]"></div></td>
-        </tr>
-      ))}
-    </>
+    <SkeletonLoader type="table" columns={currentFields.length + 2} />
   ) : paginatedLogs.length > 0 ? (
     paginatedLogs.map(log => (
       <tr 
