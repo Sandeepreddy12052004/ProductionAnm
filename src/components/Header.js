@@ -100,21 +100,29 @@ const Header = ({ toggleSidebar }) => {
                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1.5">
                     <span>🏠</span> Farm Access
                   </span>
-                  <span className="text-[11px] font-black bg-white shadow-sm text-gray-700 px-2.5 py-1 rounded-lg border border-slate-100">TKP, TDR</span>
+                  <span className="text-[11px] font-black bg-white shadow-sm text-gray-700 px-2.5 py-1 rounded-lg border border-slate-100">
+                    {user?.farm || user?.farmAccess?.join(', ') || 'Global'}
+                  </span>
                 </div>
                 
                 <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1.5">
                     <span>⭐</span> Role
                   </span>
-                  <span className="text-[11px] font-black text-[#16223F]">Super Supervisor</span>
+                  <span className="text-[11px] font-black text-[#16223F]">{user?.role?.replace(/_/g, ' ') || 'Admin'}</span>
                 </div>
 
                 <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl">
                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1.5">
                     <span>🟢</span> Status
                   </span>
-                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-100/50 border border-emerald-200/50 px-2.5 py-1 rounded-full shadow-sm">ACTIVE</span>
+                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm ${
+                    user?.status === false || user?.status === 'Inactive' || user?.status === 'INACTIVE'
+                      ? "text-rose-600 bg-rose-100/50 border border-rose-200/50"
+                      : "text-emerald-600 bg-emerald-100/50 border border-emerald-200/50"
+                  }`}>
+                    {user?.status === false || user?.status === 'Inactive' || user?.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE'}
+                  </span>
                 </div>
               </div>
 
