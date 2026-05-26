@@ -84,8 +84,6 @@ const DepartmentPg = ({ moduleConfig }) => {
 
         <button
           onClick={() => {
-            setIsEditing(false);
-            setEditId(null);
             setFormData({ name: "", status: true });
             setShowForm(true);
           }}
