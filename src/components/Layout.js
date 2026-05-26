@@ -1,42 +1,3 @@
-// import Sidebar from '@/components/Sidebar';
-// import Header from '@/components/Header';
-// import Footer from '@/components/Footer';
-// import { useState } from 'react';
-
-// const Layout = ({ children }) => {
-//   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-//   return (
-//     <div className="flex min-h-screen bg-white">
-
-//       {/* SIDEBAR */}
-//       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-
-//       {/* MAIN */}
-//       <main className="flex-1 md:ml-64 w-full">
-
-//         {/* HEADER */}
-//         <div className="fixed top-0 right-0 left-0 md:left-64 z-[40]">
-//           <Header toggleSidebar={() => setSidebarOpen(true)} />
-//         </div>
-
-//         {/* CONTENT */}
-//         {/* <div className="pt-16 pb-16 px-3 sm:px-4 md:px-4 flex flex-col min-h-screen"> */}
-//         <div className="pt-16 pb-16 px-0 md:px-4 flex flex-col min-h-screen">
-//           <div className="flex-grow">
-//             {children}
-//           </div>
-//           <Footer />
-//         </div>
-
-//       </main>
-//     </div>
-//   );
-// };
-
-// export default Layout;
-
-
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -117,9 +78,9 @@ const Layout = ({ children }) => {
         </div>
 
         {/* CONTENT */}
-        <div className="pt-24 pb-4 px-4 md:px-8 flex flex-col flex-1 overflow-hidden">
+        <div className="pt-24 pb-4 px-4 md:px-8 flex flex-col flex-1 overflow-y-auto">
 
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col">
             <ErrorBoundary>
               <ClientOnly>
                 {children}
