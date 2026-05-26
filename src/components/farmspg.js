@@ -177,6 +177,7 @@ const FarmsPg = () => {
             No Farms Found
           </div>
         )}
+        </div>
       </div>
 
       {/* MODAL */}
