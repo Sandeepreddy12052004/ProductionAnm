@@ -117,7 +117,7 @@ const DepartmentPg = ({ moduleConfig }) => {
         )}
 
         {/* DATA TABLE */}
-        {(!isLoading || departments?.length > 0) && (
+        {(isLoading || departments?.length > 0) && (
           <table className="w-full text-left min-w-[600px]">
             <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
               <tr>
