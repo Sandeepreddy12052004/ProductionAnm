@@ -218,11 +218,13 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   useEffect(() => {
     if (router.query.tab) {
       const tab = router.query.tab;
-      if (modules.some(m => m.id === tab)) {
+      if (modules.find(m => m.id === tab)) {
         setActiveTab(tab);
       }
+    } else {
+      setActiveTab('overview');
     }
-  }, [router.query.tab]);
+  }, [router.query.tab, router.query.code]);
 
   useEffect(() => {
     fetchLogs();
