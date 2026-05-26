@@ -187,6 +187,8 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       }
       if (Array.isArray(data)) {
         const filtered = data.filter(log => {
+          if (activeTab === 'feed_inv' || activeTab === 'med_inv') return true;
+
           const sId = log.shedId || log.shed;
           if (sId) return ['1', '2', '3', '4'].includes(sId.toString());
           
