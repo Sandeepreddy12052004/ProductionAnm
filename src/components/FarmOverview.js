@@ -8,6 +8,7 @@ export default function FarmOverview({ farmCode }) {
     sickAnimals: 0,
     milkProduction: 0
   });
+  const [farmSheds, setFarmSheds] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,6 +41,9 @@ export default function FarmOverview({ farmCode }) {
           sickAnimals,
           milkProduction
         });
+        
+        // Store the actual sheds for rendering
+        setFarmSheds((sheds || []).filter(isCurrentFarm));
       } catch (err) {
         console.error("Failed to fetch farm overview metrics", err);
       } finally {
@@ -119,6 +123,50 @@ export default function FarmOverview({ farmCode }) {
         <h3 className="text-3xl font-black text-[#16223F] tracking-tight">{metrics.sickAnimals}</h3>
         <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Pending Treatments</p>
       </div>
+    </div>
+
+    {/* FARM SHEDS SECTION */}
+    <div className="px-4 mt-8">
+      <h2 className="text-xl font-extrabold text-[#16223F] mb-6 tracking-tight flex items-center gap-2">
+        <span className="text-2xl">🏠</span> Active Sheds
+      </h2>
+      
+      {farmSheds.length === 0 ? (
+        <div className="bg-white border border-dashed border-gray-300 rounded-2xl p-10 text-center">
+          <p className="text-gray-400 font-bold">No sheds found for this farm.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {farmSheds.map(shed => (
+            <div key={shed._id || shed.id} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${shed.status === 'ACTIVE' ? 'from-emerald-100/50 to-emerald-50/10' : 'from-rose-100/50 to-rose-50/10'} rounded-bl-full -mr-8 -mt-8`}></div>
+              
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{shed.farmId?.name || farmCode}</span>
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${shed.status === 'ACTIVE' ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50' : 'text-rose-700 bg-rose-50 border border-rose-200/50'}`}>
+                  {shed.status || 'ACTIVE'}
+                </span>
+              </div>
+              
+              <h4 className="text-2xl font-black text-[#16223F] mb-1">Shed {shed.code}</h4>
+              
+              <div className="flex items-center gap-4 mt-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Rows</span>
+                  <span className="text-[#16223F] font-black">{shed.lines || 0}</span>
+                </div>
+                <div className="w-px h-6 bg-gray-100"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Capacity</span>
+                  <span className="text-[#16223F] font-black">{shed.capacity || 0} <span className="text-gray-400 font-normal text-xs">head</span></span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
     </div>
   );
 }

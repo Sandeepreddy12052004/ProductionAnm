@@ -68,6 +68,20 @@ const ShedManagementPg = () => {
         await api.sheds.update(editingId, payload);
         swalSuccess("Success", "Shed updated successfully!");
       } else {
+        const isDuplicate = sheds.some(s => {
+          const sFarmId = String(s.farmId?._id || s.farmId?.id || s.farmId || "").trim();
+          const targetFarmId = String(formData.farmId).trim();
+          const sCode = String(s.code).trim().toLowerCase();
+          const targetCode = String(formData.code).trim().toLowerCase();
+          return sFarmId === targetFarmId && sCode === targetCode;
+        });
+        
+        if (isDuplicate) {
+          setIsLoading(false);
+          swalError("Duplicate Error", `Shed No ${formData.code} already exists for this farm.`);
+          return;
+        }
+
         await api.sheds.create(payload);
         swalSuccess("Success", "Shed created successfully!");
       }
