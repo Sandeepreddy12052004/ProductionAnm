@@ -46,6 +46,11 @@ export default function LoginPage() {
         }
         const userObj = data.user || (data.data && data.data.user);
         if (userObj) {
+          if (userObj.status === false || userObj.status === 'Inactive' || userObj.status === 'INACTIVE') {
+            swalError("Access Denied", "Your User ID is inactive. Please contact the administrator.");
+            setLoading(false);
+            return;
+          }
           localStorage.setItem("user", JSON.stringify(userObj));
         } else {
           // Fallback if production API doesn't return user object clearly

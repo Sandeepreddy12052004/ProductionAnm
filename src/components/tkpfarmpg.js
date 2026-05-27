@@ -318,21 +318,36 @@ useEffect(() => {
     if (f.field.toLowerCase().includes("date")) {
       if (!f.from && !f.to) return true;
 
-      const logDate = log[f.field];
+      const logDate = log[f.field] || (f.field === 'date' ? log.entryDate : null);
       if (!logDate) return false;
 
-      const [d, m, y] = logDate.split("/");
-      const current = new Date(`${y}-${m}-${d}`);
+      let current;
+      if (logDate.includes("/")) {
+        const parts = logDate.split("/");
+        if (parts.length === 3) {
+          const [d, m, y] = parts;
+          current = new Date(`${y}-${m}-${d}`);
+        } else {
+          current = new Date(logDate);
+        }
+      } else {
+        current = new Date(logDate);
+      }
+
+      if (isNaN(current.getTime())) return false;
+      current.setHours(0, 0, 0, 0);
 
       if (f.from) {
         const [fd, fm, fy] = f.from.split("/");
         const fromDate = new Date(`${fy}-${fm}-${fd}`);
+        fromDate.setHours(0, 0, 0, 0);
         if (current < fromDate) return false;
       }
 
       if (f.to) {
         const [td, tm, ty] = f.to.split("/");
         const toDate = new Date(`${ty}-${tm}-${td}`);
+        toDate.setHours(0, 0, 0, 0);
         if (current > toDate) return false;
       }
 

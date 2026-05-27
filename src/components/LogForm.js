@@ -1,6 +1,6 @@
   import React, { useState } from 'react';
 
-  const LogForm = ({ title, fields, onSubmit, onClose, initialData = {} }) => {
+  const LogForm = ({ title, fields, onSubmit, onClose, initialData = {}, existingRecords = [] }) => {
 
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
@@ -15,6 +15,7 @@
     const [formData, setFormData] = useState(() => formatInitialData(initialData, fields));
     const [tagError, setTagError] = useState("");
     const [dobError, setDobError] = useState("");
+    const [userIdError, setUserIdError] = useState("");
 
 
   const getShedFromLivestock = (tagValue) => {
@@ -441,7 +442,6 @@
     }`}
 
 
-    // onChange={handleChange}
     onChange={(e) => {
     handleChange(e);
 
@@ -455,11 +455,36 @@
         }));
       }
     }
+
+    if (field.name === "userId") {
+      if (existingRecords && existingRecords.length > 0) {
+        const value = e.target.value;
+        if (value.trim() !== "") {
+          const exists = existingRecords.some(r => {
+            if (!r.userId) return false;
+            if (r.userId.toLowerCase() !== value.trim().toLowerCase()) return false;
+            if (initialData?.id && r.id === initialData.id) return false;
+            if (initialData?._id && r._id === initialData._id) return false;
+            return true;
+          });
+          if (exists) {
+            setUserIdError("User ID already exists");
+          } else {
+            setUserIdError("");
+          }
+        } else {
+          setUserIdError("");
+        }
+      }
+    }
   }}
   />
 
   {field.name === "dob" && dobError && (
         <p className="text-red-500 text-xs mt-1">{dobError}</p>
+      )}
+  {field.name === "userId" && userIdError && (
+        <p className="text-red-500 text-xs mt-1">{userIdError}</p>
       )}
     </>
 
@@ -482,9 +507,9 @@
 
   <button
     type="submit"
-    disabled={tagError !== "" || dobError !== ""}
+    disabled={tagError !== "" || dobError !== "" || userIdError !== ""}
     className={`flex-1 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2
-    ${(tagError || dobError)
+    ${(tagError || dobError || userIdError)
       ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
       : "bg-[#16223F] hover:bg-[#2a3f75] text-white hover:-translate-y-0.5 active:scale-95"
     }`}

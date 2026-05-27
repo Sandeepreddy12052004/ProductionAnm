@@ -268,15 +268,18 @@ const UserManagementPg = ({ moduleConfig }) => {
   const safeUsers = Array.isArray(users) ? users : [];
   const filteredUsers = safeUsers.filter(user => {
 
-    const matchSearch =
-      user.name?.toLowerCase().includes(search.toLowerCase()) ||
-      user.userId?.toLowerCase().includes(search.toLowerCase());
+    const searchLower = search.toLowerCase();
+    const matchSearch = !searchLower ||
+      (user.name?.toLowerCase() || '').includes(searchLower) ||
+      (user.userId?.toLowerCase() || '').includes(searchLower);
 
     const userFarmName = typeof user.farmId === 'object' ? user.farmId?.name : user.farm;
-    const matchFarm = filters.farm ? userFarmName === filters.farm : true;
-    const matchDept = filters.department ? user.department === filters.department : true;
-    const matchRole = filters.role ? user.role === filters.role : true;
-    const matchStatus = filters.status ? (user.status || 'Active') === filters.status : true;
+    const matchFarm = !filters.farm || userFarmName === filters.farm;
+    const matchDept = !filters.department || user.department === filters.department;
+    const matchRole = !filters.role || user.role === filters.role;
+    
+    const userStatusStr = (user.status === false || user.status === 'Inactive' || user.status === 'INACTIVE') ? 'Inactive' : 'Active';
+    const matchStatus = !filters.status || userStatusStr === filters.status;
 
     return matchSearch && matchFarm && matchDept && matchRole && matchStatus;
   });
@@ -353,13 +356,29 @@ const UserManagementPg = ({ moduleConfig }) => {
   // 🔥 STATUS CHANGE FUNCTION
   const handleStatusChange = async (id, newStatus) => {
     try {
-      await api.users.update(id, { status: newStatus });
+      const boolStatus = newStatus === 'Active' || newStatus === 'ACTIVE';
+      await api.users.update(id, { status: boolStatus });
       mutate();
       setStatusEditId(null);
       swalSuccess("Success", "User status updated");
     } catch (err) {
       console.error(err);
-      swalError("Error", "Failed to update status");
+      swalError("Error", err.response?.data?.message || err.message || "Failed to update status");
+    }
+  };
+
+  // 🔥 DELETE FUNCTION
+  const handleDelete = async (id) => {
+    const confirmed = await swalConfirm("Delete User?", "Are you sure you want to permanently delete this user?");
+    if (confirmed) {
+      try {
+        await api.users.delete(id);
+        mutate();
+        swalSuccess("Deleted", "User deleted successfully");
+      } catch (err) {
+        console.error(err);
+        swalError("Error", err.response?.data?.message || err.message || "Failed to delete user");
+      }
     }
   };
 
@@ -411,8 +430,9 @@ const UserManagementPg = ({ moduleConfig }) => {
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Farms</option>
-          <option>TKP</option>
-          <option>TDR</option>
+          {moduleConfig.fields.find(f => f.name === 'farm')?.options?.map(opt => (
+            typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
+          ))}
         </select>
 
         <select
@@ -420,10 +440,9 @@ const UserManagementPg = ({ moduleConfig }) => {
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Departments</option>
-          <option>IT</option>
-          <option>Dispatch</option>
-          <option>Production</option>
-          <option>Security</option>
+          {moduleConfig.fields.find(f => f.name === 'department')?.options?.map(opt => (
+            typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
+          ))}
         </select>
 
         <select
@@ -432,9 +451,9 @@ const UserManagementPg = ({ moduleConfig }) => {
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] font-semibold focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 cursor-pointer"
         >
           <option value="">All Roles</option>
-          <option value="SUPER_ADMIN">Super Admin</option>
-          <option value="FARM_ADMIN">Farm Admin</option>
-          <option value="INCHARGE">Incharge</option>
+          {moduleConfig.fields.find(f => f.name === 'role')?.options?.map(opt => (
+            typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
+          ))}
         </select>
 
         <select
@@ -538,6 +557,16 @@ const UserManagementPg = ({ moduleConfig }) => {
                     >
                       Edit
                     </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(user.id || user._id);
+                      }}
+                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
+                    >
+                      Delete
+                    </button>
                   </td>
 
                 </tr>
@@ -587,6 +616,7 @@ const UserManagementPg = ({ moduleConfig }) => {
           title={isEditing ? "Update User" : "Create User"}
           fields={moduleConfig.fields}
           initialData={isEditing ? selectedEntry : {}}
+          existingRecords={users}
           onSubmit={handleSave}
           onClose={closeAll}
         />
