@@ -125,9 +125,9 @@ const FarmsPg = () => {
       <div className="flex-1 overflow-auto">
         {isFetching ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <SkeletonLoader type="table" columns={1} />
-            <SkeletonLoader type="table" columns={1} />
-            <SkeletonLoader type="table" columns={1} />
+            <SkeletonLoader type="block" height="h-32" />
+            <SkeletonLoader type="block" height="h-32" />
+            <SkeletonLoader type="block" height="h-32" />
           </div>
         ) : farms.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
