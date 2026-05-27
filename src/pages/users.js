@@ -13,7 +13,7 @@ export default function UsersPage() {
     api.departments.getAll()
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
-          const deptNames = res.map(d => d.name).filter(Boolean);
+          const deptNames = res.map(d => ({ label: d.name, value: d._id || d.id }));
           if (deptNames.length > 0) setDepartments(deptNames);
         }
       })
@@ -23,7 +23,7 @@ export default function UsersPage() {
     api.farms.getAll()
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
-          const farmNames = res.map(f => f.name || f.code).filter(Boolean);
+          const farmNames = res.map(f => ({ label: f.name || f.code, value: f._id || f.id }));
           if (farmNames.length > 0) setFarms(farmNames);
         }
       })
@@ -43,10 +43,10 @@ export default function UsersPage() {
       { name: 'password', label: 'Password' },
       { name: 'phone', label: 'Phone No', type: 'number' },
       {
-        name: 'farm',
+        name: 'farmId',
         label: 'Farm',
         type: 'select',
-        options: ['All Farms', ...farms]
+        options: [{ label: 'All Farms', value: 'ALL' }, ...farms]
       },
       {
         name: 'department',

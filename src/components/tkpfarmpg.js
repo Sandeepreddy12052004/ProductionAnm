@@ -12,6 +12,29 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.sheds.getAll()
+      .then(res => {
+        if (isMounted && res && Array.isArray(res)) {
+          const shedOpts = res.map(s => ({ label: `Shed ${s.name || s.code}`, value: s._id || s.id }));
+          if (shedOpts.length > 0) setSheds(shedOpts);
+        }
+      })
+      .catch(console.error);
+      
+    api.cattle.getAll()
+      .then(res => {
+        if (isMounted && res && Array.isArray(res)) {
+          const cattleOpts = res.map(c => ({ label: `${c.tag} (${c.cattleType})`, value: c._id || c.id }));
+          if (cattleOpts.length > 0) setAnimals(cattleOpts);
+        }
+      })
+      .catch(console.error);
+
+    return () => { isMounted = false; };
+  }, []);
   const [logs, setLogs] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -21,6 +44,8 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const [showFAB, setShowFAB] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [availableFarms, setAvailableFarms] = useState([]);
+  const [sheds, setSheds] = useState([]);
+  const [animals, setAnimals] = useState([]);
 
   const [filters, setFilters] = useState([
     { field: "entryDate", value: "", from: "", to: "" }
@@ -46,7 +71,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       fields: [
         { name: 'tagId', label: 'Tag ID' },
         { name: 'animalId', label: 'Animal ID' },
-        { name: 'shedId', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
         { name: 'symptoms', label: 'Symptoms' },
         { name: 'diagnosis', label: 'Diagnosis' },
         { name: 'treatment', label: 'Treatment' },
@@ -59,8 +84,8 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       icon: '🌾',
       fields: [
         { name: 'date', label: 'Date', type: 'date' },
-        { name: 'shedId', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4'] },
-        { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: ['Buffalo', 'B.Calf', 'Cow', 'C.Calf'] },
+        { name: 'shedId', label: 'Shed Number', type: 'select', options: sheds },
+        { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: animals },
         { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
         { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
         { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
@@ -115,7 +140,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       name: 'Milk Production',
       icon: '🥛',
       fields: [
-        { name: 'shedId', label: 'Shed No.', type: 'select', options: ['1', '2', '3'] },
+        { name: 'shedId', label: 'Shed No.', type: 'select', options: sheds },
         { name: 'tagId', label: 'Tag ID' },
         { name: 'session', label: 'Session', type: 'select', options: ['MORNING', 'EVENING'] },
         { name: 'quantity', label: 'Quantity (L)', type: 'number' },
@@ -130,7 +155,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       fields: [
         { name: 'tagId', label: 'Tag ID' },
         { name: 'animalId', label: 'Animal ID' },
-        { name: 'shedId', label: 'Shed', type: 'select', options: ['1', '2', '3', '4'] },
+        { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
         { name: 'vaccinationName', label: 'Vaccine Name' },
         { name: 'batchNo', label: 'Vaccine Batch No' },
         { name: 'manufactureDate', label: 'Manufacture Date', type: 'date' },
@@ -664,9 +689,20 @@ const activeFilterCount = filters.filter(
   return (
     <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-[#16223F] font-sans">{farmCode} Farm</h1>
-          <p className="text-slate-500 mt-1">{current?.name}</p>
+        <div className="flex items-center gap-5">
+          <button 
+            onClick={() => router.push('/farms')}
+            className="flex items-center justify-center w-12 h-12 rounded-[1rem] bg-white border border-[#e3e8f2] text-[#16223F] hover:bg-[#16223F] hover:text-white hover:border-[#16223F] shadow-sm hover:shadow-md transition-all duration-200 group"
+            title="Back to Farms"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-[#16223F] font-sans">{farmCode} Farm</h1>
+            <p className="text-slate-500 mt-1 font-medium">{current?.name}</p>
+          </div>
         </div>
         {activeTab !== 'overview' && (
         <div className="flex flex-wrap gap-2 w-full md:w-auto">

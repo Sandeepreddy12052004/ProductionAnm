@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
 
 const FarmsPg = () => {
+  const router = useRouter();
   const [farms, setFarms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,65 +121,70 @@ const FarmsPg = () => {
         </button>
       </div>
 
-      {/* TABLE CARD */}
-      <div className="flex-1 flex flex-col bg-white rounded-[30px] overflow-hidden border border-[#e3e8f2] shadow-sm relative">
-        {/* TABLE HEADER */}
-        <div className="flex-none grid grid-cols-4 px-6 py-4 bg-[#f8fafc]
-        text-[#53698c] text-[11px] font-black uppercase tracking-wide border-b border-[#e3e8f2]">
-          <div>Farm Name</div>
-          <div>Farm Code</div>
-          <div>Address / Location</div>
-          <div>Actions</div>
-        </div>
-
-        {/* DATA CONTAINER */}
-        <div className="flex-1 overflow-auto">
-          {/* DATA */}
+      {/* GRID LAYOUT */}
+      <div className="flex-1 overflow-auto">
         {isFetching ? (
-          <SkeletonLoader type="grid-row" columns={4} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonLoader type="table" columns={1} />
+            <SkeletonLoader type="table" columns={1} />
+            <SkeletonLoader type="table" columns={1} />
+          </div>
         ) : farms.length > 0 ? (
-          farms.map(farm => (
-            <div
-              key={farm._id || farm.id}
-              className="grid grid-cols-4 items-center
-              px-6 py-5 border-t border-[#edf1f7]
-              hover:bg-[#fafcff] transition-all"
-            >
-              <div className="font-bold text-sm text-[#071437]">
-                {farm.name}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {farms.map(farm => (
+              <div
+                key={farm._id || farm.id}
+                onClick={() => router.push(`/farm/${farm.code.toLowerCase()}`)}
+                className="bg-white rounded-[2rem] p-7 border border-[#e3e8f2] shadow-sm hover:shadow-2xl hover:shadow-[#16223F]/5 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col group relative overflow-hidden"
+              >
+                {/* Decorative background blob */}
+                <div className="absolute -top-6 -right-6 w-32 h-32 bg-[#f0f4f8] rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500 -z-10"></div>
+
+                {/* Header section */}
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-[#071437] tracking-tight">{farm.name}</h3>
+                    <p className="text-[#5d7399] font-bold text-sm tracking-widest uppercase mt-1">{farm.code}</p>
+                  </div>
+                  <div className="w-14 h-14 rounded-2xl bg-[#f0f4f8] flex items-center justify-center text-3xl shadow-inner group-hover:-rotate-12 transition-transform duration-300">
+                    🏠
+                  </div>
+                </div>
+
+                {/* Body section */}
+                <div className="flex items-start gap-3 mb-8 text-[#53698c] flex-1">
+                  <span className="text-lg opacity-80 mt-0.5">📍</span>
+                  <p className="font-semibold leading-relaxed">
+                    {farm.address || 'No address provided'} 
+                    {farm.location && <><br/><span className="text-[#071437] font-black">{farm.location}</span></>}
+                  </p>
+                </div>
+
+                {/* Footer section (Buttons) */}
+                <div className="flex gap-4 mt-auto pt-6 border-t border-[#edf1f7] relative z-20">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEdit(farm); }}
+                    className="flex-1 py-3 rounded-xl bg-[#f0f4f8] text-[#071437] font-black hover:bg-[#071437] hover:text-white transition-all shadow-sm hover:shadow-md text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(farm._id || farm.id); }}
+                    className="flex-1 py-3 rounded-xl bg-red-50 text-red-600 font-black hover:bg-red-600 hover:text-white transition-all shadow-sm hover:shadow-md text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-              <div className="font-bold text-sm text-[#5d7399]">
-                {farm.code}
-              </div>
-              <div className="text-xs text-[#5d7399]">
-                {farm.address} {farm.location ? `(${farm.location})` : ''}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleEdit(farm)}
-                  className="px-3 py-1.5 rounded-xl
-                  bg-blue-50 text-blue-600 font-bold
-                  hover:bg-blue-100 transition-all"
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(farm._id || farm.id)}
-                  className="px-3 py-1.5 rounded-xl
-                  bg-red-50 text-red-600 font-bold
-                  hover:bg-red-100 transition-all"
-                >
-                  🗑 Delete
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="p-20 text-center text-[#94a3b8] font-semibold text-lg">
-            No Farms Found
+          <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl border border-[#e3e8f2] shadow-sm">
+            <div className="text-4xl mb-4 opacity-50">🚜</div>
+            <h3 className="text-xl font-bold text-[#071437] mb-2">No Farms Found</h3>
+            <p className="text-[#5d7399]">Get started by creating your first farm.</p>
           </div>
         )}
-        </div>
       </div>
 
       {/* MODAL */}

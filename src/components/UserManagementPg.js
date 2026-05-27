@@ -324,19 +324,18 @@ const UserManagementPg = ({ moduleConfig }) => {
         payload.status = payload.status === 'Active' || payload.status === 'ACTIVE';
       }
       
-      // Look up the Farm ID if a farm name string is passed instead of an ObjectId
-      if (payload.farm && typeof payload.farm === 'string' && !payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
-        try {
-          const farms = await api.farms.getAll();
-          const targetFarm = farms.find(f => f.code === payload.farm || f.name === payload.farm);
-          if (targetFarm) {
-            payload.farmId = targetFarm.id || targetFarm._id;
-          }
-        } catch (farmErr) {
-          console.error("Failed to lookup farm ID:", farmErr);
+      // Handle ALL farms selection (Super Admin)
+      if (payload.farmId === 'ALL') {
+        payload.farmId = null;
+      }
+      
+      // If we still receive the old 'farm' key from the form state, handle it
+      if (payload.farm) {
+        if (payload.farm === 'ALL' || payload.farm === 'All Farms') {
+          payload.farmId = null;
+        } else if (payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
+          payload.farmId = payload.farm;
         }
-      } else if (payload.farm && typeof payload.farm === 'string' && payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
-        payload.farmId = payload.farm;
       }
 
       // Cleanup empty strings that break backend validation
@@ -407,9 +406,20 @@ const UserManagementPg = ({ moduleConfig }) => {
   };
 
   const openEdit = (user) => {
-    // Map the backend farmId object back to the string name so the dropdown pre-selects correctly
+    // Map the backend farmId object back to the string id so the dropdown pre-selects correctly
     const formUser = { ...user };
-    formUser.farm = getFarmName(user);
+    if (user.farmId && typeof user.farmId === 'object') {
+      formUser.farmId = user.farmId._id || user.farmId.id;
+    } else if (user.farmId) {
+      formUser.farmId = user.farmId;
+    } else {
+      formUser.farmId = 'ALL';
+    }
+    
+    if (user.department && typeof user.department === 'object') {
+      formUser.department = user.department._id || user.department.id;
+    }
+    
     setSelectedEntry(formUser);
     setIsEditing(true);
     setShowForm(true);

@@ -251,91 +251,20 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                     </>
                   )}
 
-                  {/* Farm Management Collapsible Dropdown */}
+                  {/* Farm Management Navigation */}
                   <li>
-                    <button
-                      onClick={() => toggleState(setFarmOpen, 'farmOpen', farmOpen)}
-                      className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>🏠 Farm Management</span>
-                      <motion.span animate={{ rotate: farmOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
-
-                    <AnimatePresence>
-                      {farmOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-1 space-y-1 pl-3 overflow-hidden"
-                        >
-                          {farmsList.map((farm) => (
-                            <li key={farm.code}>
-                              <Link href={`/farm/${farm.code.toLowerCase()}`} onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  router.asPath.includes(`/farm/${farm.code.toLowerCase()}`) && !router.query.tab ? activeStyle : normalStyle
-                                }`}>
-                                🏠 {farm.name}
-                              </Link>
-                            </li>
-                          ))}
-                          
-                          <li className="mt-2 border-t border-slate-200 pt-2">
-                            <Link href="/farms" onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                router.pathname === "/farms" ? activeStyle : normalStyle
-                              }`}>
-                              ⚙️ Manage Farms
-                            </Link>
-                          </li>
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
+                    <Link href="/farms" onClick={handleCloseSidebar}
+                      className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
+                      🏠 Farm Management
+                    </Link>
                   </li>
 
-                  {/* SHED OPERATIONS DROPDOWN */}
-                  <li className="mt-2 border-t border-slate-200 pt-2">
-                    <button
-                      onClick={() => toggleState(setShedOpen, 'shedOpen', shedOpen)}
-                      className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>🪵 Shed Operations</span>
-                      <motion.span animate={{ rotate: shedOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
-
-                    <AnimatePresence>
-                      {shedOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-1 space-y-1 pl-3 overflow-hidden"
-                        >
-                          <li>
-                            <Link href="/shed" onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                router.pathname === "/shed" ? activeStyle : normalStyle
-                              }`}>
-                              📝 Shed Log
-                            </Link>
-                          </li>
-                          <li>
-                            <Link href="/shed-management" onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                router.pathname === "/shed-management" ? activeStyle : normalStyle
-                              }`}>
-                              ⚙️ Shed Management
-                            </Link>
-                          </li>
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
+                  {/* SHED MANAGEMENT Navigation */}
+                  <li>
+                    <Link href="/shed-management" onClick={handleCloseSidebar}
+                      className={`block p-2 rounded border-l-4 ${router.pathname === "/shed-management" ? activeStyle : normalStyle}`}>
+                      ⚙️ Shed Management
+                    </Link>
                   </li>
 
                   <li>
@@ -376,6 +305,14 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                     <Link href="/animals" onClick={handleCloseSidebar}
                       className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
                       🐄 Live Stock
+                    </Link>
+                  </li>
+
+                  {/* Shed Log */}
+                  <li>
+                    <Link href="/shed" onClick={handleCloseSidebar}
+                      className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
+                      📝 Shed Log
                     </Link>
                   </li>
 
