@@ -30,11 +30,7 @@ const itemsPerPage = 10;
 
 // MODULE ROUTING (PILL TABS)
 const modules = [
-  { id: 'livestock', name: 'Live Stock', icon: '🐄', path: '/animals' },
-  { id: 'crossing', name: 'Crossing Log', icon: '🧬', path: '/crossing' },
-  { id: 'shed', name: 'Shed Log', icon: '🏠', path: '/shed' },
-  { id: 'purchase', name: 'Purchase Log', icon: '📥', path: '/purchase' },
-  { id: 'sale', name: 'Sale Log', icon: '📤', path: '/sale' }
+  { id: 'livestock', name: 'Live Stock', icon: '🐄', path: '/animals' }
 ];
 
 const [dynamicShedOptions, setDynamicShedOptions] = useState(null);
@@ -778,22 +774,6 @@ const getShedFromLivestock = (tagValue) => {
           </div>
         </header>
 
-        {/* PILL TABS */}
-        <div className="flex flex-wrap gap-2 mb-4 md:mb-6">
-          {modules.map(m => (
-            <button
-              key={m.id}
-              onClick={() => router.push(m.path)}
-              className={`px-5 py-2 rounded-full text-xs font-bold border transition-all ${
-                current.id === m.id 
-                  ? 'bg-[#16223F] text-white border-[#16223F] shadow-md' 
-                  : 'bg-white text-black border-gray-300 hover:bg-gray-100 hover:shadow-sm'
-              }`}
-            >
-              {m.icon} {m.name}
-            </button>
-          ))}
-        </div>
 
         {/* Filter Bar */}
         

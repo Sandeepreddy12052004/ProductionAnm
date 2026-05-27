@@ -316,6 +316,31 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                     </Link>
                   </li>
 
+                  {/* Crossing Log */}
+                  <li>
+                    <Link href="/crossing" onClick={handleCloseSidebar}
+                      className={`block p-2 rounded border-l-4 ${isLinkActive("/crossing") ? activeStyle : normalStyle}`}>
+                      🧬 Crossing Log
+                    </Link>
+                  </li>
+
+                  {/* Purchase Log */}
+                  <li>
+                    <Link href="/purchase" onClick={handleCloseSidebar}
+                      className={`block p-2 rounded border-l-4 ${isLinkActive("/purchase") ? activeStyle : normalStyle}`}>
+                      📥 Purchase Log
+                    </Link>
+                  </li>
+
+                  {/* Sale Log */}
+                  <li>
+                    <Link href="/sale" onClick={handleCloseSidebar}
+                      className={`block p-2 rounded border-l-4 ${isLinkActive("/sale") ? activeStyle : normalStyle}`}>
+                      📤 Sale Log
+                    </Link>
+                  </li>
+
+
                   {/* Health Dropdown */}
                   <li>
                     <button
