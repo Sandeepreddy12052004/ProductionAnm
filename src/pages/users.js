@@ -46,7 +46,7 @@ export default function UsersPage() {
         name: 'farm',
         label: 'Farm',
         type: 'select',
-        options: farms
+        options: ['All Farms', ...farms]
       },
       {
         name: 'department',

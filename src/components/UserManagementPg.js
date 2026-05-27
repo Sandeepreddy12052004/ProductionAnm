@@ -264,6 +264,22 @@ const UserManagementPg = ({ moduleConfig }) => {
     dedupingInterval: 5000
   });
 
+  const { data: farmsData } = useSWR('farms_cache', async () => {
+    const data = await api.farms.getAll();
+    return data || [];
+  }, { revalidateOnFocus: false });
+
+  const getFarmName = (user) => {
+    if (user.role === 'SUPER_ADMIN') return "All Farms";
+    if (!user.farmId) return user.farm || "All Farms";
+    if (typeof user.farmId === 'object') return user.farmId.name || user.farmId.code;
+    if (farmsData) {
+       const f = farmsData.find(f => f.id === user.farmId || f._id === user.farmId);
+       if (f) return f.name || f.code;
+    }
+    return user.farm || "-";
+  };
+
   // FILTER LOGIC
   const safeUsers = Array.isArray(users) ? users : [];
   const filteredUsers = safeUsers.filter(user => {
@@ -273,8 +289,8 @@ const UserManagementPg = ({ moduleConfig }) => {
       (user.name?.toLowerCase() || '').includes(searchLower) ||
       (user.userId?.toLowerCase() || '').includes(searchLower);
 
-    const userFarmName = typeof user.farmId === 'object' ? user.farmId?.name : user.farm;
-    const matchFarm = !filters.farm || userFarmName === filters.farm;
+    const userFarmName = getFarmName(user);
+    const matchFarm = !filters.farm || userFarmName === filters.farm || filters.farm === 'All Farms';
     const matchDept = !filters.department || user.department === filters.department;
     const matchRole = !filters.role || user.role === filters.role;
     
@@ -374,6 +390,7 @@ const UserManagementPg = ({ moduleConfig }) => {
       try {
         await api.users.delete(id);
         mutate();
+        closeAll();
         swalSuccess("Deleted", "User deleted successfully");
       } catch (err) {
         console.error(err);
@@ -392,11 +409,7 @@ const UserManagementPg = ({ moduleConfig }) => {
   const openEdit = (user) => {
     // Map the backend farmId object back to the string name so the dropdown pre-selects correctly
     const formUser = { ...user };
-    if (user.farmId && typeof user.farmId === 'object') {
-      formUser.farm = user.farmId.name || user.farmId.code;
-    } else if (user.farm) {
-      formUser.farm = user.farm;
-    }
+    formUser.farm = getFarmName(user);
     setSelectedEntry(formUser);
     setIsEditing(true);
     setShowForm(true);
@@ -430,7 +443,7 @@ const UserManagementPg = ({ moduleConfig }) => {
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Farms</option>
-          {moduleConfig.fields.find(f => f.name === 'farm')?.options?.map(opt => (
+          {moduleConfig.fields.find(f => f.name === 'farm')?.options?.filter(opt => opt !== 'All Farms').map(opt => (
             typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
@@ -481,8 +494,8 @@ const UserManagementPg = ({ moduleConfig }) => {
               <th className="p-4 border-b">Farm</th>
               <th className="p-4 border-b">Department</th>
               <th className="p-4 border-b">Role</th>
-              <th className="p-4 border-b text-center">Status</th>
-              <th className="p-4 border-b">Actions</th>
+              <th className="p-4 border-b text-center align-middle">Status</th>
+              <th className="p-4 border-b text-center align-middle">Actions</th>
             </tr>
           </thead>
 
@@ -500,31 +513,36 @@ const UserManagementPg = ({ moduleConfig }) => {
               <SkeletonLoader type="table" columns={10} />
             ) : filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
-                <tr key={user.id || user._id} className="hover:bg-[#D1867D]/5 transition-colors cursor-pointer">
+                <tr 
+                  key={user.id || user._id} 
+                  className="hover:bg-[#D1867D]/5 transition-colors cursor-pointer"
+                  onClick={() => { setSelectedEntry(user); setViewMode(true); }}
+                >
 
                   <td className="p-4 text-sm font-medium text-black">{index + 1}</td>
                   <td className="p-4 text-sm font-semibold text-black">{user.userId}</td>
                   <td className="p-4 text-sm font-bold text-black">{user.name}</td>
                   <td className="p-4 text-sm text-gray-500 font-sans">{user.email || "-"}</td>
                   <td className="p-4 text-sm text-gray-500 font-sans">{user.phone || user.mobile || "-"}</td>
-                  <td className="p-4 text-sm font-semibold text-black">{typeof user.farmId === 'object' ? user.farmId?.name : user.farm || "-"}</td>
+                  <td className="p-4 text-sm font-semibold text-black">{getFarmName(user)}</td>
                   <td className="p-4 text-sm font-semibold text-gray-600">{user.department}</td>
                   <td className="p-4 text-sm font-semibold text-gray-600">{user.role}</td>
 
                   {/* ✅ STATUS CLICKABLE */}
-                  <td className="p-4 text-center">
+                  <td className="p-4 text-center align-middle">
                     {statusEditId === (user.id || user._id) ? (
                       <select
                         value={user.status === false || user.status === 'Inactive' ? 'Inactive' : 'Active'}
                         onChange={(e) => handleStatusChange(user.id || user._id, e.target.value)}
                         className="px-2 py-1 rounded-xl bg-gray-50 border border-gray-200 text-sm font-semibold outline-none focus:border-[#D1867D]"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                       </select>
                     ) : (
                       <span
-                        onClick={() => setStatusEditId(user.id || user._id)}
+                        onClick={(e) => { e.stopPropagation(); setStatusEditId(user.id || user._id); }}
                         className={`cursor-pointer px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
                           user.status === false || user.status === 'Inactive'
                             ? "bg-red-50 text-red-700 border-red-100/50"
@@ -536,36 +554,15 @@ const UserManagementPg = ({ moduleConfig }) => {
                     )}
                   </td>
 
-                  <td className="p-4 flex gap-2 items-center">
-                    <button
-                      onClick={() => {
-                        setSelectedEntry(user);
-                        setViewMode(true);
-                      }}
-                      className="bg-[#16223F] hover:bg-[#16223F]/90 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
-                    >
-                      View
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setSelectedEntry(user);
-                        setIsEditing(true);
-                        setShowForm(true);
-                      }}
-                      className="bg-[#D1867D] hover:bg-[#D1867D]/90 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
-                    >
-                      Edit
-                    </button>
-
+                  <td className="p-4 text-center align-middle">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(user.id || user._id);
+                        openEdit(user);
                       }}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
+                      className="bg-[#D1867D] hover:bg-[#D1867D]/90 text-white px-4 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
                     >
-                      Delete
+                      Edit
                     </button>
                   </td>
 
@@ -586,17 +583,31 @@ const UserManagementPg = ({ moduleConfig }) => {
       {/* VIEW MODAL */}
       {selectedEntry && viewMode && (
         <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-          <div className="bg-white p-7 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-[400px]">
+          <div className="bg-white p-7 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-[400px] relative">
 
-            <h3 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight">User Details</h3>
+            {/* CLOSE ICON */}
+            <button
+              onClick={() => setViewMode(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold z-10"
+              type="button"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight pr-8">User Details</h3>
 
             <div className="space-y-4 mb-6">
-              {moduleConfig.fields.map(field => (
-                <div key={field.name} className="border-b border-slate-50 pb-2">
-                  <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
-                  <span className="text-sm font-semibold text-slate-800">{selectedEntry[field.name] || "-"}</span>
-                </div>
-              ))}
+              {moduleConfig.fields.map(field => {
+                if (field.name === 'password') return null;
+                return (
+                  <div key={field.name} className="border-b border-slate-50 pb-2">
+                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
+                    <span className="text-sm font-semibold text-slate-800">{
+                      field.name === 'farm' ? getFarmName(selectedEntry) : (selectedEntry[field.name] || "-")
+                    }</span>
+                  </div>
+                );
+              })}
             </div>
 
             <button
@@ -619,6 +630,7 @@ const UserManagementPg = ({ moduleConfig }) => {
           existingRecords={users}
           onSubmit={handleSave}
           onClose={closeAll}
+          onDelete={isEditing ? () => handleDelete(selectedEntry.id || selectedEntry._id) : null}
         />
       )}
 

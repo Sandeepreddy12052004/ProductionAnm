@@ -1,6 +1,6 @@
   import React, { useState } from 'react';
 
-  const LogForm = ({ title, fields, onSubmit, onClose, initialData = {}, existingRecords = [] }) => {
+  const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
 
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
@@ -520,10 +520,20 @@
   <button
     type="button"
     onClick={onClose}
-    className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-3 rounded-xl font-bold shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all border border-red-100"
+    className="flex-1 bg-slate-100 text-slate-600 hover:bg-slate-200 py-3 rounded-xl font-bold shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all border border-slate-200"
   >
     Cancel
   </button>
+
+  {onDelete && (
+    <button
+      type="button"
+      onClick={onDelete}
+      className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-3 rounded-xl font-bold shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all border border-red-100"
+    >
+      Delete
+    </button>
+  )}
             </div>
           </form>
         </div>
