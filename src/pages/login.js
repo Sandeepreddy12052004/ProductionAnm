@@ -4,6 +4,10 @@ import Image from "next/image";
 import { motion } from "framer-motion"; // For that premium smooth entrance
 import { swalError } from "@/utils/swal";
 
+const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:3001'
+  : 'https://farm.agasthyanutromilk.com';
+
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -15,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const response = await fetch("https://farm.agasthyanutromilk.com/api/auth/login", {
+      const response = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
