@@ -1,6 +1,8 @@
 import { swalError } from './swal';
 
-const BASE_URL = 'https://farm.agasthyanutromilk.com';
+const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:3001'
+  : 'https://farm.agasthyanutromilk.com';
 
 /**
  * Asynchronously verify if the token itself is dead/expired.
