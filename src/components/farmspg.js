@@ -18,17 +18,36 @@ const FarmsPg = () => {
     location: ""
   });
   const [editingId, setEditingId] = useState(null);
+  const [livestock, setLivestock] = useState([]);
 
   const fetchFarms = async () => {
     setIsFetching(true);
     try {
-      const data = await api.farms.getAll();
-      setFarms(data || []);
+      const [farmsData, livestockData] = await Promise.all([
+        api.farms.getAll(),
+        api.cattle.getAll().catch(err => {
+          console.error("Failed to fetch livestock for count:", err);
+          return [];
+        })
+      ]);
+      setFarms(farmsData || []);
+      setLivestock(livestockData || []);
     } catch (err) {
       console.error(err);
     } finally {
       setIsFetching(false);
     }
+  };
+
+  const getAnimalCountForFarm = (farm) => {
+    return livestock.filter(animal => {
+      const animalFarmId = animal.farmId?._id || animal.farmId;
+      const targetFarmId = farm._id || farm.id;
+      return (
+        (animalFarmId && targetFarmId && animalFarmId.toString() === targetFarmId.toString()) ||
+        String(animalFarmId || '').trim().toUpperCase() === String(farm.code || '').trim().toUpperCase()
+      ) && animal.status?.toUpperCase() === 'ACTIVE' && !animal.isDeleted;
+    }).length;
   };
 
   useEffect(() => {
@@ -149,6 +168,12 @@ const FarmsPg = () => {
                   <div className="w-14 h-14 rounded-2xl bg-[#f0f4f8] flex items-center justify-center text-3xl shadow-inner group-hover:-rotate-12 transition-transform duration-300">
                     🏠
                   </div>
+                </div>
+
+                {/* Animal Count Badge */}
+                <div className="flex items-center gap-2 mb-5 bg-[#f0f4f8] hover:bg-[#e2e8f0] text-[#071437] px-4 py-2 rounded-2xl w-fit font-bold text-sm transition-all duration-200">
+                  <span>🐄</span>
+                  <span>{getAnimalCountForFarm(farm)} Active Animals</span>
                 </div>
 
                 {/* Body section */}
