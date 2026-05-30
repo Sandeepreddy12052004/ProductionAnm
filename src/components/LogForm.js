@@ -16,6 +16,24 @@
     const [tagError, setTagError] = useState("");
     const [dobError, setDobError] = useState("");
     const [userIdError, setUserIdError] = useState("");
+    
+    // States for custom searchable role select & permissions summary
+    const [roleList, setRoleList] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+
+    React.useEffect(() => {
+      const hasRoleField = (fields || []).some(f => f.name === 'role');
+      if (hasRoleField && title?.includes('User')) {
+        import('../utils/api').then(({ api }) => {
+          api.roles.getAll().then(roles => {
+            setRoleList(roles || []);
+          }).catch(err => {
+            console.error("Failed to load roles for select:", err);
+          });
+        });
+      }
+    }, [fields, title]);
 
 
   const getShedFromLivestock = (tagValue) => {
@@ -267,25 +285,130 @@
               <div key={field.name}>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">{field.label}</label>
                 {field.type === "select" ? (
-      <select
-        name={field.name}
-        value={formData[field.name] || ""}
-        required={!field.optional && field.name !== "age"}
-        className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
-        onChange={handleChange}
-      >
-        <option value="">Select {field.label}</option>
-        {field.options?.map((opt) => {
-          const isObj = typeof opt === 'object' && opt !== null;
-          const val = isObj ? opt.value : opt;
-          const label = isObj ? opt.label : opt;
-          return (
-            <option key={val} value={val}>
-              {label}
-            </option>
-          );
-        })}
-      </select>
+                  field.name === "role" && title?.includes("User") ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="relative">
+                        <div
+                          onClick={() => setDropdownOpen(!dropdownOpen)}
+                          className="mt-1 flex justify-between items-center w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 cursor-pointer"
+                        >
+                          <span className="font-semibold text-sm text-[#071437]">
+                            {formData.role ? (roleList.find(r => r.name === formData.role)?.name || formData.role) : `Select System Profile`}
+                          </span>
+                          <span className="text-xs text-slate-400">▼</span>
+                        </div>
+
+                        {dropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3.5 flex flex-col gap-2.5 max-h-[220px] overflow-y-auto custom-scrollbar">
+                            <input
+                              type="text"
+                              placeholder="Search roles..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:border-[#071437] font-semibold text-[#071437]"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="flex flex-col gap-1.5">
+                              {roleList
+                                .filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .map(role => (
+                                  <div
+                                    key={role._id || role.id}
+                                    onClick={() => {
+                                      setFormData(prev => ({ ...prev, role: role.name }));
+                                      setDropdownOpen(false);
+                                      setSearchQuery("");
+                                    }}
+                                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all duration-250 ${
+                                      formData.role === role.name 
+                                        ? 'bg-[#071437] text-white shadow-sm' 
+                                        : 'bg-slate-50 text-[#071437] hover:bg-slate-100 hover:translate-x-0.5'
+                                    }`}
+                                  >
+                                    {role.name}
+                                    <span className="block text-[10px] opacity-70 font-semibold mt-0.5">{role.description || 'No description provided.'}</span>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Read-Only Access Feedback Summary badges */}
+                      {formData.role && (
+                        <div className="mt-2 bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-2">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Access Permissions Summary</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(() => {
+                              const selectedRoleObj = roleList.find(r => r.name === formData.role);
+                              if (!selectedRoleObj) return <span className="text-xs text-slate-400 font-semibold">Standard database access.</span>;
+                              
+                              const perms = selectedRoleObj.permissions || [];
+                              if (perms.includes('ALL')) {
+                                return (
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase tracking-wider">
+                                    🌟 Full Master Control (Super Admin)
+                                  </span>
+                                );
+                              }
+
+                              const matchedModules = [];
+                              const mappings = {
+                                'USER_MANAGEMENT': '👥 User Management',
+                                'DEPARTMENT': '🏢 Department',
+                                'FARM_MANAGEMENT': '🏠 Farm Management',
+                                'SHED_MANAGEMENT': '⚙️ Shed Management',
+                                'CATTLE_MANAGEMENT': '🐄 Cattle Management',
+                                'LIVESTOCK': '🐄 Live Stock',
+                                'SHED_LOG': '📝 Shed Log',
+                                'CROSSING_LOG': '🧬 Crossing Log',
+                                'PURCHASE_LOG': '📥 Purchase Log',
+                                'SALE_LOG': '📤 Sale Log',
+                                'HEALTH': '🩺 Health Log'
+                              };
+
+                              Object.entries(mappings).forEach(([prefix, label]) => {
+                                const hasAccess = perms.some(p => p.startsWith(prefix));
+                                if (hasAccess) {
+                                  matchedModules.push(label);
+                                }
+                              });
+
+                              if (matchedModules.length === 0) {
+                                return <span className="text-xs text-slate-400 font-semibold">No active permissions.</span>;
+                              }
+
+                              return matchedModules.map(label => (
+                                <span key={label} className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-100 text-slate-600 border border-slate-200">
+                                  {label}
+                                </span>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <select
+                      name={field.name}
+                      value={formData[field.name] || ""}
+                      required={!field.optional && field.name !== "age"}
+                      className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
+                      onChange={handleChange}
+                    >
+                      <option value="">Select {field.label}</option>
+                      {field.options?.map((opt) => {
+                        const isObj = typeof opt === 'object' && opt !== null;
+                        const val = isObj ? opt.value : opt;
+                        const label = isObj ? opt.label : opt;
+                        return (
+                          <option key={val} value={val}>
+                            {label}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )
 ) : field.name === "tag"  ? (
   <>
     <input

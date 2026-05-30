@@ -27,6 +27,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/profile",
     "/users",
     "/department",
+    "/roles",
     "/shed",
     "/animals",
     "/farms"
@@ -246,6 +247,13 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                         <Link href="/department" onClick={handleCloseSidebar}
                           className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
                           🏢 Department
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link href="/roles" onClick={handleCloseSidebar}
+                          className={`block p-2 rounded border-l-4 ${isLinkActive("/roles") ? activeStyle : normalStyle}`}>
+                          🛡️ Role & Permissions
                         </Link>
                       </li>
                     </>

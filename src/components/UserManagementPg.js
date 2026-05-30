@@ -227,14 +227,16 @@
 
 // export default UserManagementPg;
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
+import { useRouter } from 'next/router';
 import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import LogForm from './LogForm';
 import SkeletonLoader from './SkeletonLoader';
 
 const UserManagementPg = ({ moduleConfig }) => {
+  const router = useRouter();
 
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -249,6 +251,19 @@ const UserManagementPg = ({ moduleConfig }) => {
     role: '',
     status: ''
   });
+
+  // Dynamically capture redirection query params to trigger auto-filled user creation
+  useEffect(() => {
+    if (router.isReady && router.query.action === 'create') {
+      const initialRole = router.query.role || '';
+      setSelectedEntry({ role: initialRole });
+      setIsEditing(false);
+      setShowForm(true);
+      
+      // Clean query parameters shallowly to prevent recurrent popups on page reloads
+      router.replace('/users', undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query, router]);
 
   // 👉 NEW STATE FOR STATUS EDIT
   const [statusEditId, setStatusEditId] = useState(null);
@@ -266,6 +281,11 @@ const UserManagementPg = ({ moduleConfig }) => {
 
   const { data: farmsData } = useSWR('farms_cache', async () => {
     const data = await api.farms.getAll();
+    return data || [];
+  }, { revalidateOnFocus: false });
+
+  const { data: rolesList } = useSWR('roles_cache', async () => {
+    const data = await api.roles.getAll();
     return data || [];
   }, { revalidateOnFocus: false });
 
@@ -474,9 +494,15 @@ const UserManagementPg = ({ moduleConfig }) => {
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] font-semibold focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 cursor-pointer"
         >
           <option value="">All Roles</option>
-          {moduleConfig.fields.find(f => f.name === 'role')?.options?.map(opt => (
-            typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
-          ))}
+          {rolesList && rolesList.length > 0 ? (
+            rolesList.map(r => (
+              <option key={r._id || r.id} value={r.name}>{r.name}</option>
+            ))
+          ) : (
+            moduleConfig.fields.find(f => f.name === 'role')?.options?.map(opt => (
+              typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
+            ))
+          )}
         </select>
 
         <select
