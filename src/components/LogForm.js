@@ -1,4 +1,5 @@
   import React, { useState } from 'react';
+  import LivestockTagInput from './LivestockTagInput';
 
   const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
 
@@ -409,96 +410,34 @@
                       })}
                     </select>
                   )
-) : field.name === "tag"  ? (
-  <>
-    <input
-      type="text"
-      // name="tag"
-      name={field.name}
-      list="tag-options"
-      // value={formData.tag || ""}
-      value={formData[field.name] || ""}
-      required={!field.optional}
-      className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
-      onChange={(e) => {
-        handleChange(e);
-        const value = e.target.value;
-        const livestock = JSON.parse(localStorage.getItem("global_livestock_logs") || "[]");
-        const found = livestock.find(item => item.tag === value);
-        const exists = !!found;
-        // const exists = livestock.some(item => item.tag === value);
-
-
-
-         // PURCHASE VALIDATION (REAL-TIME BLOCK)
-         if (title.includes("Purchase")) {
-          const livestock = JSON.parse(localStorage.getItem("global_livestock_logs") || "[]");
-          const exists = livestock.some(item => item.tag === value);
-
-          if (exists) {
-            setTagError("Tag already exists in Livestock");
-          } else {
-            setTagError("");
-          }
-}
-
-        
-       else if (title.includes("Sale")) {
-          if (!exists && value !== "") {
-            setTagError("Invalid Tag");
-          }else if (exists && found.status === "Sold") {
-            setTagError("Animal has already been sold");
-          }
-          else {
-            setTagError("");
-          }
-        } else if (title.includes("Crossing")) {
-          if (!found && value.trim() !== "") {
-            setTagError("Tag not found in Livestock");
-          }else if (found && found.status === "Sold") {
-            setTagError("Animal is Sold");   
-          }else if (found && found.status && found.status !== "Active") {
-            setTagError("Animal is not Active");
-          }else if (found && found.gender !== "Female") {
-            setTagError("Only Female animals allowed");   
-            } 
-          else {
-            setTagError("");
-          }
+) : (field.name === 'tag' || field.name === 'tagId' || field.name === 'animalId') && !title?.toLowerCase().includes('live stock') ? (
+  <LivestockTagInput
+    name={field.name}
+    value={formData[field.name] || ''}
+    required={!field.optional}
+    disabled={false}
+    placeholder={`Type or scan ${field.label}...`}
+    validationMode="must_exist"
+    filterFn={
+      title?.toLowerCase().includes('crossing')
+        ? (animal) => animal.gender === 'female'
+        : null
+    }
+    onChange={(fieldName, tagValue, animalRecord) => {
+      setFormData(prev => {
+        const updated = { ...prev, [fieldName]: tagValue };
+        if (animalRecord && (animalRecord.shed || animalRecord.shedId)) {
+          updated.oldShed = animalRecord.shed || animalRecord.shedId || '';
         }
-
-        const shedValue = getShedFromLivestock(e.target.value);
-        if (shedValue) {
-          setFormData(prev => ({
-            ...prev,
-            oldShed: shedValue
-          }));
-        }
-      }}
-    />
-    {tagError && (
-      <p className="text-red-500 text-xs mt-1">{tagError}</p>
-    )}
-
-
-    <datalist id="tag-options">
-      {(JSON.parse(localStorage.getItem("global_livestock_logs") || "[]"))
-        .filter(item => 
-          item.status === "Active" &&
-          item.gender?.toLowerCase() === "female"
-        )
-        .map(item => (
-          <option key={item.tag} value={item.tag}>
-            {item.tag} ({item.breed || "-"})
-          </option>
-        ))}
-    </datalist>
-
-  </>
-    
-    
-      ):(
-        <>      <input
+        return updated;
+      });
+    }}
+    onValidation={(isValid, message) => {
+      setTagError(isValid ? '' : message);
+    }}
+  />
+) : (
+  <>      <input
     type={field.type || "text"}
     name={field.name}
 

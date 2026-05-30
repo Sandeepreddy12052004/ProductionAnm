@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const router = useRouter();
-
   const isFarmRoute = router.pathname.startsWith("/farm/[code]");
   const activeFarmCode = router.query.code || "tkp";
 

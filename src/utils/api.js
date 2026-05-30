@@ -400,6 +400,7 @@ export const api = {
     create:              (data)     => apiRequest('/api/farms', 'POST', data),
     update:              (id, data) => apiRequest(`/api/farms/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/farms/${id}`, 'DELETE'),
+    getCapacity:         (id)       => apiRequest(`/api/farms/${id}/capacity`),
   },
 
   // Sheds
