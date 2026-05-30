@@ -295,6 +295,7 @@
       list="tag-options"
       // value={formData.tag || ""}
       value={formData[field.name] || ""}
+      required={!field.optional}
       className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
       onChange={(e) => {
         handleChange(e);
