@@ -63,7 +63,87 @@ export default function LoginPage() {
         
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("token", token);
-        router.replace("/dashboard");
+
+        // Set cookies so that Next.js Edge Middleware can inspect route permissions
+        try {
+          document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `user=${encodeURIComponent(JSON.stringify(userObj || { role: 'SUPER_ADMIN' }))}; path=/; max-age=86400; SameSite=Lax`;
+        } catch (cookieErr) {
+          console.error("Failed to set authentication cookies:", cookieErr);
+        }
+
+        // Dynamic Post-Login Landing Page Redirection
+        const handlePostLoginRedirect = (user, routerInstance) => {
+          if (!user) {
+            return routerInstance.replace("/profile");
+          }
+
+          const userRole = user.role || '';
+          if (userRole.trim().toUpperCase() === 'SUPER_ADMIN') {
+            return routerInstance.replace("/dashboard");
+          }
+
+          const permissions = user.permissions;
+          if (!Array.isArray(permissions)) {
+            return routerInstance.replace("/profile");
+          }
+
+          const hasAllAccess = permissions.some(p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL');
+          if (hasAllAccess) {
+            return routerInstance.replace("/dashboard");
+          }
+
+          const hasAccess = (moduleKey) => {
+            const permission = permissions.find((p) => {
+              if (!p) return false;
+              if (typeof p === 'object') {
+                return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+              }
+              if (typeof p === 'string') {
+                const lowerP = p.trim().toLowerCase();
+                const lowerModKey = moduleKey.trim().toLowerCase();
+                return lowerP === lowerModKey || lowerP.startsWith(lowerModKey + '_') || lowerP.includes(lowerModKey);
+              }
+              return false;
+            });
+
+            if (!permission) return false;
+            if (typeof permission === 'object') return !!permission.can_view;
+            return true;
+          };
+
+          if (hasAccess('dashboard')) {
+            return routerInstance.replace("/dashboard");
+          }
+
+          const routeMappings = [
+            { key: 'USER_MANAGEMENT', path: '/users' },
+            { key: 'DEPARTMENT', path: '/department' },
+            { key: 'ROLES', path: '/roles' },
+            { key: 'FARM_MANAGEMENT', path: '/farms' },
+            { key: 'SHED_MANAGEMENT', path: '/shed-management' },
+            { key: 'CATTLE_MANAGEMENT', path: '/animals' },
+            { key: 'LIVESTOCK', path: '/animals' },
+            { key: 'SHED_LOG', path: '/shed' },
+            { key: 'CROSSING_LOG', path: '/crossing' },
+            { key: 'PURCHASE_LOG', path: '/purchase' },
+            { key: 'SALE_LOG', path: '/sale' },
+            { key: 'HEALTH', path: '/farm/tkp?tab=health' },
+            { key: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
+            { key: 'GRASS', path: '/farm/tkp?tab=grass' },
+            { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
+            { key: 'MILK', path: '/farm/tkp?tab=milk_prod' }
+          ];
+
+          const firstAllowed = routeMappings.find(r => hasAccess(r.key));
+          if (firstAllowed) {
+            return routerInstance.replace(firstAllowed.path);
+          }
+
+          return routerInstance.replace("/profile");
+        };
+
+        handlePostLoginRedirect(userObj, router);
       } else {
         const errorMsg = (data && (data.message || data.error || data.message)) || "Invalid credentials";
         swalError("Error", errorMsg);

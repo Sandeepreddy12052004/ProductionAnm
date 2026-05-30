@@ -118,6 +118,13 @@ const Profile = () => {
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    try {
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    } catch (cookieErr) {
+      console.error("Failed to clear authentication cookies:", cookieErr);
+    }
     router.replace('/login'); // ✅ prevents back navigation
   };
 
@@ -200,6 +207,13 @@ const Profile = () => {
           onClick={() => {
             localStorage.removeItem("isLoggedIn");
             localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            try {
+              document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+              document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            } catch (cookieErr) {
+              console.error("Failed to clear authentication cookies:", cookieErr);
+            }
             router.replace('/login');
           }}
           className="w-full py-2 rounded-lg bg-red-600 text-white font-semibold"

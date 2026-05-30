@@ -4,6 +4,55 @@ import { api } from '@/utils/api';
 import SkeletonLoader from './SkeletonLoader';
 
 export default function FarmOverview({ farmCode }) {
+  const router = useRouter();
+
+  // --- Client-Side API Firewall state ---
+  const [userObj, setUserObj] = useState(null);
+
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) setUserObj(JSON.parse(storedUser));
+    } catch (e) {
+      console.error("[FarmOverview] Failed to read user session:", e);
+    }
+  }, []);
+
+  /**
+   * Checks whether the current user session holds can_view access for a module.
+   * Supports both string-array and object-array permission schemas defensively.
+   * @param {string} moduleKey
+   * @returns {boolean}
+   */
+  const hasAccess = (moduleKey) => {
+    if (!userObj) return false;
+    const role = userObj.role || '';
+    if (role.trim().toUpperCase() === 'SUPER_ADMIN') return true;
+    const permissions = userObj.permissions;
+    if (!Array.isArray(permissions)) return false;
+    const hasAllAccess = permissions.some(
+      p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL'
+    );
+    if (hasAllAccess) return true;
+
+    const permission = permissions.find((p) => {
+      if (!p) return false;
+      if (typeof p === 'object') {
+        return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+      }
+      if (typeof p === 'string') {
+        const lowerP = p.trim().toLowerCase();
+        const lowerModKey = moduleKey.trim().toLowerCase();
+        return lowerP === lowerModKey || lowerP.startsWith(lowerModKey + '_') || lowerP.includes(lowerModKey);
+      }
+      return false;
+    });
+    if (!permission) return false;
+    if (typeof permission === 'object') return !!permission.can_view;
+    return true;
+  };
+  // --- end firewall state ---
+
   const [metrics, setMetrics] = useState({
     totalCattle: 0,
     activeSheds: 0,
@@ -12,51 +61,174 @@ export default function FarmOverview({ farmCode }) {
   });
   const [farmSheds, setFarmSheds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
+      setError(null);
       try {
         const [cattle, sheds, treatments, milk, farms] = await Promise.all([
-          api.cattle.getAll().catch(() => []),
-          api.sheds.getAll().catch(() => []),
-          api.health.treatments.getAll().catch(() => []),
-          api.milk.collections.getAll().catch(() => []),
-          api.farms.getAll().catch(() => [])
+          api.cattle.getAll().catch(err => ({ isError: true, message: err })),
+          api.sheds.getAll().catch(err => ({ isError: true, message: err })),
+          api.health.treatments.getAll().catch(err => ({ isError: true, message: err })),
+          api.milk.collections.getAll().catch(err => ({ isError: true, message: err })),
+          api.farms.getAll().catch(err => ({ isError: true, message: err }))
         ]);
 
-        const currentFarm = (farms || []).find(f => 
-          f.code?.toUpperCase() === farmCode || 
-          f.name?.toUpperCase().includes(farmCode)
+        // Validate and isolate network/permission failure flags gracefully
+        let authFailed = false;
+        let authErrorMsg = "";
+
+        const checkPayload = (res, name) => {
+          if (!res) {
+            throw new Error(`Empty response payload received for ${name}.`);
+          }
+          if (typeof res === 'object') {
+            if (res.isError) {
+              const errMsg = String(res.message || '');
+              if (errMsg.includes("Access Forbidden") || errMsg.includes("permissions") || errMsg.includes("Unauthorized")) {
+                authFailed = true;
+                authErrorMsg = errMsg;
+                return;
+              }
+              throw new Error(res.message || `Failed to retrieve ${name} from database.`);
+            }
+            if (res.success === false || res.error) {
+              const errMsg = String(res.error || '');
+              if (errMsg.includes("Access Forbidden") || errMsg.includes("permissions") || errMsg.includes("Unauthorized") || res.success === false) {
+                authFailed = true;
+                authErrorMsg = errMsg || "Access restricted.";
+                return;
+              }
+              throw new Error(res.error || `Access restricted or failure in fetching ${name}.`);
+            }
+          }
+        };
+
+        checkPayload(cattle, "cattle");
+        checkPayload(sheds, "sheds");
+        checkPayload(treatments, "health treatments");
+        checkPayload(milk, "milk collections");
+        checkPayload(farms, "farms");
+
+        if (authFailed) {
+          console.error("Authorization check failed:", authErrorMsg);
+          
+          // Silently route the user to their first valid accessible module path
+          const storedUser = localStorage.getItem("user");
+          let userObj = null;
+          if (storedUser) {
+            try {
+              userObj = JSON.parse(storedUser);
+            } catch (e) {}
+          }
+
+          const hasAccess = (moduleKey) => {
+            if (!userObj) return false;
+            const role = userObj.role || '';
+            if (role.trim().toUpperCase() === 'SUPER_ADMIN') return true;
+            const permissions = userObj.permissions;
+            if (!Array.isArray(permissions)) return false;
+            const hasAllAccess = permissions.some(p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL');
+            if (hasAllAccess) return true;
+
+            const permission = permissions.find((p) => {
+              if (!p) return false;
+              if (typeof p === 'object') {
+                return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+              }
+              if (typeof p === 'string') {
+                const lowerP = p.trim().toLowerCase();
+                const lowerModKey = moduleKey.trim().toLowerCase();
+                return lowerP === lowerModKey || lowerP.startsWith(lowerModKey + '_') || lowerP.includes(lowerModKey);
+              }
+              return false;
+            });
+
+            if (!permission) return false;
+            if (typeof permission === 'object') return !!permission.can_view;
+            return true;
+          };
+
+          const routes = [
+            { key: 'USER_MANAGEMENT', path: '/users' },
+            { key: 'DEPARTMENT', path: '/department' },
+            { key: 'ROLES', path: '/roles' },
+            { key: 'FARM_MANAGEMENT', path: '/farms' },
+            { key: 'SHED_MANAGEMENT', path: '/shed-management' },
+            { key: 'CATTLE_MANAGEMENT', path: '/animals' },
+            { key: 'LIVESTOCK', path: '/animals' },
+            { key: 'SHED_LOG', path: '/shed' },
+            { key: 'CROSSING_LOG', path: '/crossing' },
+            { key: 'PURCHASE_LOG', path: '/purchase' },
+            { key: 'SALE_LOG', path: '/sale' },
+            { key: 'HEALTH', path: `/farm/${farmCode}?tab=health` },
+            { key: 'INVENTORY', path: `/farm/${farmCode}?tab=feed_inv` },
+            { key: 'GRASS', path: `/farm/${farmCode}?tab=grass` },
+            { key: 'FEEDING', path: `/farm/${farmCode}?tab=feeding` },
+            { key: 'MILK', path: `/farm/${farmCode}?tab=milk_prod` }
+          ];
+
+          const targetRoute = routes.find(r => hasAccess(r.key))?.path || '/profile';
+          router.push(targetRoute);
+          return;
+        }
+
+        const extractArray = (res) => {
+          if (Array.isArray(res)) return res;
+          if (res && Array.isArray(res.data)) return res.data;
+          return [];
+        };
+
+        const cattleArray = extractArray(cattle);
+        const shedsArray = extractArray(sheds);
+        const treatmentsArray = extractArray(treatments);
+        const milkArray = extractArray(milk);
+
+        // 1. Explicit check to ensure we are working with an actual array structure
+        const farmsArray = Array.isArray(farms) 
+          ? farms 
+          : (farms && Array.isArray(farms.data)) 
+            ? farms.data 
+            : [];
+
+        // 2. Safe query logic against the guaranteed array fallback
+        const currentFarm = farmsArray.find(f => 
+          f?.code?.toUpperCase() === farmCode?.toUpperCase() || 
+          f?.name?.toUpperCase()?.includes(farmCode?.toUpperCase())
         );
         const currentFarmId = currentFarm?._id || currentFarm?.id;
 
         const isCurrentFarm = (item) => {
-          if (item.farmId && typeof item.farmId === 'object') {
+          if (!farmCode) return false;
+          const searchCode = farmCode.toUpperCase();
+
+          if (item?.farmId && typeof item.farmId === 'object') {
             const fCode = item.farmId.code || item.farmId.name || '';
-            if (fCode.toUpperCase().includes(farmCode)) return true;
+            if (fCode?.toUpperCase()?.includes(searchCode)) return true;
             if (currentFarmId && (item.farmId._id === currentFarmId || item.farmId.id === currentFarmId)) return true;
           }
           
-          const rawId = typeof item.farmId === 'string' ? item.farmId : (typeof item.farm === 'string' ? item.farm : null);
+          const rawId = typeof item?.farmId === 'string' ? item.farmId : (typeof item?.farm === 'string' ? item.farm : null);
           if (rawId && currentFarmId && rawId === currentFarmId) {
             return true;
           }
 
-          const itemCode = item.farmId?.code || item.farmId?.name || rawId;
-          if (typeof itemCode === 'string' && itemCode.toUpperCase().includes(farmCode)) return true;
+          const itemCode = item?.farmId?.code || item?.farmId?.name || rawId;
+          if (typeof itemCode === 'string' && itemCode?.toUpperCase()?.includes(searchCode)) return true;
 
-          if (typeof item.shed === 'string' && item.shed.toUpperCase().includes(farmCode)) return true;
+          if (typeof item?.shed === 'string' && item?.shed?.toUpperCase()?.includes(searchCode)) return true;
           
           return false;
         };
 
-        const totalCattle = (cattle || []).filter(isCurrentFarm).length;
-        const activeSheds = (sheds || []).filter(s => isCurrentFarm(s) && s.status === 'ACTIVE').length;
-        const sickAnimals = (treatments || []).filter(t => isCurrentFarm(t) && t.healthStatus === 'Pending').length;
+        const totalCattle = cattleArray.filter(isCurrentFarm).length;
+        const activeSheds = shedsArray.filter(s => isCurrentFarm(s) && s?.status === 'ACTIVE').length;
+        const sickAnimals = treatmentsArray.filter(t => isCurrentFarm(t) && t?.healthStatus === 'Pending').length;
         
-        const farmMilk = (milk || []).filter(isCurrentFarm);
-        const milkProduction = farmMilk.reduce((sum, record) => sum + (Number(record.quantity) || 0), 0);
+        const farmMilk = milkArray.filter(isCurrentFarm);
+        const milkProduction = farmMilk.reduce((sum, record) => sum + (Number(record?.quantity) || 0), 0);
 
         setMetrics({
           totalCattle,
@@ -65,18 +237,32 @@ export default function FarmOverview({ farmCode }) {
           milkProduction
         });
         
-        setFarmSheds((sheds || []).filter(isCurrentFarm));
+        setFarmSheds(shedsArray.filter(isCurrentFarm));
       } catch (err) {
         console.error("Failed to fetch farm overview metrics", err);
+        setError(typeof err === 'string' ? err : (err.message || "Failed to load farm metrics."));
       } finally {
         setLoading(false);
       }
     };
 
-    if (farmCode) {
+    if (farmCode && (hasAccess('dashboard') || hasAccess('FARM_MANAGEMENT'))) {
       fetchMetrics();
+    } else if (farmCode && userObj !== null) {
+      // User is loaded but lacks permission — stop spinner, stay silent
+      console.warn("[FarmOverview] Fetch blocked: user lacks dashboard/farm_management access.");
+      setLoading(false);
     }
-  }, [farmCode]);
+  }, [farmCode, userObj]);
+
+  if (error) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-100 rounded-2xl text-red-600 font-bold m-4 shadow-sm flex flex-col gap-2">
+        <span>⚠️ Access Denied / Load Failure</span>
+        <span className="text-sm font-semibold opacity-85 font-mono">{error}</span>
+      </div>
+    );
+  }
 
   // Cleaned up skeleton container to accurately reflect the real grid dimensions
   if (loading) {

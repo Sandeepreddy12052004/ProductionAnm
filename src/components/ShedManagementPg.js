@@ -54,7 +54,7 @@ const ShedManagementPg = () => {
 
     setIsLoading(true);
     try {
-      const selectedFarm = farms.find(f => (f._id || f.id) === formData.farmId);
+      const selectedFarm = Array.isArray(farms) ? farms.find(f => (f?._id || f?.id) === formData.farmId) : null;
       const farmCode = selectedFarm ? selectedFarm.code : 'UNKNOWN';
       const name = `${farmCode} - Shed ${formData.code}`; // Auto-generate name
 
@@ -128,7 +128,7 @@ const ShedManagementPg = () => {
   const getFarmName = (fId) => {
     if (!fId) return 'Unknown';
     if (typeof fId === 'object') return fId.name || fId.code;
-    const farm = farms.find(f => (f._id || f.id) === fId);
+    const farm = Array.isArray(farms) ? farms.find(f => (f?._id || f?.id) === fId) : null;
     return farm ? farm.name : fId;
   };
 

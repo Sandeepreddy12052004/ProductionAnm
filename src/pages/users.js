@@ -13,7 +13,7 @@ export default function UsersPage() {
     api.departments.getAll()
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
-          const deptNames = res.map(d => ({ label: d.name, value: d._id || d.id }));
+          const deptNames = res.map(d => ({ label: d.name, value: d.name }));
           if (deptNames.length > 0) setDepartments(deptNames);
         }
       })

@@ -13,28 +13,76 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showForm, setShowForm] = useState(false);
 
+  const [userObj, setUserObj] = useState(null);
+
   useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        setUserObj(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error("Failed to parse user session in FarmTKP:", e);
+    }
+  }, []);
+
+  const hasAccess = (moduleKey) => {
+    if (!userObj) return false;
+    const role = userObj.role || '';
+    if (role.trim().toUpperCase() === 'SUPER_ADMIN') return true;
+    const permissions = userObj.permissions;
+    if (!Array.isArray(permissions)) return false;
+    const hasAllAccess = permissions.some(p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL');
+    if (hasAllAccess) return true;
+
+    const permission = permissions.find((p) => {
+      if (!p) return false;
+      if (typeof p === 'object') {
+        return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+      }
+      if (typeof p === 'string') {
+        const lowerP = p.trim().toLowerCase();
+        const lowerModKey = moduleKey.trim().toLowerCase();
+        return lowerP === lowerModKey || lowerP.startsWith(lowerModKey + '_') || lowerP.includes(lowerModKey);
+      }
+      return false;
+    });
+
+    if (!permission) return false;
+    if (typeof permission === 'object') return !!permission.can_view;
+    return true;
+  };
+
+  useEffect(() => {
+    if (!userObj) return;
     let isMounted = true;
-    api.sheds.getAll()
-      .then(res => {
-        if (isMounted && res && Array.isArray(res)) {
-          const shedOpts = res.map(s => ({ label: `Shed ${s.name || s.code}`, value: s._id || s.id }));
-          if (shedOpts.length > 0) setSheds(shedOpts);
-        }
-      })
-      .catch(console.error);
+    
+    // Client-Side API Firewall for sheds
+    if (hasAccess('SHED_MANAGEMENT') || hasAccess('SHED_LOG')) {
+      api.sheds.getAll()
+        .then(res => {
+          if (isMounted && res && Array.isArray(res)) {
+            const shedOpts = res.map(s => ({ label: `Shed ${s.name || s.code}`, value: s._id || s.id }));
+            if (shedOpts.length > 0) setSheds(shedOpts);
+          }
+        })
+        .catch(console.error);
+    }
       
-    api.cattle.getAll()
-      .then(res => {
-        if (isMounted && res && Array.isArray(res)) {
-          const cattleOpts = res.map(c => ({ label: `${c.tag} (${c.cattleType})`, value: c._id || c.id }));
-          if (cattleOpts.length > 0) setAnimals(cattleOpts);
-        }
-      })
-      .catch(console.error);
+    // Client-Side API Firewall for cattle
+    if (hasAccess('CATTLE_MANAGEMENT') || hasAccess('LIVESTOCK')) {
+      api.cattle.getAll()
+        .then(res => {
+          if (isMounted && res && Array.isArray(res)) {
+            const cattleOpts = res.map(c => ({ label: `${c.tag} (${c.cattleType})`, value: c._id || c.id }));
+            if (cattleOpts.length > 0) setAnimals(cattleOpts);
+          }
+        })
+        .catch(console.error);
+    }
 
     return () => { isMounted = false; };
-  }, []);
+  }, [userObj]);
   const [logs, setLogs] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -188,7 +236,29 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
   const current = modules.find(m => m.id === activeTab);
 
+  // Tab-to-permission mapping — each tab key maps to the module key guarding it
+  const tabPermissionMap = {
+    health:    'HEALTH',
+    vaccine:   'HEALTH',
+    med_inv:   'INVENTORY',
+    feed_inv:  'INVENTORY',
+    grass:     'GRASS',
+    feeding:   'FEEDING',
+    milk_prod: 'MILK',
+    components:'MILK',
+    pashudhan: 'CATTLE_MANAGEMENT',
+  };
+
   const fetchLogs = async () => {
+    // Client-Side API Firewall — skip fetch if user lacks permission for this tab
+    const requiredPermission = tabPermissionMap[activeTab];
+    if (requiredPermission && !hasAccess(requiredPermission)) {
+      console.warn(`[FarmTKP] Access denied for tab '${activeTab}' (requires ${requiredPermission}). Fetch blocked.`);
+      setLogs([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       let data = [];
@@ -215,17 +285,12 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       if (Array.isArray(data)) {
         const filtered = data.filter(log => {
           const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
-          
-          // Strict Match
           if (fId && typeof fId === 'string' && fId.toUpperCase() === farmCode.toUpperCase()) {
             return true;
           }
-          
-          // Legacy Match: If a record has NO farmId, assume it belongs to TKP (as Tandur is new)
           if (!fId && farmCode.toUpperCase() === 'TKP') {
             return true;
           }
-          
           return false;
         });
         setLogs(filtered);
@@ -258,16 +323,20 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   }, [activeTab, farmCode]);
 
   useEffect(() => {
+    if (!userObj) return;
+    // Client-Side API Firewall — only load farms dropdown if user has FARM_MANAGEMENT access
+    if (!hasAccess('FARM_MANAGEMENT')) return;
     const fetchFarms = async () => {
       try {
         const farms = await api.farms.getAll();
-        setAvailableFarms(farms || []);
+        const farmsArray = Array.isArray(farms) ? farms : (farms && Array.isArray(farms.data) ? farms.data : []);
+        setAvailableFarms(farmsArray);
       } catch (err) {
         console.error("Failed to load farms for dropdown:", err);
       }
     };
     fetchFarms();
-  }, []);
+  }, [userObj]);
 
 
   useEffect(() => {
@@ -767,7 +836,9 @@ const activeFilterCount = filters.filter(
       shadow-sm
     "
   >
-    <span>🏢 {availableFarms.find(f => f.code === farmCode)?.name || `${farmCode} Farm`}</span>
+    <span>🏢 {
+      (Array.isArray(availableFarms) ? availableFarms.find(f => f?.code === farmCode) : null)?.name || `${farmCode} Farm`
+    }</span>
 
     {/* 🔽 ROTATING ARROW */}
     <span
@@ -799,20 +870,20 @@ const activeFilterCount = filters.filter(
         : "opacity-0 -translate-y-6 pointer-events-none"}
     `}
   >
-    {availableFarms.map(f => (
+    {Array.isArray(availableFarms) && availableFarms.map(f => (
       <button
-        key={f._id || f.id}
+        key={f?._id || f?.id}
         onClick={() => {
           setShowTabDropdown(false);
-          router.push(`/farm/${f.code}?tab=${activeTab}`);
+          router.push(`/farm/${f?.code}?tab=${activeTab}`);
         }}
         className={`
           w-full text-left px-4 py-2 text-sm
           hover:bg-gray-100 transition
-          ${farmCode === f.code ? 'bg-[#D1867D]/10 text-[#16223F] font-bold' : ''}
+          ${farmCode === f?.code ? 'bg-[#D1867D]/10 text-[#16223F] font-bold' : ''}
         `}
       >
-        🏢 {f.name}
+        🏢 {f?.name}
       </button>
     ))}
   </div>
@@ -856,7 +927,7 @@ const activeFilterCount = filters.filter(
         <div className="space-y-3">
 
           {filters.map((f, index) => (
-            <div key={index} className="flex flex-col gap-2">
+            <div key={`filter-${f.field}-${index}`} className="flex flex-col gap-2">
 
               {/* FIELD */}
               <select
@@ -1041,7 +1112,7 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
             ) : paginatedLogs.length > 0 ? (
               paginatedLogs.map(log => (
                 <tr 
-                  key={log.id} 
+                  key={log._id || log.id || log.entryDate} 
                   className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" 
                   onClick={() => setSelectedEntry(log)}
                 >

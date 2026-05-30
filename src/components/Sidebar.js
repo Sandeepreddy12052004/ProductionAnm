@@ -42,6 +42,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   // Dynamic Farms State
   const [farmsList, setFarmsList] = useState([]);
   const [userRole, setUserRole] = useState(null);
+  /** @type {Record<string, any> | null} */
+  const [userObj, setUserObj] = useState(null);
   
   // Collapse states
   const [shedOpen, setShedOpen] = useState(false);
@@ -50,14 +52,76 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     try {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
+        /** @type {Record<string, any>} */
         const parsed = JSON.parse(storedUser);
         setUserRole(parsed.role || null);
+        setUserObj(parsed);
       }
     } catch (e) {
       console.error("[Sidebar Error] Failed to parse user session:", e);
       localStorage.removeItem("user");
     }
   }, []);
+
+  /**
+   * Safe check function to determine if a module should render in the sidebar.
+   * Guaranteed never to throw a rendering or hydration error.
+   * Supports both string arrays and object arrays defensively.
+   * @param {string} moduleKey - Target module name to verify.
+   * @returns {boolean}
+   */
+  const hasAccess = (moduleKey) => {
+    if (!userObj) {
+      return false;
+    }
+
+    // Safely retrieve the role and permissions array from the session
+    const role = userObj.role || '';
+    const permissions = userObj.permissions;
+
+    // Failsafe for SUPER_ADMIN
+    if (role.trim().toUpperCase() === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    if (!Array.isArray(permissions)) {
+      return false;
+    }
+
+    // Failsafe check if the permissions array has the global 'ALL' permission
+    const hasAllAccess = permissions.some(p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL');
+    if (hasAllAccess) {
+      return true;
+    }
+
+    // Safely find the target permission matching the key
+    const permission = permissions.find((p) => {
+      if (!p) return false;
+      // Case 1: permission is an object with a module_key
+      if (typeof p === 'object') {
+        return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+      }
+      // Case 2: permission is a string (e.g. 'USERS', 'USER_MANAGEMENT_VIEW')
+      if (typeof p === 'string') {
+        const lowerP = p.trim().toLowerCase();
+        const lowerModKey = moduleKey.trim().toLowerCase();
+        return lowerP === lowerModKey || 
+               lowerP.startsWith(lowerModKey + '_') || 
+               lowerP.includes(lowerModKey);
+      }
+      return false;
+    });
+
+    if (!permission) {
+      return false;
+    }
+
+    // If it's an object, return can_view. If it's a string, it matched, so return true
+    if (typeof permission === 'object') {
+      return !!permission.can_view;
+    }
+    return true;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -202,17 +266,19 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
             <div className="flex-1 overflow-y-auto overflow-x-hidden whitespace-nowrap px-4 pb-6 custom-scrollbar">
               <ul className="space-y-1.5 px-1">
                 {/* Dashboard Link */}
-          <li>
-            <motion.div whileHover={{ scale: 1.02, x: 3 }}>
-              <Link href="/dashboard" onClick={handleCloseSidebar}
-                className={`block p-2 rounded border-l-4 ${isLinkActive("/dashboard") ? activeStyle : normalStyle}`}>
-                📊 Dashboard
-              </Link>
-            </motion.div>
-          </li>
+          {hasAccess('dashboard') && (
+            <li>
+              <motion.div whileHover={{ scale: 1.02, x: 3 }}>
+                <Link href="/dashboard" onClick={handleCloseSidebar}
+                  className={`block p-2 rounded border-l-4 ${isLinkActive("/dashboard") ? activeStyle : normalStyle}`}>
+                  📊 Dashboard
+                </Link>
+              </motion.div>
+            </li>
+          )}
 
           {/* CORE MODULES GROUP */}
-          {userRole && ['SUPER_ADMIN', 'FARM_ADMIN'].includes(userRole) && (
+          {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT')) && (
           <li className="mt-4">
             <button
               onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
@@ -234,53 +300,61 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                   className="mt-2 space-y-2 pl-2 overflow-hidden"
                 >
 
-                  {userRole === 'SUPER_ADMIN' && (
-                    <>
-                      <li>
-                        <Link href="/users" onClick={handleCloseSidebar}
-                          className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
-                          👥 User Management
-                        </Link>
-                      </li>
+                  {hasAccess('USER_MANAGEMENT') && (
+                    <li>
+                      <Link href="/users" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
+                        👥 User Management
+                      </Link>
+                    </li>
+                  )}
 
-                      <li>
-                        <Link href="/department" onClick={handleCloseSidebar}
-                          className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
-                          🏢 Department
-                        </Link>
-                      </li>
+                  {hasAccess('DEPARTMENT') && (
+                    <li>
+                      <Link href="/department" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
+                        🏢 Department
+                      </Link>
+                    </li>
+                  )}
 
-                      <li>
-                        <Link href="/roles" onClick={handleCloseSidebar}
-                          className={`block p-2 rounded border-l-4 ${isLinkActive("/roles") ? activeStyle : normalStyle}`}>
-                          🛡️ Role & Permissions
-                        </Link>
-                      </li>
-                    </>
+                  {hasAccess('ROLES') && (
+                    <li>
+                      <Link href="/roles" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/roles") ? activeStyle : normalStyle}`}>
+                        🛡️ Role & Permissions
+                      </Link>
+                    </li>
                   )}
 
                   {/* Farm Management Navigation */}
-                  <li>
-                    <Link href="/farms" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
-                      🏠 Farm Management
-                    </Link>
-                  </li>
+                  {hasAccess('FARM_MANAGEMENT') && (
+                    <li>
+                      <Link href="/farms" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
+                        🏠 Farm Management
+                      </Link>
+                    </li>
+                  )}
 
                   {/* SHED MANAGEMENT Navigation */}
-                  <li>
-                    <Link href="/shed-management" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${router.pathname === "/shed-management" ? activeStyle : normalStyle}`}>
-                      ⚙️ Shed Management
-                    </Link>
-                  </li>
+                  {hasAccess('SHED_MANAGEMENT') && (
+                    <li>
+                      <Link href="/shed-management" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${router.pathname === "/shed-management" ? activeStyle : normalStyle}`}>
+                        ⚙️ Shed Management
+                      </Link>
+                    </li>
+                  )}
 
-                  <li>
-                    <Link href="/animals" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
-                      🐄 Cattle Management
-                    </Link>
-                  </li>
+                  {hasAccess('CATTLE_MANAGEMENT') && (
+                    <li>
+                      <Link href="/animals" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
+                        🐄 Cattle Management
+                      </Link>
+                    </li>
+                  )}
                 </motion.ul>
               )}
             </AnimatePresence>
@@ -288,6 +362,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
           )}
 
           {/* NORMAL MODULES GROUP */}
+          {(hasAccess('LIVESTOCK') || hasAccess('SHED_LOG') || hasAccess('CROSSING_LOG') || hasAccess('PURCHASE_LOG') || hasAccess('SALE_LOG') || hasAccess('HEALTH') || hasAccess('INVENTORY') || hasAccess('GRASS') || hasAccess('FEEDING') || hasAccess('MILK')) && (
           <li className="mt-4 border-t border-slate-100 pt-4">
             <button
               onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
@@ -298,7 +373,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                 ▼
               </motion.span>
             </button>
-
+ 
             <AnimatePresence>
               {normalOpen && (
                 <motion.ul
@@ -309,195 +384,216 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                   className="mt-2 space-y-2 pl-2 overflow-hidden"
                 >
                   {/* Live Stock */}
-                  <li>
-                    <Link href="/animals" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
-                      🐄 Live Stock
-                    </Link>
-                  </li>
-
+                  {hasAccess('LIVESTOCK') && (
+                    <li>
+                      <Link href="/animals" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
+                        🐄 Live Stock
+                      </Link>
+                    </li>
+                  )}
+ 
                   {/* Shed Log */}
-                  <li>
-                    <Link href="/shed" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
-                      📝 Shed Log
-                    </Link>
-                  </li>
-
+                  {hasAccess('SHED_LOG') && (
+                    <li>
+                      <Link href="/shed" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
+                        📝 Shed Log
+                      </Link>
+                    </li>
+                  )}
+ 
                   {/* Crossing Log */}
-                  <li>
-                    <Link href="/crossing" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/crossing") ? activeStyle : normalStyle}`}>
-                      🧬 Crossing Log
-                    </Link>
-                  </li>
-
+                  {hasAccess('CROSSING_LOG') && (
+                    <li>
+                      <Link href="/crossing" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/crossing") ? activeStyle : normalStyle}`}>
+                        🧬 Crossing Log
+                      </Link>
+                    </li>
+                  )}
+ 
                   {/* Purchase Log */}
-                  <li>
-                    <Link href="/purchase" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/purchase") ? activeStyle : normalStyle}`}>
-                      📥 Purchase Log
-                    </Link>
-                  </li>
-
+                  {hasAccess('PURCHASE_LOG') && (
+                    <li>
+                      <Link href="/purchase" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/purchase") ? activeStyle : normalStyle}`}>
+                        📥 Purchase Log
+                      </Link>
+                    </li>
+                  )}
+ 
                   {/* Sale Log */}
-                  <li>
-                    <Link href="/sale" onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${isLinkActive("/sale") ? activeStyle : normalStyle}`}>
-                      📤 Sale Log
-                    </Link>
-                  </li>
-
-
+                  {hasAccess('SALE_LOG') && (
+                    <li>
+                      <Link href="/sale" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/sale") ? activeStyle : normalStyle}`}>
+                        📤 Sale Log
+                      </Link>
+                    </li>
+                  )}
+ 
+ 
                   {/* Health Dropdown */}
-                  <li>
-                    <button
-                      onClick={() => toggleState(setHealthOpen, 'healthOpen', healthOpen)}
-                      className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>🩺 Health</span>
-                      <motion.span animate={{ rotate: healthOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
-
-                    <AnimatePresence>
-                      {healthOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-1 space-y-1 pl-3 overflow-hidden"
-                        >
-                          <li>
-                            <Link href={getTabPath("health")} onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/farm", "health") ? activeStyle : normalStyle
-                              }`}>
-                              📋 Treatment Log
-                            </Link>
-                          </li>
-                          <li>
-                            <Link href={getTabPath("vaccine")} onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/farm", "vaccine") ? activeStyle : normalStyle
-                              }`}>
-                              💉 Vaccination Log
-                            </Link>
-                          </li>
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
-
+                  {hasAccess('HEALTH') && (
+                    <li>
+                      <button
+                        onClick={() => toggleState(setHealthOpen, 'healthOpen', healthOpen)}
+                        className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                      >
+                        <span>🩺 Health</span>
+                        <motion.span animate={{ rotate: healthOpen ? 180 : 0 }}>
+                          ▼
+                        </motion.span>
+                      </button>
+ 
+                      <AnimatePresence>
+                        {healthOpen && (
+                          <motion.ul
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="mt-1 space-y-1 pl-3 overflow-hidden"
+                          >
+                            <li>
+                              <Link href={getTabPath("health")} onClick={handleCloseSidebar}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  isLinkActive("/farm", "health") ? activeStyle : normalStyle
+                                }`}>
+                                📋 Treatment Log
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href={getTabPath("vaccine")} onClick={handleCloseSidebar}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  isLinkActive("/farm", "vaccine") ? activeStyle : normalStyle
+                                }`}>
+                                💉 Vaccination Log
+                              </Link>
+                            </li>
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </li>
+                  )}
+ 
                   {/* Inventory Dropdown */}
-                  <li>
-                    <button
-                      onClick={() => toggleState(setInventoryOpen, 'inventoryOpen', inventoryOpen)}
-                      className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>📦 Inventory</span>
-                      <motion.span animate={{ rotate: inventoryOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
-
-                    <AnimatePresence>
-                      {inventoryOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-1 space-y-1 pl-3 overflow-hidden"
-                        >
-                          <li>
-                            <Link href={getTabPath("feed_inv")} onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/farm", "feed_inv") ? activeStyle : normalStyle
-                              }`}>
-                              🌾 Feed Inventory
-                            </Link>
-                          </li>
-                          <li>
-                            <Link href={getTabPath("med_inv")} onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/farm", "med_inv") ? activeStyle : normalStyle
-                              }`}>
-                              💊 Medicine Inventory
-                            </Link>
-                          </li>
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
-
+                  {hasAccess('INVENTORY') && (
+                    <li>
+                      <button
+                        onClick={() => toggleState(setInventoryOpen, 'inventoryOpen', inventoryOpen)}
+                        className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                      >
+                        <span>📦 Inventory</span>
+                        <motion.span animate={{ rotate: inventoryOpen ? 180 : 0 }}>
+                          ▼
+                        </motion.span>
+                      </button>
+ 
+                      <AnimatePresence>
+                        {inventoryOpen && (
+                          <motion.ul
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="mt-1 space-y-1 pl-3 overflow-hidden"
+                          >
+                            <li>
+                              <Link href={getTabPath("feed_inv")} onClick={handleCloseSidebar}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  isLinkActive("/farm", "feed_inv") ? activeStyle : normalStyle
+                                }`}>
+                                🌾 Feed Inventory
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href={getTabPath("med_inv")} onClick={handleCloseSidebar}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  isLinkActive("/farm", "med_inv") ? activeStyle : normalStyle
+                                }`}>
+                                💊 Medicine Inventory
+                              </Link>
+                            </li>
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </li>
+                  )}
+ 
                   {/* Grass Collection */}
-                  <li>
-                    <Link href={getTabPath("grass")} onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${
-                        isLinkActive("/farm", "grass") ? activeStyle : normalStyle
-                      }`}>
-                      🌿 Grass Collection
-                    </Link>
-                  </li>
-
+                  {hasAccess('GRASS') && (
+                    <li>
+                      <Link href={getTabPath("grass")} onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${
+                          isLinkActive("/farm", "grass") ? activeStyle : normalStyle
+                        }`}>
+                        🌿 Grass Collection
+                      </Link>
+                    </li>
+                  )}
+ 
                   {/* Daily Feeding */}
-                  <li>
-                    <Link href={getTabPath("feeding")} onClick={handleCloseSidebar}
-                      className={`block p-2 rounded border-l-4 ${
-                        isLinkActive("/farm", "feeding") ? activeStyle : normalStyle
-                      }`}>
-                      🌾 Daily Feeding
-                    </Link>
-                  </li>
-
+                  {hasAccess('FEEDING') && (
+                    <li>
+                      <Link href={getTabPath("feeding")} onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${
+                          isLinkActive("/farm", "feeding") ? activeStyle : normalStyle
+                        }`}>
+                        🌾 Daily Feeding
+                      </Link>
+                    </li>
+                  )}
+ 
                   {/* Milk Production Dropdown */}
-                  <li>
-                    <button
-                      onClick={() => toggleState(setMilkOpen, 'milkOpen', milkOpen)}
-                      className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>🥛 Milk Production</span>
-                      <motion.span animate={{ rotate: milkOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
-
-                    <AnimatePresence>
-                      {milkOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-1 space-y-1 pl-3 overflow-hidden"
-                        >
-                          <li>
-                            <Link href={getTabPath("milk_prod")} onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/farm", "milk_prod") ? activeStyle : normalStyle
-                              }`}>
-                              🥛 Daily Milk Collection
-                            </Link>
-                          </li>
-                          <li>
-                            <Link href={getTabPath("components")} onClick={handleCloseSidebar}
-                              className={`block p-1.5 text-sm rounded border-l-4 ${
-                                isLinkActive("/farm", "components") ? activeStyle : normalStyle
-                              }`}>
-                              🔬 Milk Q and A
-                            </Link>
-                          </li>
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
+                  {hasAccess('MILK') && (
+                    <li>
+                      <button
+                        onClick={() => toggleState(setMilkOpen, 'milkOpen', milkOpen)}
+                        className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                      >
+                        <span>🥛 Milk Production</span>
+                        <motion.span animate={{ rotate: milkOpen ? 180 : 0 }}>
+                          ▼
+                        </motion.span>
+                      </button>
+ 
+                      <AnimatePresence>
+                        {milkOpen && (
+                          <motion.ul
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="mt-1 space-y-1 pl-3 overflow-hidden"
+                          >
+                            <li>
+                              <Link href={getTabPath("milk_prod")} onClick={handleCloseSidebar}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  isLinkActive("/farm", "milk_prod") ? activeStyle : normalStyle
+                                }`}>
+                                🥛 Daily Milk Collection
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href={getTabPath("components")} onClick={handleCloseSidebar}
+                                className={`block p-1.5 text-sm rounded border-l-4 ${
+                                  isLinkActive("/farm", "components") ? activeStyle : normalStyle
+                                }`}>
+                                🔬 Milk Q and A
+                              </Link>
+                            </li>
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </li>
+                  )}
                 </motion.ul>
               )}
             </AnimatePresence>
           </li>
+          )}
         </ul>
             </div>
           </>

@@ -320,23 +320,39 @@ const UserManagementPg = ({ moduleConfig }) => {
     return matchSearch && matchFarm && matchDept && matchRole && matchStatus;
   });
 
-  // SAVE USER
+  /**
+   * Saves or updates a user profile by assembling and sanitizing the form payload.
+   * @param {Record<string, any>} data - Raw form data collected from LogForm.
+   * @returns {Promise<void>}
+   */
   const handleSave = async (data) => {
     setIsLoadingForm(true);
     try {
+      /** @type {Record<string, any>} */
       const payload = { ...data };
       
-      if (!isEditing && !payload.password) {
-        payload.password = "agasthya123";
-      }
-      
+      // 1. Defensively extract the raw role identification string from the UI state
+      /** @type {any} */
+      const roleIdValue = typeof payload.role === 'object' && payload.role !== null 
+        ? payload.role.id || payload.role._id || payload.role.role_id || payload.role.name
+        : payload.role;
+
+      // Normalize role string for exact Mongoose database validation lookup
+      /** @type {string | undefined} */
+      const roleNormalized = typeof roleIdValue === 'string' ? roleIdValue.trim().toUpperCase() : roleIdValue;
+
+      // Clean name and email properties to prevent empty value schema rejections
+      /** @type {string | undefined} */
+      const cleanName = typeof payload.name === 'string' ? payload.name.trim() : payload.name;
+      /** @type {string | undefined} */
+      const cleanEmail = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : payload.email;
+
       // Ensure phone is a string if it exists
       if (payload.phone !== undefined && payload.phone !== null) {
         payload.phone = String(payload.phone);
       }
       if (payload.mobile !== undefined && payload.mobile !== null) {
         payload.phone = String(payload.mobile);
-        delete payload.mobile;
       }
       
       // Convert status string to boolean for backend validation
@@ -345,44 +361,90 @@ const UserManagementPg = ({ moduleConfig }) => {
       }
       
       // Handle ALL farms selection (Super Admin)
-      if (payload.farmId === 'ALL') {
-        payload.farmId = null;
+      /** @type {string | null | undefined} */
+      let parsedFarmId = payload.farmId;
+      if (parsedFarmId === 'ALL') {
+        parsedFarmId = null;
       }
       
       // If we still receive the old 'farm' key from the form state, handle it
       if (payload.farm) {
         if (payload.farm === 'ALL' || payload.farm === 'All Farms') {
-          payload.farmId = null;
-        } else if (payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
-          payload.farmId = payload.farm;
+          parsedFarmId = null;
+        } else if (typeof payload.farm === 'string' && payload.farm.match(/^[0-9a-fA-F]{24}$/)) {
+          parsedFarmId = payload.farm;
         }
       }
 
       // Cleanup empty strings that break backend validation
-      if (payload.email === "") delete payload.email;
-      if (payload.password === "") delete payload.password;
-      
-      // Remove backend-generated MongoDB keys that cause "Unrecognized keys" in Zod
-      delete payload._id;
-      delete payload.id;
-      delete payload.createdAt;
-      delete payload.updatedAt;
-      delete payload.__v;
-      delete payload.farm;
+      /** @type {string | undefined} */
+      const cleanEmailFinal = cleanEmail === "" ? undefined : cleanEmail;
+      /** @type {string | undefined} */
+      const cleanPhone = payload.phone === "" ? undefined : payload.phone;
+
+      // 2. Build the exact flat request structure your backend API relies on
+      // Completely strip out local component properties (such as UI presentation text or permissions summaries)
+      /** @type {Record<string, any>} */
+      const sanitizedPayload = {};
+
+      if (payload.userId !== undefined) sanitizedPayload.userId = payload.userId;
+      if (cleanName !== undefined) sanitizedPayload.name = cleanName;
+      if (cleanEmailFinal !== undefined) sanitizedPayload.email = cleanEmailFinal;
+      if (payload.department !== undefined) sanitizedPayload.department = payload.department;
+      if (cleanPhone !== undefined) sanitizedPayload.phone = cleanPhone;
+      if (payload.status !== undefined) {
+        sanitizedPayload.status = payload.status;
+      } else if (isEditing) {
+        // Default fallback to keep pre-existing status value
+        sanitizedPayload.status = selectedEntry.status === false || selectedEntry.status === 'Inactive' || selectedEntry.status === 'INACTIVE' ? false : true;
+      }
+
+      if (parsedFarmId !== undefined) {
+        sanitizedPayload.farmId = parsedFarmId;
+      } else if (isEditing) {
+        const entryFarmId = selectedEntry.farmId && typeof selectedEntry.farmId === 'object'
+          ? selectedEntry.farmId._id || selectedEntry.farmId.id
+          : selectedEntry.farmId;
+        sanitizedPayload.farmId = (entryFarmId === 'ALL' || !entryFarmId) ? null : entryFarmId;
+      }
+
+      // Map role identifier parameter safely (mapping to role and/or role_id variations as appropriate)
+      if (roleNormalized !== undefined) {
+        sanitizedPayload.role = roleNormalized;
+        if (!isEditing) {
+          // Include role_id for creation to be robust (no strict constraint on POST schema)
+          sanitizedPayload.role_id = roleNormalized;
+        }
+      } else if (isEditing) {
+        const entryRole = typeof selectedEntry.role === 'object' && selectedEntry.role !== null
+          ? selectedEntry.role.name || selectedEntry.role.id || selectedEntry.role._id
+          : selectedEntry.role;
+        const mappedRole = typeof entryRole === 'string' ? entryRole.trim().toUpperCase() : entryRole;
+        sanitizedPayload.role = mappedRole;
+      }
+
+      // Password handling: Drop if unmodified or unchanged to avoid database resets or validator clashes
+      if (!isEditing) {
+        sanitizedPayload.password = payload.password || "agasthya123";
+      } else if (payload.password && payload.password.trim() !== "") {
+        sanitizedPayload.password = payload.password;
+      }
 
       if (isEditing) {
-        // The backend's updateUserSchema strictly rejects the 'password' field.
-        delete payload.password;
-        await api.users.update(selectedEntry.id || selectedEntry._id, payload);
+        // Dispatch to established backend API route cleanly
+        await api.users.update(selectedEntry.id || selectedEntry._id, sanitizedPayload);
         swalSuccess("Success", "User updated successfully");
       } else {
-        await api.users.create(payload);
+        await api.users.create(sanitizedPayload);
         swalSuccess("Success", "User created successfully");
       }
       mutate();
       closeAll();
     } catch (err) {
-      swalError("Error", err.response?.data?.message || err.message || "Failed to save user");
+      const errorMsg = typeof err === 'string' 
+        ? err 
+        : (err.response?.data?.message || err.message || "Failed to save user");
+      swalError("Error", errorMsg);
     } finally {
       setIsLoadingForm(false);
     }
@@ -398,7 +460,10 @@ const UserManagementPg = ({ moduleConfig }) => {
       swalSuccess("Success", "User status updated");
     } catch (err) {
       console.error(err);
-      swalError("Error", err.response?.data?.message || err.message || "Failed to update status");
+      const errorMsg = typeof err === 'string' 
+        ? err 
+        : (err.response?.data?.message || err.message || "Failed to update status");
+      swalError("Error", errorMsg);
     }
   };
 
@@ -413,7 +478,10 @@ const UserManagementPg = ({ moduleConfig }) => {
         swalSuccess("Deleted", "User deleted successfully");
       } catch (err) {
         console.error(err);
-        swalError("Error", err.response?.data?.message || err.message || "Failed to delete user");
+        const errorMsg = typeof err === 'string' 
+          ? err 
+          : (err.response?.data?.message || err.message || "Failed to delete user");
+        swalError("Error", errorMsg);
       }
     }
   };
