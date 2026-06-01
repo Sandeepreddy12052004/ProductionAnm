@@ -41,9 +41,26 @@
 
 
 
+import { useState, useEffect } from 'react';
+import { api } from '@/utils/api';
 import AnimalDetailsPg from '../components/animaldetailspg';
 
 export default function PurchaseLogPage() {
+  const [farms, setFarms] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.farms.getAll()
+      .then(res => {
+        if (isMounted && res && Array.isArray(res)) {
+          const farmNames = res.map(f => ({ label: f.name || f.code, value: f._id || f.id }));
+          if (farmNames.length > 0) setFarms(farmNames);
+        }
+      })
+      .catch(err => console.error("Failed to fetch farms:", err));
+    return () => { isMounted = false; };
+  }, []);
+
   const config = {
     id: 'purchase',
     name: 'Purchase Log',
@@ -54,7 +71,7 @@ export default function PurchaseLogPage() {
       { name: 'sellerContact', label: 'Seller Contact', type: 'number' },
       { name: 'price', label: 'Purchase Price (₹)' , type: 'number' },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
-      { name: 'shed', label: 'Shed Assigned', type: 'select', options: ['1', '2', '3', '4', '5', '6', '-'] }
+      { name: 'farmId', label: 'Farm Assigned', type: 'select', options: farms }
     ]
   };
 

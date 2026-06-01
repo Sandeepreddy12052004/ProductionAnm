@@ -36,6 +36,8 @@ const router = useRouter();
 
 const [showForm, setShowForm] = useState(false);
 const [logs, setLogs] = useState([]);
+const [pendingPurchases, setPendingPurchases] = useState([]);
+const [pendingCalves, setPendingCalves] = useState([]);
 const [selectedEntry, setSelectedEntry] = useState(null);
 const [viewMode, setViewMode] = useState(false);
 const [isEditing, setIsEditing] = useState(false);
@@ -113,7 +115,21 @@ const fetchLogs = async () => {
         entryDate: formattedDate || log.entryDate || '-'
       };
     });
-    setLogs(normalizedData);
+    if (current.id === 'livestock') {
+      const pending = normalizedData.filter(log => log.isPendingDetails === true);
+      const active = normalizedData.filter(log => log.isPendingDetails !== true);
+      
+      const calves = pending.filter(log => log.onboardingType === 'CALVING' || (log.dameId && String(log.dameId).trim() !== ''));
+      const purchases = pending.filter(log => !calves.includes(log));
+      
+      setPendingPurchases(purchases);
+      setPendingCalves(calves);
+      setLogs(active);
+    } else {
+      setLogs(normalizedData);
+      setPendingPurchases([]);
+      setPendingCalves([]);
+    }
   } catch (e) {
     console.error(`Error loading logs for ${current.id}:`, e);
   } finally {
@@ -266,6 +282,9 @@ const handleSave = async (data) => {
       if (isEditing) {
         if (current.id === 'livestock') {
           const payload = { ...data, tagId: data.tag || data.tagId };
+          if (selectedEntry?.isPendingDetails) {
+            payload.isPendingDetails = false;
+          }
           await api.cattle.update(entryId, payload);
           swalSuccess("Success", "Cattle details updated successfully!");
         } else if (current.id === 'crossing') {
@@ -944,6 +963,144 @@ const getShedFromLivestock = (tagValue) => {
 )}
       </div>
 
+      {/* Newly Purchased Animals Action Deck */}
+      {current.id === 'livestock' && pendingPurchases && pendingPurchases.length > 0 && (
+        <div className="mb-6 p-5 bg-gradient-to-br from-[#16223F]/5 via-white to-[#D1867D]/5 border border-dashed border-[#D1867D]/40 rounded-2xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📥</span>
+              <h2 className="text-lg font-bold text-[#16223F]">Newly Purchased Animals ({pendingPurchases.length})</h2>
+              <span className="bg-[#D1867D] text-white text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full animate-pulse">
+                Pending Profile Completion
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-black opacity-60 mb-4 leading-relaxed">
+            These animals have been recently recorded under **Purchase Logs** and have entered the farm. Click **"Complete Profile"** on any card below to input their breed, age, gender, and parenting details to officially register them into the active herd registry.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pendingPurchases.map(animal => (
+              <div 
+                key={animal._id || animal.id} 
+                className="bg-white border border-gray-100 hover:border-[#D1867D]/30 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-mono text-xs font-black text-[#16223F] bg-gray-100 px-2 py-1 rounded-md">
+                      TAG ID: {animal.tag || animal.tag_id}
+                    </span>
+                    <span className="text-[10px] font-semibold text-black opacity-40">
+                      {animal.purchaseDate ? formatDateToDDMMYYYY(animal.purchaseDate) : '-'}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-black opacity-70 mb-4">
+                    <div className="flex justify-between">
+                      <span className="opacity-60">Farm Assigned:</span>
+                      <span className="font-bold text-[#16223F]">
+                        {(() => {
+                          if (!animal.farmId) return '-';
+                          const fm = farmsList.find(f => f._id === animal.farmId || f.id === animal.farmId || f.code === animal.farmId);
+                          return fm ? (fm.name || fm.code) : animal.farmId;
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="opacity-60">Seller:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[120px]">{animal.purchaseFrom || '-'}</span>
+                    </div>
+                    {animal.purchasePrice > 0 && (
+                      <div className="flex justify-between">
+                        <span className="opacity-60">Price:</span>
+                        <span className="font-bold text-emerald-600">₹{Number(animal.purchasePrice).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedEntry(animal);
+                    setIsEditing(true);
+                    setShowForm(true);
+                  }}
+                  className="w-full bg-[#16223F] hover:bg-[#D1867D] text-white font-bold text-xs py-2 rounded-lg transition-all duration-200 ease-in-out shadow-sm hover:shadow"
+                >
+                  Complete Profile
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Newly Born Calves Action Deck */}
+      {current.id === 'livestock' && pendingCalves && pendingCalves.length > 0 && (
+        <div className="mb-6 p-5 bg-gradient-to-br from-[#16223F]/5 via-white to-[#D1867D]/5 border border-dashed border-emerald-500/40 rounded-2xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🍼</span>
+              <h2 className="text-lg font-bold text-[#16223F]">Newly Born Calves ({pendingCalves.length})</h2>
+              <span className="bg-emerald-600 text-white text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full animate-pulse">
+                Pending Birth Registry
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-black opacity-60 mb-4 leading-relaxed">
+            These calves have been recently recorded via **Crossing Log Calving Events**. Click **"Register Calf"** on any card below to input their gender, breed, current shed assignment, and officially register them into the active herd.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pendingCalves.map(animal => (
+              <div 
+                key={animal._id || animal.id} 
+                className="bg-white border border-gray-100 hover:border-emerald-500/30 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-mono text-xs font-black text-[#16223F] bg-gray-100 px-2 py-1 rounded-md">
+                      TAG ID: {animal.tag || animal.tag_id}
+                    </span>
+                    <span className="text-[10px] font-semibold text-black opacity-40">
+                      {animal.dateOfBirth ? formatDateToDDMMYYYY(animal.dateOfBirth) : '-'}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-black opacity-70 mb-4">
+                    <div className="flex justify-between">
+                      <span className="opacity-60">Farm Assigned:</span>
+                      <span className="font-bold text-[#16223F]">
+                        {(() => {
+                          if (!animal.farmId) return '-';
+                          const fm = farmsList.find(f => f._id === animal.farmId || f.id === animal.farmId || f.code === animal.farmId);
+                          return fm ? (fm.name || fm.code) : animal.farmId;
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="opacity-60">Dame ID (Mother):</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[120px]">{animal.dameId || '-'}</span>
+                    </div>
+                    {animal.sireId && (
+                      <div className="flex justify-between">
+                        <span className="opacity-60">Sire ID (Father):</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[120px]">{animal.sireId}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedEntry(animal);
+                    setIsEditing(true);
+                    setShowForm(true);
+                  }}
+                  className="w-full bg-[#16223F] hover:bg-emerald-600 text-white font-bold text-xs py-2 rounded-lg transition-all duration-200 ease-in-out shadow-sm hover:shadow"
+                >
+                  Register Calf
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Table Section */}
       <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
         <table className="w-full text-left min-w-[600px] relative">
@@ -1175,8 +1332,16 @@ const getShedFromLivestock = (tagValue) => {
 {selectedEntry && viewMode && (
   <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     
-    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
       
+      {/* CLOSE CROSS ICON */}
+      <button 
+        onClick={() => setViewMode(false)}
+        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
+      >
+        ✕
+      </button>
+
       <h3 className="text-lg font-bold mb-4 text-center text-black">
         Animal Details
       </h3>
@@ -1256,9 +1421,27 @@ const getShedFromLivestock = (tagValue) => {
     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
       
       <LogForm 
-        title={isEditing ? `Update ${current.name}` : `New ${current.name}`} 
+        title={
+          selectedEntry?.isPendingDetails
+            ? selectedEntry.onboardingType === 'CALVING'
+              ? "🍼 Register Newborn Calf Profile"
+              : "📥 Complete Purchased Animal Profile"
+            : isEditing
+            ? `Update ${current.name}`
+            : `New ${current.name}`
+        } 
         fields={currentFields} 
-        initialData={isEditing ? selectedEntry : {}} 
+        initialData={(() => {
+          if (!isEditing || !selectedEntry) return {};
+          let base = { ...selectedEntry };
+          if (base.isPendingDetails && base.onboardingType === 'CALVING') {
+            base.farmBorn = base.farmBorn || 'Yes';
+            if (!base.cattleType || base.cattleType === 'PENDING') {
+              base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+            }
+          }
+          return base;
+        })()} 
         existingRecords={logs}
         onSubmit={handleSave} 
         onClose={closeAllModals} 

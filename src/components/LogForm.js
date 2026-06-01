@@ -55,6 +55,42 @@
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [allShedsList, setAllShedsList] = useState([]);
 
+    const checkTagExistsInLivestock = (tagValue) => {
+      try {
+        const cached = sessionStorage.getItem('__livestock_tag_cache__');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.list)) {
+            const cleanTag = String(tagValue).trim().toUpperCase();
+            return parsed.list.some(item => {
+              const itemTag = String(item.tag_id || item.tag || '').trim().toUpperCase();
+              return itemTag === cleanTag;
+            });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      return false;
+    };
+
+    React.useEffect(() => {
+      const isPurchase = title?.toLowerCase().includes('purchase');
+      if (isPurchase) {
+        const cached = sessionStorage.getItem('__livestock_tag_cache__');
+        if (!cached) {
+          import('../utils/api').then(({ api }) => {
+            api.cattle.getAll().then(res => {
+              const raw = Array.isArray(res) ? res : (res?.data ?? []);
+              sessionStorage.setItem('__livestock_tag_cache__', JSON.stringify({ list: raw, ts: Date.now() }));
+            }).catch(err => {
+              console.error("Failed to prefetch livestock in LogForm:", err);
+            });
+          });
+        }
+      }
+    }, [title]);
+
     React.useEffect(() => {
       const hasShedField = (fields || []).some(f => ['shed', 'oldShed', 'newShed'].includes(f.name));
       if (hasShedField) {
@@ -544,7 +580,7 @@
                       );
                     })()
                   )
-) : (field.name === 'tag' || field.name === 'tagId' || field.name === 'animalId' || field.name === 'maleTag') && !title?.toLowerCase().includes('live stock') ? (
+) : (field.name === 'tag' || field.name === 'tagId' || field.name === 'animalId' || field.name === 'maleTag') && !title?.toLowerCase().includes('live stock') && !title?.toLowerCase().includes('purchase') ? (
   <LivestockTagInput
     name={field.name}
     value={formData[field.name] || ''}
@@ -676,6 +712,26 @@
             setTagError("Tag ID already exists");
           } else {
             setTagError("");
+          }
+        } else {
+          setTagError("");
+        }
+      }
+
+      // Check tag existence for Purchase module registration (Real-time duplicate check)
+      if (title?.toLowerCase().includes('purchase')) {
+        const val = e.target.value;
+        if (val.trim() !== "") {
+          const oldTag = initialData?.tag || initialData?.tag_id || initialData?.tagId || '';
+          if (String(oldTag).trim().toLowerCase() === val.trim().toLowerCase()) {
+            setTagError("");
+          } else {
+            const exists = checkTagExistsInLivestock(val);
+            if (exists) {
+              setTagError("Tag ID already exists");
+            } else {
+              setTagError("");
+            }
           }
         } else {
           setTagError("");
