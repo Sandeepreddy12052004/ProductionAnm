@@ -7,7 +7,22 @@
       const formatted = { ...data };
       fields.forEach(field => {
         if (field.type === 'date' && formatted[field.name]) {
-          formatted[field.name] = formatted[field.name].split('T')[0];
+          const rawVal = formatted[field.name];
+          if (typeof rawVal === 'string' && rawVal.includes("/")) {
+            const parts = rawVal.split("/");
+            if (parts.length === 3) {
+              formatted[field.name] = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              return;
+            }
+          }
+          try {
+            const d = new Date(rawVal);
+            if (!isNaN(d.getTime())) {
+              formatted[field.name] = d.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            console.error(e);
+          }
         }
       });
       return formatted;
@@ -22,6 +37,22 @@
     const [roleList, setRoleList] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [allShedsList, setAllShedsList] = useState([]);
+
+    React.useEffect(() => {
+      const hasShedField = (fields || []).some(f => f.name === 'shed');
+      if (hasShedField) {
+        import('../utils/api').then(({ api }) => {
+          api.sheds.getAll().then(res => {
+            if (Array.isArray(res)) {
+              setAllShedsList(res);
+            }
+          }).catch(err => {
+            console.error("Failed to load sheds in LogForm:", err);
+          });
+        });
+      }
+    }, [fields]);
 
     React.useEffect(() => {
       const hasRoleField = (fields || []).some(f => f.name === 'role');
@@ -65,6 +96,10 @@
 
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+
+      if (name === "farmId") {
+        updated["shed"] = ""; // Clear selected shed when farm changes
+      }
 
 
       if (name === "crossingDate") {
@@ -298,7 +333,14 @@
             </button>
 
           <h2 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight flex-shrink-0 pr-10">{title}</h2>
-          <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+          <form 
+            onSubmit={(e) => { 
+              e.preventDefault(); 
+              if (tagError || dobError || userIdError) return;
+              onSubmit(formData); 
+            }} 
+            className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
+          >
             {fields.map((field) => (
               <div key={field.name}>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">{field.label}</label>
@@ -407,25 +449,46 @@
                       )}
                     </div>
                   ) : (
-                    <select
-                      name={field.name}
-                      value={formData[field.name] || ""}
-                      required={!field.optional && field.name !== "age"}
-                      className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
-                      onChange={handleChange}
-                    >
-                      <option value="">Select {field.label}</option>
-                      {field.options?.map((opt) => {
-                        const isObj = typeof opt === 'object' && opt !== null;
-                        const val = isObj ? opt.value : opt;
-                        const label = isObj ? opt.label : opt;
-                        return (
-                          <option key={val} value={val}>
-                            {label}
-                          </option>
-                        );
-                      })}
-                    </select>
+                    (() => {
+                      let selectOptions = field.options || [];
+                      if (field.name === 'shed' && allShedsList.length > 0) {
+                        const selectedFarmId = formData.farmId;
+                        if (selectedFarmId) {
+                          const matchingSheds = allShedsList.filter(s => {
+                            const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
+                            return String(sFarmId) === String(selectedFarmId);
+                          });
+                          selectOptions = matchingSheds.map(s => s.name || s.code);
+                          if (!selectOptions.includes('-')) {
+                            selectOptions.push('-');
+                          }
+                        } else {
+                          selectOptions = ['-'];
+                        }
+                      }
+
+                      return (
+                        <select
+                          name={field.name}
+                          value={formData[field.name] || ""}
+                          required={!field.optional && field.name !== "age"}
+                          className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
+                          onChange={handleChange}
+                        >
+                          <option value="">Select {field.label}</option>
+                          {selectOptions.map((opt) => {
+                            const isObj = typeof opt === 'object' && opt !== null;
+                            const val = isObj ? opt.value : opt;
+                            const label = isObj ? opt.label : opt;
+                            return (
+                              <option key={val} value={val}>
+                                {label}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      );
+                    })()
                   )
 ) : (field.name === 'tag' || field.name === 'tagId' || field.name === 'animalId') && !title?.toLowerCase().includes('live stock') ? (
   <LivestockTagInput
@@ -534,6 +597,30 @@
           oldShed: shedValue   // AUTO FILL
         }));
       }
+
+      // Check tag existence for Live Stock module registration
+      if (title?.toLowerCase().includes('live stock')) {
+        const val = e.target.value;
+        if (val.trim() !== "") {
+          const exists = (existingRecords || []).some(r => {
+            const rTag = r.tag || r.tag_id || r.tagId;
+            if (!rTag) return false;
+            if (String(rTag).trim().toLowerCase() === val.trim().toLowerCase()) {
+              if (initialData?.id && r.id === initialData.id) return false;
+              if (initialData?._id && r._id === initialData._id) return false;
+              return true;
+            }
+            return false;
+          });
+          if (exists) {
+            setTagError("Tag ID already exists");
+          } else {
+            setTagError("");
+          }
+        } else {
+          setTagError("");
+        }
+      }
     }
 
     if (field.name === "userId") {
@@ -565,6 +652,9 @@
       )}
   {field.name === "userId" && userIdError && (
         <p className="text-red-500 text-xs mt-1">{userIdError}</p>
+      )}
+  {field.name === "tag" && tagError && (
+        <p className="text-red-500 text-xs mt-1">{tagError}</p>
       )}
     </>
 

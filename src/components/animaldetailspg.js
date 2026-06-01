@@ -8,7 +8,27 @@ import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
 
+const parseDateString = (dateVal) => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return dateVal;
+  const valStr = String(dateVal).trim();
+  if (valStr.includes("/")) {
+    const parts = valStr.split("/");
+    if (parts.length === 3) {
+      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+  const parsed = new Date(valStr);
+  if (!isNaN(parsed.getTime())) return parsed;
+  return null;
+};
 
+const formatDateToDDMMYYYY = (dateVal) => {
+  const d = parseDateString(dateVal);
+  if (!d) return "-";
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
 
 const AnimalDetailspg = ({ moduleConfig }) => {
 
@@ -34,6 +54,17 @@ const modules = [
 ];
 
 const [dynamicShedOptions, setDynamicShedOptions] = useState(null);
+const [farmsList, setFarmsList] = useState([]);
+
+useEffect(() => {
+  let isMounted = true;
+  api.farms.getAll().then(res => {
+    if (isMounted && Array.isArray(res)) {
+      setFarmsList(res);
+    }
+  }).catch(console.error);
+  return () => { isMounted = false; };
+}, []);
 
 useEffect(() => {
   const hasShedField = (moduleConfig?.fields || []).some(f => ['shed', 'oldShed', 'newShed'].includes(f.name));
@@ -74,13 +105,7 @@ const fetchLogs = async () => {
     }
     const normalizedData = (Array.isArray(data) ? data : []).map(log => {
       const dateValue = log.entryDate || log.date || log.shiftingDate || log.purchaseDate || log.crossingDate || log.createdAt;
-      let formattedDate = "";
-      if (dateValue) {
-        const d = new Date(dateValue);
-        if (!isNaN(d.getTime())) {
-          formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-        }
-      }
+      const formattedDate = dateValue ? formatDateToDDMMYYYY(dateValue) : "";
       return {
         ...log,
         tag: log.tag || log.tag_id || log.tagId || '',
@@ -144,34 +169,24 @@ if (!moduleConfig) {
       const logDate = log[f.field] || (f.field === 'entryDate' ? log.date : null);
       if (!logDate) return false;
 
-      let current;
-      if (logDate.includes("/")) {
-        const parts = logDate.split("/");
-        if (parts.length === 3) {
-          const [d, m, y] = parts;
-          current = new Date(`${y}-${m}-${d}`);
-        } else {
-          current = new Date(logDate);
-        }
-      } else {
-        current = new Date(logDate);
-      }
-
-      if (isNaN(current.getTime())) return false;
+      const current = parseDateString(logDate);
+      if (!current || isNaN(current.getTime())) return false;
       current.setHours(0, 0, 0, 0);
 
       if (f.from) {
-        const [fd, fm, fy] = f.from.split("/");
-        const fromDate = new Date(`${fy}-${fm}-${fd}`);
-        fromDate.setHours(0, 0, 0, 0);
-        if (current < fromDate) return false;
+        const fromDate = parseDateString(f.from);
+        if (fromDate) {
+          fromDate.setHours(0, 0, 0, 0);
+          if (current < fromDate) return false;
+        }
       }
 
       if (f.to) {
-        const [td, tm, ty] = f.to.split("/");
-        const toDate = new Date(`${ty}-${tm}-${td}`);
-        toDate.setHours(0, 0, 0, 0);
-        if (current > toDate) return false;
+        const toDate = parseDateString(f.to);
+        if (toDate) {
+          toDate.setHours(0, 0, 0, 0);
+          if (current > toDate) return false;
+        }
       }
 
       return true;
@@ -206,7 +221,8 @@ const activeFilterCount = filters.filter(
   const calculateAge = (dob) => {
   if (!dob) return "";
 
-  const birth = new Date(dob);
+  const birth = parseDateString(dob);
+  if (!birth || isNaN(birth.getTime())) return "";
   const today = new Date();
   if (birth > today) {
       return "Invalid Date";
@@ -585,8 +601,9 @@ const handleSave = async (data) => {
 const getLiveAge = (dob, storedAge, endDate, type) => {
   if (!dob) return storedAge || "-";
 
-  const birth = new Date(dob);
-  const today = endDate ? new Date(endDate) : new Date();
+  const birth = parseDateString(dob);
+  if (!birth || isNaN(birth.getTime())) return storedAge || "-";
+  const today = endDate ? parseDateString(endDate) : new Date();
 
   let years = today.getFullYear() - birth.getFullYear();
   let months = today.getMonth() - birth.getMonth();
@@ -952,12 +969,13 @@ const getShedFromLivestock = (tagValue) => {
 
           // AGE
           if (f.name === "age") {
+            const isInactive = ["SOLD", "DECEASED", "DEAD"].includes(String(log.status).toUpperCase());
             return (
               <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
                 {getLiveAge(
                   log.dob,
                   log.age,
-                  log.soldDate || log.deadDate,
+                  isInactive ? log.soldDate || log.deadDate || log.updatedAt : null,
                   String(log.status).toUpperCase() === "SOLD"
                     ? "sold"
                     : ["DEAD", "DECEASED"].includes(String(log.status).toUpperCase())
@@ -1015,6 +1033,34 @@ const getShedFromLivestock = (tagValue) => {
           }
 
           // DEFAULT
+          if (f.name === "farmId") {
+            const rawFarmId = log.farmId;
+            let displayVal = "Unknown";
+            if (rawFarmId) {
+              if (typeof rawFarmId === 'object') {
+                displayVal = rawFarmId.name || rawFarmId.code || "Unknown";
+              } else {
+                const foundFarm = farmsList.find(farm => (farm._id || farm.id) === rawFarmId || farm.code === rawFarmId);
+                displayVal = foundFarm ? foundFarm.name : rawFarmId;
+              }
+            }
+            return (
+              <td key={f.name} className="p-4 font-semibold text-[#16223F] whitespace-nowrap">
+                {displayVal}
+              </td>
+            );
+          }
+
+          if (f.type === "date" || f.name.toLowerCase().includes("date") || f.name === "dob" || f.name === "dateOfBirth") {
+            const rawDate = log[f.name];
+            const dateDisplay = rawDate ? formatDateToDDMMYYYY(rawDate) : "-";
+            return (
+              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                {dateDisplay}
+              </td>
+            );
+          }
+
           return (
             <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
               {log[f.name]}
@@ -1136,16 +1182,45 @@ const getShedFromLivestock = (tagValue) => {
   </div>
 
   {/* FIELDS */}
-  {currentFields.map(field => (
-    <div key={field.name} className="flex justify-between border-b pb-2">
-      <span className="font-semibold text-gray-500">
-        {field.label}
-      </span>
-      <span className="text-right font-medium">
-        {selectedEntry[field.name] || "-"}
-      </span>
-    </div>
-  ))}
+  {currentFields.map(field => {
+    let displayVal = selectedEntry[field.name] || "-";
+    if (field.name === "farmId") {
+      const rawFarmId = selectedEntry.farmId;
+      if (rawFarmId) {
+        if (typeof rawFarmId === 'object') {
+          displayVal = rawFarmId.name || rawFarmId.code || "Unknown";
+        } else {
+          const foundFarm = farmsList.find(farm => (farm._id || farm.id) === rawFarmId || farm.code === rawFarmId);
+          displayVal = foundFarm ? foundFarm.name : rawFarmId;
+        }
+      }
+    } else if (field.name === "age") {
+      const isInactive = ["SOLD", "DECEASED", "DEAD"].includes(String(selectedEntry.status).toUpperCase());
+      displayVal = getLiveAge(
+        selectedEntry.dob || selectedEntry.dateOfBirth,
+        selectedEntry.age,
+        isInactive ? selectedEntry.soldDate || selectedEntry.deadDate || selectedEntry.updatedAt : null,
+        String(selectedEntry.status).toUpperCase() === "SOLD"
+          ? "sold"
+          : ["DEAD", "DECEASED"].includes(String(selectedEntry.status).toUpperCase())
+          ? "dead"
+          : null
+      );
+    } else if (field.type === "date" || field.name.toLowerCase().includes("date") || field.name === "dob" || field.name === "dateOfBirth") {
+      const rawDate = selectedEntry[field.name];
+      displayVal = rawDate ? formatDateToDDMMYYYY(rawDate) : "-";
+    }
+    return (
+      <div key={field.name} className="flex justify-between border-b pb-2">
+        <span className="font-semibold text-gray-500">
+          {field.label}
+        </span>
+        <span className="text-right font-medium text-[#16223F]">
+          {displayVal}
+        </span>
+      </div>
+    );
+  })}
 
 </div>
 
@@ -1174,6 +1249,7 @@ const getShedFromLivestock = (tagValue) => {
         title={isEditing ? `Update ${current.name}` : `New ${current.name}`} 
         fields={currentFields} 
         initialData={isEditing ? selectedEntry : {}} 
+        existingRecords={logs}
         onSubmit={handleSave} 
         onClose={closeAllModals} 
       />
