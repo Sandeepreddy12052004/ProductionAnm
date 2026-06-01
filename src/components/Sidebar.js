@@ -32,9 +32,11 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/farms"
   ].includes(router.pathname) && !router.query.tab;
 
-  const isNormalRoute = ["/animals"].includes(router.pathname) || (isFarmRoute && router.query.tab);
+  const isNormalRoute = 
+    ["/animals", "/shed", "/crossing", "/purchase", "/sale", "/treatment", "/vaccination"].includes(router.pathname) || 
+    (isFarmRoute && router.query.tab);
 
-  const isHealthActive = isFarmRoute && ["health", "vaccine"].includes(router.query.tab);
+  const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["health", "vaccine"].includes(router.query.tab));
   const isInventoryActive = isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab);
   const isMilkActive = isFarmRoute && ["milk_prod", "components"].includes(router.query.tab);
 
@@ -456,17 +458,17 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                             className="mt-1 space-y-1 pl-3 overflow-hidden"
                           >
                             <li>
-                              <Link href={getTabPath("health")} onClick={handleCloseSidebar}
+                              <Link href="/treatment" onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/farm", "health") ? activeStyle : normalStyle
+                                  isLinkActive("/treatment") ? activeStyle : normalStyle
                                 }`}>
                                 📋 Treatment Log
                               </Link>
                             </li>
                             <li>
-                              <Link href={getTabPath("vaccine")} onClick={handleCloseSidebar}
+                              <Link href="/vaccination" onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/farm", "vaccine") ? activeStyle : normalStyle
+                                  isLinkActive("/vaccination") ? activeStyle : normalStyle
                                 }`}>
                                 💉 Vaccination Log
                               </Link>

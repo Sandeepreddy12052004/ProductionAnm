@@ -3,18 +3,18 @@ import { useState, useEffect } from 'react';
 import { api } from '@/utils/api';
 
 export default function AnimalsPage() {
-  const [farms, setFarms] = useState([]);
+  const [shedOptions, setShedOptions] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
-    api.farms.getAll()
+    api.sheds.getAll()
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
-          const farmNames = res.map(f => ({ label: f.name || f.code, value: f._id || f.id }));
-          if (farmNames.length > 0) setFarms(farmNames);
+          const names = res.map(s => s.name || s.code || String(s._id || s.id));
+          if (names.length > 0) setShedOptions(names);
         }
       })
-      .catch(err => console.error("Failed to fetch farms:", err));
+      .catch(err => console.error("Failed to fetch sheds:", err));
     return () => { isMounted = false; };
   }, []);
 
@@ -24,14 +24,18 @@ export default function AnimalsPage() {
     icon: '🐄',
     fields: [
       { name: 'tag', label: 'Tag ID' },
-      { name: 'cattleType', label: 'Cattle Type', type: 'select', options: ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf'] },
       {
-        name: 'farmId',
-        label: 'Farm',
+        name: 'cattleType',
+        label: 'Animal Type',
         type: 'select',
-        options: farms
+        options: ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf']
       },
-      { name: 'shed', label: 'Shed Number', type: 'select', options: ['1', '2', '3', '4', '5', '6', '-'] },
+      {
+        name: 'shed',
+        label: 'Shed Number',
+        type: 'select',
+        options: shedOptions.length > 0 ? shedOptions : ['-']
+      },
       { name: 'dateOfBirth', label: 'Date of Birth', type: 'date' },
       { name: 'age', label: 'Age' },
       { name: 'breed', label: 'Breed' },

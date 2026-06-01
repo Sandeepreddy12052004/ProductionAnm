@@ -10,27 +10,30 @@ const BASE_URL =
 // Add new entries here when new backend routes are introduced.
 // ---------------------------------------------------------------------------
 /** @type {Record<string, string>} */
+// Each route maps to ONE OR MORE allowed permission keys.
+// Any match grants access — mirrors the backend withAuth() logic.
+/** @type {Record<string, string | string[]>} */
 const ROUTE_PERMISSION_MAP = {
-  '/api/farms':                        'FARM_MANAGEMENT',
-  '/api/roles':                        'ROLES',
-  '/api/users':                        'USER_MANAGEMENT',
-  '/api/departments':                  'DEPARTMENT',
-  '/api/sheds':                        'SHED_MANAGEMENT',
-  '/api/cattle':                       'CATTLE_MANAGEMENT',
-  '/api/crossing':                     'CROSSING_LOG',
-  '/api/health/treatments':            'HEALTH',
-  '/api/health/vaccinations':          'HEALTH',
-  '/api/inventory/medicines':          'INVENTORY',
-  '/api/inventory/feed':               'INVENTORY',
-  '/api/operations/grass-collection':  'GRASS',
-  '/api/operations/daily-feeding':     'FEEDING',
-  '/api/milk/collections':             'MILK',
-  '/api/milk/quality':                 'MILK',
-  '/api/tags':                         'CATTLE_MANAGEMENT',
-  '/api/logs/crossing':                'CROSSING_LOG',
-  '/api/logs/sale':                    'SALE_LOG',
-  '/api/logs/shed':                    'SHED_LOG',
-  '/api/logs/purchase':                'PURCHASE_LOG',
+  '/api/farms':                        ['FARM_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/roles':                        ['ROLES', 'ROLE_MANAGEMENT'],
+  '/api/users':                        ['USER_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/departments':                  ['DEPARTMENT', 'FARM_ADMIN'],
+  '/api/sheds':                        ['SHED_MANAGEMENT', 'SHED', 'FARM_ADMIN', 'INCHARGE'],
+  '/api/cattle':                       ['CATTLE_MANAGEMENT', 'CATTLE', 'LIVESTOCK', 'FARM_ADMIN'],
+  '/api/crossing':                     ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
+  '/api/health/treatments':            ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/health/vaccinations':          ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/inventory/medicines':          ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/inventory/feed':               ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/operations/grass-collection':  ['GRASS', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/operations/daily-feeding':     ['FEEDING', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/milk/collections':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/milk/quality':                 ['MILK', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'FARM_ADMIN'],
+  '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
+  '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
+  '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],
+  '/api/logs/purchase':                ['PURCHASE_LOG', 'PURCHASE', 'FARM_ADMIN'],
 };
 
 // ---------------------------------------------------------------------------
@@ -63,11 +66,11 @@ function getSessionUser() {
  * @param {string} moduleKey
  * @returns {boolean}
  */
-function sessionHasAccess(userObj, moduleKey) {
+function sessionHasAccess(userObj, moduleKeyOrKeys) {
   if (!userObj) return false;
 
   const role = String(userObj.role || '').trim().toUpperCase();
-  if (role === 'SUPER_ADMIN') return true;
+  if (role === 'SUPER_ADMIN' || role === 'FARM_ADMIN') return true;
 
   const permissions = userObj.permissions;
   if (!Array.isArray(permissions)) return false;
@@ -78,36 +81,48 @@ function sessionHasAccess(userObj, moduleKey) {
   );
   if (hasAll) return true;
 
-  const lowerKey = moduleKey.trim().toLowerCase();
+  // Support single key or array of keys — any match grants access
+  const keys = Array.isArray(moduleKeyOrKeys) ? moduleKeyOrKeys : [moduleKeyOrKeys];
 
-  const matched = permissions.find((p) => {
-    if (!p) return false;
+  for (const moduleKey of keys) {
+    const lowerKey = moduleKey.trim().toLowerCase();
 
-    // Object schema: { module_key: 'FARM_MANAGEMENT', can_view: true, ... }
-    if (typeof p === 'object') {
-      return String(p.module_key || '').trim().toLowerCase() === lowerKey;
+    // Also check if the user's role string itself matches any key
+    if (role === lowerKey.toUpperCase()) return true;
+
+    const matched = permissions.find((p) => {
+      if (!p) return false;
+
+      // Object schema: { module_key: 'FARM_MANAGEMENT', can_view: true, ... }
+      if (typeof p === 'object') {
+        return String(p.module_key || '').trim().toLowerCase() === lowerKey;
+      }
+
+      // String schema: 'FARM_MANAGEMENT' or 'FARM_MANAGEMENT_VIEW'
+      if (typeof p === 'string') {
+        const lp = p.trim().toLowerCase();
+        return (
+          lp === lowerKey ||
+          lp.startsWith(lowerKey + '_') ||
+          lp.includes(lowerKey)
+        );
+      }
+
+      return false;
+    });
+
+    if (matched) {
+      // Object form: honour can_view explicitly
+      if (typeof matched === 'object') {
+        if (!!matched.can_view) return true;
+      } else {
+        // String form: presence means access granted
+        return true;
+      }
     }
+  }
 
-    // String schema: 'FARM_MANAGEMENT' or 'FARM_MANAGEMENT_VIEW'
-    if (typeof p === 'string') {
-      const lp = p.trim().toLowerCase();
-      return (
-        lp === lowerKey ||
-        lp.startsWith(lowerKey + '_') ||
-        lp.includes(lowerKey)
-      );
-    }
-
-    return false;
-  });
-
-  if (!matched) return false;
-
-  // Object form: honour can_view explicitly
-  if (typeof matched === 'object') return !!matched.can_view;
-
-  // String form: presence means access granted
-  return true;
+  return false;
 }
 
 // ---------------------------------------------------------------------------

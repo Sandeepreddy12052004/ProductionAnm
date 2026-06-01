@@ -69,7 +69,7 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  const hasShedField = (moduleConfig?.fields || []).some(f => ['shed', 'oldShed', 'newShed'].includes(f.name));
+  const hasShedField = (moduleConfig?.fields || []).some(f => ['shed', 'oldShed', 'newShed', 'shedId'].includes(f.name));
   if (hasShedField) {
     api.sheds.getAll().then(sheds => {
       setDynamicShedOptions(sheds.map(s => s.name));
@@ -79,7 +79,7 @@ useEffect(() => {
 
 const current = moduleConfig || { id: 'unknown', name: 'Unknown', fields: [] };
 const currentFields = current.fields.map(f => {
-  if (['shed', 'oldShed', 'newShed'].includes(f.name) && dynamicShedOptions) {
+  if (['shed', 'oldShed', 'newShed', 'shedId'].includes(f.name) && dynamicShedOptions) {
     return { ...f, options: dynamicShedOptions.length > 0 ? dynamicShedOptions : ['-'] };
   }
   return f;
@@ -101,11 +101,29 @@ const fetchLogs = async () => {
       data = await api.purchase.getAll();
     } else if (current.id === 'sale') {
       data = await api.sale.getAll();
+    } else if (current.id === 'health') {
+      data = await api.health.treatments.getAll();
+    } else if (current.id === 'vaccine') {
+      data = await api.health.vaccinations.getAll();
     } else {
       const savedData = localStorage.getItem(storageKey);
       data = savedData ? JSON.parse(savedData) : [];
     }
-    const normalizedData = (Array.isArray(data) ? data : []).map(log => {
+
+    // Unwrap various response shapes defensively:
+    // 1. Plain array (normal API success)
+    // 2. { data: [...] } envelope
+    // 3. { firewallBlocked: true, data: [] } — silently blocked
+    let rawList;
+    if (Array.isArray(data)) {
+      rawList = data;
+    } else if (data && Array.isArray(data.data)) {
+      rawList = data.data;
+    } else {
+      rawList = [];
+    }
+
+    const normalizedData = rawList.map(log => {
       const dateValue = log.createdAt || log.entryDate || log.date || log.shiftingDate || log.purchaseDate || log.crossingDate;
       const formattedDate = dateValue ? formatDateToDDMMYYYY(dateValue) : "";
       return {
@@ -115,9 +133,57 @@ const fetchLogs = async () => {
         entryDate: formattedDate || log.entryDate || '-'
       };
     });
+
+    // ── Enrich health/vaccine records with animalType + shed from livestock ──
+    // Existing records may not have animalType/shedId stored — look them up
+    // by tagId against the livestock registry so columns always show data.
+    if (current.id === 'health' || current.id === 'vaccine') {
+      let livestockMap = {};
+      try {
+        const cached = sessionStorage.getItem('__livestock_tag_cache__');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.list)) {
+            parsed.list.forEach(a => {
+              const key = String(a.tag_id || a.tag || '').trim().toUpperCase();
+              if (key) livestockMap[key] = a;
+            });
+          }
+        }
+      } catch (_) {}
+
+      // Cache miss — fetch from API
+      if (Object.keys(livestockMap).length === 0) {
+        try {
+          const lsData = await api.cattle.getAll();
+          const lsList = Array.isArray(lsData) ? lsData : (lsData?.data ?? []);
+          lsList.forEach(a => {
+            const key = String(a.tag_id || a.tag || '').trim().toUpperCase();
+            if (key) livestockMap[key] = a;
+          });
+        } catch (_) {}
+      }
+
+      const enriched = normalizedData.map(log => {
+        const tagKey = String(log.tagId || log.tag_id || log.tag || '').trim().toUpperCase();
+        const animal = tagKey ? livestockMap[tagKey] : null;
+        return {
+          ...log,
+          animalType: log.animalType || log.animalId || (animal ? (animal.animalType || animal.cattleType || '') : ''),
+          shedId:     log.shedId || log.shed || (animal ? (animal.shed || animal.shedId || '') : ''),
+        };
+      });
+      setLogs(enriched);
+      setPendingPurchases([]);
+      setPendingCalves([]);
+      return;
+    }
+
     if (current.id === 'livestock') {
-      const pending = normalizedData.filter(log => log.isPendingDetails === true);
-      const active = normalizedData.filter(log => log.isPendingDetails !== true);
+      // isPendingDetails can be true (boolean), "true" (string), or missing/false
+      const isPending = (log) => log.isPendingDetails === true || String(log.isPendingDetails) === 'true';
+      const pending = normalizedData.filter(isPending);
+      const active  = normalizedData.filter(log => !isPending(log));
       
       const calves = pending.filter(log => log.onboardingType === 'CALVING' || (log.dameId && String(log.dameId).trim() !== ''));
       const purchases = pending.filter(log => !calves.includes(log));
@@ -132,10 +198,12 @@ const fetchLogs = async () => {
     }
   } catch (e) {
     console.error(`Error loading logs for ${current.id}:`, e);
+    setLogs([]);
   } finally {
     setIsLoading(false);
   }
 };
+
 
 useEffect(() => {
   if (!moduleConfig) return;
@@ -277,7 +345,7 @@ const activeFilterCount = filters.filter(
 const handleSave = async (data) => {
   setIsLoading(true);
   try {
-    if (['livestock', 'crossing', 'shed', 'purchase', 'sale'].includes(current.id)) {
+    if (['livestock', 'crossing', 'shed', 'purchase', 'sale', 'health', 'vaccine'].includes(current.id)) {
       const entryId = selectedEntry?.id || selectedEntry?._id;
       if (isEditing) {
         if (current.id === 'livestock') {
@@ -290,6 +358,17 @@ const handleSave = async (data) => {
         } else if (current.id === 'crossing') {
           await api.crossing.update(entryId, data);
           swalSuccess("Success", "Crossing log updated successfully!");
+          if (data.calfTag && String(data.calfTag).trim() !== '' && (!selectedEntry?.calfTag || selectedEntry.calfTag !== data.calfTag)) {
+            setTimeout(async () => {
+              const go = await swalConfirm(
+                "🍼 Complete Calf Profile?",
+                `A pending record for newborn Calf Tag [${data.calfTag}] has been added to Live Stock. Would you like to complete its profile now?`
+              );
+              if (go) {
+                router.push('/animals');
+              }
+            }, 1000);
+          }
         } else if (current.id === 'shed') {
           await api.shed.update(entryId, data);
           swalSuccess("Success", "Shed log updated successfully!");
@@ -299,30 +378,70 @@ const handleSave = async (data) => {
         } else if (current.id === 'sale') {
           await api.sale.update(entryId, data);
           swalSuccess("Success", "Sale log updated successfully!");
+        } else if (current.id === 'health') {
+          await api.health.treatments.update(entryId, data);
+          swalSuccess("Success", "Treatment log updated successfully!");
+        } else if (current.id === 'vaccine') {
+          await api.health.vaccinations.update(entryId, data);
+          swalSuccess("Success", "Vaccination log updated successfully!");
         }
       } else {
         if (current.id === 'livestock') {
           // Prevent MongoDB duplicate key error on farmId_1_code_1 by ensuring uniqueness
+          // Ensure required backend fields always have valid values
+          const resolvedShed = data.shed && data.shed !== '' && data.shed !== '-' ? data.shed : (data.shedId || '-');
+          const resolvedType = data.cattleType || data.animalType || 'COW';
           const payload = { 
             ...data,
             tagId: data.tag || data.tagId,
             code: data.code || `CTL-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-            farmId: data.farmId || (moduleConfig.farmCode) || (router.query.code) || 'UNKNOWN_FARM'
+            farmId: data.farmId || (moduleConfig.farmCode) || (router.query.code) || null,
+            shed: resolvedShed,
+            shedId: resolvedShed,
+            cattleType: resolvedType,
+            animalType: resolvedType,
           };
           await api.cattle.create(payload);
           swalSuccess("Success", "Cattle registered successfully!");
         } else if (current.id === 'crossing') {
           await api.crossing.create(data);
           swalSuccess("Success", "Crossing log created successfully!");
+          if (data.calfTag && String(data.calfTag).trim() !== '') {
+            setTimeout(async () => {
+              const go = await swalConfirm(
+                "🍼 Complete Calf Profile?",
+                `A pending record for newborn Calf Tag [${data.calfTag}] has been added to Live Stock. Would you like to complete its profile now?`
+              );
+              if (go) {
+                router.push('/animals');
+              }
+            }, 1000);
+          }
         } else if (current.id === 'shed') {
           await api.shed.create(data);
           swalSuccess("Success", "Shed log created successfully!");
         } else if (current.id === 'purchase') {
           await api.purchase.create(data);
           swalSuccess("Success", "Purchase log created successfully!");
+          const cleanTag = String(data.tag || '').trim().toUpperCase();
+          setTimeout(async () => {
+            const go = await swalConfirm(
+              "🛍️ Complete Purchase Profile?",
+              `A pending record for Tag [${cleanTag}] has been added to Live Stock. Would you like to complete its profile now?`
+            );
+            if (go) {
+              router.push('/animals');
+            }
+          }, 1000);
         } else if (current.id === 'sale') {
           await api.sale.create(data);
           swalSuccess("Success", "Sale log created successfully!");
+        } else if (current.id === 'health') {
+          await api.health.treatments.create(data);
+          swalSuccess("Success", "Treatment log created successfully!");
+        } else if (current.id === 'vaccine') {
+          await api.health.vaccinations.create(data);
+          swalSuccess("Success", "Vaccination log created successfully!");
         }
       }
       try {
@@ -575,7 +694,7 @@ const handleSave = async (data) => {
       setIsLoading(true);
       try {
         const entryId = selectedEntry.id || selectedEntry._id;
-        if (['livestock', 'crossing', 'shed', 'purchase', 'sale'].includes(current.id)) {
+        if (['livestock', 'crossing', 'shed', 'purchase', 'sale', 'health', 'vaccine'].includes(current.id)) {
           if (current.id === 'livestock') {
             await api.cattle.delete(entryId);
             swalSuccess("Deleted", "Cattle deleted successfully!");
@@ -591,6 +710,12 @@ const handleSave = async (data) => {
           } else if (current.id === 'sale') {
             await api.sale.delete(entryId);
             swalSuccess("Deleted", "Sale log deleted successfully!");
+          } else if (current.id === 'health') {
+            await api.health.treatments.delete(entryId);
+            swalSuccess("Deleted", "Treatment log deleted successfully!");
+          } else if (current.id === 'vaccine') {
+            await api.health.vaccinations.delete(entryId);
+            swalSuccess("Deleted", "Vaccination log deleted successfully!");
           }
           try {
             sessionStorage.removeItem('__livestock_tag_cache__');

@@ -57,29 +57,27 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
     if (!userObj) return;
     let isMounted = true;
     
-    // Client-Side API Firewall for sheds
-    if (hasAccess('SHED_MANAGEMENT') || hasAccess('SHED_LOG')) {
-      api.sheds.getAll()
-        .then(res => {
-          if (isMounted && res && Array.isArray(res)) {
-            const shedOpts = res.map(s => ({ label: `Shed ${s.name || s.code}`, value: s._id || s.id }));
-            if (shedOpts.length > 0) setSheds(shedOpts);
-          }
-        })
-        .catch(console.error);
-    }
+    // Fetch sheds for the form dropdown
+    api.sheds.getAll()
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isMounted && list.length > 0) {
+          const shedOpts = list.map(s => ({ label: `Shed ${s.name || s.code}`, value: s.name || s.code }));
+          setSheds(shedOpts);
+        }
+      })
+      .catch(console.error);
       
-    // Client-Side API Firewall for cattle
-    if (hasAccess('CATTLE_MANAGEMENT') || hasAccess('LIVESTOCK')) {
-      api.cattle.getAll()
-        .then(res => {
-          if (isMounted && res && Array.isArray(res)) {
-            const cattleOpts = res.map(c => ({ label: `${c.tag} (${c.cattleType})`, value: c._id || c.id }));
-            if (cattleOpts.length > 0) setAnimals(cattleOpts);
-          }
-        })
-        .catch(console.error);
-    }
+    // Fetch cattle for tag lookups
+    api.cattle.getAll()
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isMounted && list.length > 0) {
+          const cattleOpts = list.map(c => ({ label: `${c.tag} (${c.cattleType || c.animalType})`, value: c._id || c.id }));
+          setAnimals(cattleOpts);
+        }
+      })
+      .catch(console.error);
 
     return () => { isMounted = false; };
   }, [userObj]);
@@ -118,7 +116,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       icon: '🩺',
       fields: [
         { name: 'tagId', label: 'Tag ID' },
-        { name: 'animalId', label: 'Animal ID' },
+        { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
         { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
         { name: 'symptoms', label: 'Symptoms' },
         { name: 'diagnosis', label: 'Diagnosis' },
@@ -202,7 +200,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       icon: '💉',
       fields: [
         { name: 'tagId', label: 'Tag ID' },
-        { name: 'animalId', label: 'Animal ID' },
+        { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
         { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
         { name: 'vaccinationName', label: 'Vaccine Name' },
         { name: 'batchNo', label: 'Vaccine Batch No' },
@@ -282,21 +280,64 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         const savedData = localStorage.getItem(`tkp_${activeTab}_logs`);
         data = savedData ? JSON.parse(savedData) : [];
       }
+      let rawList;
       if (Array.isArray(data)) {
-        const filtered = data.filter(log => {
-          const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
-          if (fId && typeof fId === 'string' && fId.toUpperCase() === farmCode.toUpperCase()) {
-            return true;
-          }
-          if (!fId && farmCode.toUpperCase() === 'TKP') {
-            return true;
-          }
-          return false;
-        });
-        setLogs(filtered);
+        rawList = data;
+      } else if (data && Array.isArray(data.data)) {
+        rawList = data.data;
       } else {
-        setLogs([]);
+        rawList = [];
       }
+
+      // For health/vaccine tabs, enrich records with animalType + shed from livestock
+      if (activeTab === 'health' || activeTab === 'vaccine') {
+        let livestockMap = {};
+        try {
+          const cached = sessionStorage.getItem('__livestock_tag_cache__');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && Array.isArray(parsed.list)) {
+              parsed.list.forEach(a => {
+                const key = String(a.tag_id || a.tag || '').trim().toUpperCase();
+                if (key) livestockMap[key] = a;
+              });
+            }
+          }
+        } catch (_) {}
+
+        if (Object.keys(livestockMap).length === 0) {
+          try {
+            const lsData = await api.cattle.getAll();
+            const lsList = Array.isArray(lsData) ? lsData : (lsData?.data ?? []);
+            lsList.forEach(a => {
+              const key = String(a.tag_id || a.tag || '').trim().toUpperCase();
+              if (key) livestockMap[key] = a;
+            });
+          } catch (_) {}
+        }
+
+        rawList = rawList.map(log => {
+          const tagKey = String(log.tagId || log.tag_id || log.tag || '').trim().toUpperCase();
+          const animal = tagKey ? livestockMap[tagKey] : null;
+          return {
+            ...log,
+            animalType: log.animalType || log.animalId || (animal ? (animal.animalType || animal.cattleType || '') : ''),
+            shedId: log.shedId || log.shed || (animal ? (animal.shed || animal.shedId || '') : ''),
+          };
+        });
+      }
+
+      const filtered = rawList.filter(log => {
+        const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
+        if (fId && typeof fId === 'string' && fId.toUpperCase() === farmCode.toUpperCase()) {
+          return true;
+        }
+        if (!fId && farmCode.toUpperCase() === 'TKP') {
+          return true;
+        }
+        return false;
+      });
+      setLogs(filtered);
     } catch (e) {
       console.error(`Error loading logs for ${activeTab}:`, e);
       setLogs([]);

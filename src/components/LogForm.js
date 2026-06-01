@@ -75,8 +75,8 @@
     };
 
     React.useEffect(() => {
-      const isPurchase = title?.toLowerCase().includes('purchase');
-      if (isPurchase) {
+      const needsLivestock = (fields || []).some(f => f.name === 'tag' || f.name === 'tagId');
+      if (needsLivestock) {
         const cached = sessionStorage.getItem('__livestock_tag_cache__');
         if (!cached) {
           import('../utils/api').then(({ api }) => {
@@ -89,10 +89,10 @@
           });
         }
       }
-    }, [title]);
+    }, [fields]);
 
     React.useEffect(() => {
-      const hasShedField = (fields || []).some(f => ['shed', 'oldShed', 'newShed'].includes(f.name));
+      const hasShedField = (fields || []).some(f => ['shed', 'oldShed', 'newShed', 'shedId'].includes(f.name));
       if (hasShedField) {
         import('../utils/api').then(({ api }) => {
           api.sheds.getAll().then(res => {
@@ -133,6 +133,28 @@
           });
           if (found) {
             return found.shed || found.shedId || "";
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    return "";
+  };
+
+  const getAnimalTypeFromLivestock = (tagValue) => {
+    try {
+      const cached = sessionStorage.getItem('__livestock_tag_cache__');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.list)) {
+          const cleanTag = String(tagValue).trim().toUpperCase();
+          const found = parsed.list.find(item => {
+            const itemTag = String(item.tag_id || item.tag || '').trim().toUpperCase();
+            return itemTag === cleanTag;
+          });
+          if (found) {
+            return found.animalType || found.cattleType || "";
           }
         }
       }
@@ -528,8 +550,8 @@
                   ) : (
                     (() => {
                       let selectOptions = field.options || [];
-                      if (['shed', 'oldShed', 'newShed'].includes(field.name) && allShedsList.length > 0) {
-                        if (field.name === 'shed') {
+                      if (['shed', 'oldShed', 'newShed', 'shedId'].includes(field.name) && allShedsList.length > 0) {
+                        if (field.name === 'shed' || field.name === 'shedId') {
                           const selectedFarmId = formData.farmId;
                           if (selectedFarmId) {
                             const matchingSheds = allShedsList.filter(s => {
@@ -541,7 +563,10 @@
                               selectOptions.push('-');
                             }
                           } else {
-                            selectOptions = ['-'];
+                            selectOptions = allShedsList.map(s => s.name || s.code);
+                            if (!selectOptions.includes('-')) {
+                              selectOptions.push('-');
+                            }
                           }
                         } else {
                           // Show all sheds across all farms for oldShed / newShed
@@ -557,9 +582,9 @@
                           name={field.name}
                           value={formData[field.name] || ""}
                           required={!field.optional && field.name !== "age" && field.name !== "oldShed"}
-                          disabled={field.name === "oldShed"}
+                          disabled={field.name === "oldShed" || field.disabled}
                           className={`mt-1 block w-full border rounded-xl p-2.5 outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 ${
-                            field.name === 'oldShed'
+                            field.name === 'oldShed' || field.disabled
                               ? 'bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400 font-semibold'
                               : 'bg-white text-black border-slate-200'
                           }`}
@@ -596,14 +621,37 @@
     onChange={(fieldName, tagValue, animalRecord) => {
       setFormData(prev => {
         const updated = { ...prev, [fieldName]: tagValue };
-        let shedValue = "";
-        if (animalRecord) {
-          shedValue = animalRecord.shed || animalRecord.shedId || "";
-        } else {
-          shedValue = getShedFromLivestock(tagValue);
-        }
-        if (shedValue) {
-          updated.oldShed = shedValue;
+        if (fieldName === 'tagId' || fieldName === 'tag' || fieldName === 'animalId') {
+          if (animalRecord) {
+            const shedVal = animalRecord.shed || animalRecord.shedId || "";
+            if (shedVal) {
+              if (fields.some(f => f.name === 'shedId')) updated.shedId = shedVal;
+              if (fields.some(f => f.name === 'shed')) updated.shed = shedVal;
+              if (fields.some(f => f.name === 'oldShed')) updated.oldShed = shedVal;
+            }
+            const typeVal = animalRecord.animalType || animalRecord.cattleType || "";
+            if (typeVal) {
+              if (fields.some(f => f.name === 'animalType')) updated.animalType = typeVal;
+              if (fields.some(f => f.name === 'animalId')) updated.animalId = typeVal;
+            }
+            if (animalRecord.farmId) {
+              updated.farmId = typeof animalRecord.farmId === 'object'
+                ? (animalRecord.farmId._id || animalRecord.farmId.id || animalRecord.farmId)
+                : animalRecord.farmId;
+            }
+          } else {
+            const cachedShed = getShedFromLivestock(tagValue);
+            if (cachedShed) {
+              if (fields.some(f => f.name === 'shedId')) updated.shedId = cachedShed;
+              if (fields.some(f => f.name === 'shed')) updated.shed = cachedShed;
+              if (fields.some(f => f.name === 'oldShed')) updated.oldShed = cachedShed;
+            }
+            const cachedType = getAnimalTypeFromLivestock(tagValue);
+            if (cachedType) {
+              if (fields.some(f => f.name === 'animalType')) updated.animalType = cachedType;
+              if (fields.some(f => f.name === 'animalId')) updated.animalId = cachedType;
+            }
+          }
         }
         return updated;
       });
@@ -656,6 +704,7 @@
 
     /*  Updated Disabled Logic: 1st Notification remains enabled if status is Negative */
   disabled={
+      field.disabled === true ||
       (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
@@ -671,12 +720,13 @@
     readOnly={field.name === "age" || field.name === "pregnantAge"}
     
     className={`mt-1 block w-full border rounded-xl p-2.5 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 ${
+      field.disabled === true ||
       field.name === "age" || 
       field.name === "pregnantAge" || 
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"]))
-        ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400" 
+        ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-500 font-semibold" 
         : "bg-white text-black border-slate-200"
     }`}
 

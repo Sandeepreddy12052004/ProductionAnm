@@ -35,8 +35,8 @@ const FarmTDR = () => {
       icon: '🩺',
       fields: [
         { name: 'tagId', label: 'Tag ID' },
-        { name: 'animalId', label: 'Animal ID' },
-        { name: 'shedId', label: 'Shed', type: 'select', options: ['5', '6'] },
+        { name: 'animalType', label: 'Animal Type (Auto)', disabled: true, optional: true },
+        { name: 'shedId', label: 'Shed', type: 'select', options: ['-'] },
         { name: 'symptoms', label: 'Symptoms' },
         { name: 'diagnosis', label: 'Diagnosis/Issue' },
         { name: 'treatment', label: 'Action Taken' },
@@ -94,20 +94,28 @@ const FarmTDR = () => {
         const savedData = localStorage.getItem(`tdr_${activeTab}_logs`);
         data = savedData ? JSON.parse(savedData) : [];
       }
+
+      // Unwrap both plain arrays and {data:[]} envelope responses (firewall-blocked or paginated)
+      let rawList;
       if (Array.isArray(data)) {
-        const filtered = data.filter(log => {
-          const sId = log.shedId || log.shed;
-          if (sId) return ['5', '6'].includes(sId.toString());
-          
-          const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm;
-          if (fId) return typeof fId === 'string' && fId.toUpperCase().includes('TDR');
-          
-          return false; // Safely hide unassociated data
-        });
-        setLogs(filtered);
+        rawList = data;
+      } else if (data && Array.isArray(data.data)) {
+        rawList = data.data;
       } else {
-        setLogs([]);
+        rawList = [];
       }
+
+      // Filter to show only records belonging to this farm (TDR)
+      // Matching by farmId code/name or fall back to showing all if no farm tag present
+      const filtered = rawList.filter(log => {
+        const fId = log.farmId?.code || log.farmId?.name || log.farmId || log.farm || '';
+        if (fId && typeof fId === 'string') {
+          return fId.toUpperCase().includes('TDR');
+        }
+        // If no farmId attached, show the record (inclusive by default)
+        return true;
+      });
+      setLogs(filtered);
     } catch (e) {
       console.error(`Error loading logs for ${activeTab}:`, e);
       setLogs([]);
