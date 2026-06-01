@@ -104,7 +104,7 @@ const fetchLogs = async () => {
       data = savedData ? JSON.parse(savedData) : [];
     }
     const normalizedData = (Array.isArray(data) ? data : []).map(log => {
-      const dateValue = log.entryDate || log.date || log.shiftingDate || log.purchaseDate || log.crossingDate || log.createdAt;
+      const dateValue = log.createdAt || log.entryDate || log.date || log.shiftingDate || log.purchaseDate || log.crossingDate;
       const formattedDate = dateValue ? formatDateToDDMMYYYY(dateValue) : "";
       return {
         ...log,
@@ -305,6 +305,11 @@ const handleSave = async (data) => {
           await api.sale.create(data);
           swalSuccess("Success", "Sale log created successfully!");
         }
+      }
+      try {
+        sessionStorage.removeItem('__livestock_tag_cache__');
+      } catch (err) {
+        console.error("Non-blocking cache bust error:", err);
       }
       await fetchLogs();
     } else {
@@ -567,6 +572,11 @@ const handleSave = async (data) => {
           } else if (current.id === 'sale') {
             await api.sale.delete(entryId);
             swalSuccess("Deleted", "Sale log deleted successfully!");
+          }
+          try {
+            sessionStorage.removeItem('__livestock_tag_cache__');
+          } catch (err) {
+            console.error("Non-blocking cache bust error:", err);
           }
           await fetchLogs();
         } else {

@@ -40,7 +40,7 @@
     const [allShedsList, setAllShedsList] = useState([]);
 
     React.useEffect(() => {
-      const hasShedField = (fields || []).some(f => f.name === 'shed');
+      const hasShedField = (fields || []).some(f => ['shed', 'oldShed', 'newShed'].includes(f.name));
       if (hasShedField) {
         import('../utils/api').then(({ api }) => {
           api.sheds.getAll().then(res => {
@@ -451,19 +451,27 @@
                   ) : (
                     (() => {
                       let selectOptions = field.options || [];
-                      if (field.name === 'shed' && allShedsList.length > 0) {
-                        const selectedFarmId = formData.farmId;
-                        if (selectedFarmId) {
-                          const matchingSheds = allShedsList.filter(s => {
-                            const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
-                            return String(sFarmId) === String(selectedFarmId);
-                          });
-                          selectOptions = matchingSheds.map(s => s.name || s.code);
+                      if (['shed', 'oldShed', 'newShed'].includes(field.name) && allShedsList.length > 0) {
+                        if (field.name === 'shed') {
+                          const selectedFarmId = formData.farmId;
+                          if (selectedFarmId) {
+                            const matchingSheds = allShedsList.filter(s => {
+                              const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
+                              return String(sFarmId) === String(selectedFarmId);
+                            });
+                            selectOptions = matchingSheds.map(s => s.name || s.code);
+                            if (!selectOptions.includes('-')) {
+                              selectOptions.push('-');
+                            }
+                          } else {
+                            selectOptions = ['-'];
+                          }
+                        } else {
+                          // Show all sheds across all farms for oldShed / newShed
+                          selectOptions = allShedsList.map(s => s.name || s.code);
                           if (!selectOptions.includes('-')) {
                             selectOptions.push('-');
                           }
-                        } else {
-                          selectOptions = ['-'];
                         }
                       }
 
@@ -471,8 +479,13 @@
                         <select
                           name={field.name}
                           value={formData[field.name] || ""}
-                          required={!field.optional && field.name !== "age"}
-                          className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-black focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
+                          required={!field.optional && field.name !== "age" && field.name !== "oldShed"}
+                          disabled={field.name === "oldShed"}
+                          className={`mt-1 block w-full border rounded-xl p-2.5 outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 ${
+                            field.name === 'oldShed'
+                              ? 'bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400 font-semibold'
+                              : 'bg-white text-black border-slate-200'
+                          }`}
                           onChange={handleChange}
                         >
                           <option value="">Select {field.label}</option>
@@ -506,8 +519,14 @@
     onChange={(fieldName, tagValue, animalRecord) => {
       setFormData(prev => {
         const updated = { ...prev, [fieldName]: tagValue };
-        if (animalRecord && (animalRecord.shed || animalRecord.shedId)) {
-          updated.oldShed = animalRecord.shed || animalRecord.shedId || '';
+        let shedValue = "";
+        if (animalRecord) {
+          shedValue = animalRecord.shed || animalRecord.shedId || "";
+        } else {
+          shedValue = getShedFromLivestock(tagValue);
+        }
+        if (shedValue) {
+          updated.oldShed = shedValue;
         }
         return updated;
       });
