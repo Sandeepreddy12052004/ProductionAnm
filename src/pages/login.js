@@ -4,9 +4,7 @@ import Image from "next/image";
 import { motion } from "framer-motion"; // For that premium smooth entrance
 import { swalError } from "@/utils/swal";
 
-const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:3001'
-  : 'https://farm.agasthyanutromilk.com';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://farm.agasthyanutromilk.com';
 
 export default function LoginPage() {
   const router = useRouter();
