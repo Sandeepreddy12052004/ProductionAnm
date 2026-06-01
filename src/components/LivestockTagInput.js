@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '../utils/api';
 
 // ---------------------------------------------------------------------------
@@ -81,14 +81,42 @@ const LivestockTagInput = ({
   livestockList = null,
 }) => {
   const [inputValue, setInputValue] = useState(String(value || '').toUpperCase());
-  const [allAnimals, setAllAnimals] = useState([]);
-  const [filtered, setFiltered] = useState([]);
+  const [allAnimals, setAllAnimals] = useState(() => {
+    if (livestockList !== null) {
+      return (Array.isArray(livestockList) ? livestockList : []).map(normaliseAnimal);
+    }
+    const cached = readCache();
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS && Array.isArray(cached.list) && cached.list.length > 0) {
+      return cached.list.map(normaliseAnimal);
+    }
+    return [];
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationState, setValidationState] = useState('idle'); // 'idle' | 'valid' | 'invalid'
   const [validationMsg, setValidationMsg] = useState('');
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevLivestockList, setPrevLivestockList] = useState(livestockList);
+
+  // Sync external value prop → input (e.g. when form is reset)
+  if (value !== prevValue) {
+    setPrevValue(value);
+    const normalised = String(value || '').toUpperCase();
+    if (normalised !== inputValue) {
+      setInputValue(normalised);
+    }
+  }
+
+  // Sync external livestockList prop → allAnimals
+  if (livestockList !== prevLivestockList) {
+    setPrevLivestockList(livestockList);
+    if (livestockList !== null) {
+      setAllAnimals((Array.isArray(livestockList) ? livestockList : []).map(normaliseAnimal));
+    }
+  }
 
   // ── Close dropdown on outside click ───────────────────────────────────────
   useEffect(() => {
@@ -101,29 +129,12 @@ const LivestockTagInput = ({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Sync external value prop → input (e.g. when form is reset) ────────────
-  useEffect(() => {
-    const normalised = String(value || '').toUpperCase();
-    if (normalised !== inputValue) {
-      setInputValue(normalised);
-    }
-  }, [value]);
-
   // ── Fetch livestock list once on mount ────────────────────────────────────
   useEffect(() => {
-    if (livestockList !== null) {
-      // Use externally-provided list
-      const normalised = (Array.isArray(livestockList) ? livestockList : []).map(normaliseAnimal);
-      setAllAnimals(normalised);
-      return;
-    }
+    if (livestockList !== null) return;
 
-    // Check session cache first
-    const cached = readCache();
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS && Array.isArray(cached.list) && cached.list.length > 0) {
-      setAllAnimals(cached.list.map(normaliseAnimal));
-      return;
-    }
+    // If already initialized from cache, skip API fetch
+    if (allAnimals.length > 0) return;
 
     setIsLoading(true);
     api.cattle.getAll()
@@ -136,13 +147,13 @@ const LivestockTagInput = ({
       .catch((err) => {
         console.error('[LivestockTagInput] Failed to fetch livestock:', err);
         // Fall back to sessionStorage if API call fails (firewall-blocked, offline, etc.)
-        const cached2 = readCache();
-        if (cached2 && Array.isArray(cached2.list)) {
-          setAllAnimals(cached2.list.map(normaliseAnimal));
+        const cached = readCache();
+        if (cached && Array.isArray(cached.list)) {
+          setAllAnimals(cached.list.map(normaliseAnimal));
         }
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [livestockList, allAnimals.length]);
 
   // ── Validate the current input value against the livestock pool ───────────
   const validate = useCallback((rawInput, animals) => {
@@ -190,10 +201,9 @@ const LivestockTagInput = ({
   }, [validationMode, onValidation]);
 
   // ── Filter dropdown list as user types ────────────────────────────────────
-  useEffect(() => {
+  const filtered = useMemo(() => {
     if (!inputValue) {
-      setFiltered([]);
-      return;
+      return [];
     }
     const query = inputValue.trim().toUpperCase();
     let results = allAnimals.filter((a) => a.tag_id.includes(query));
@@ -203,7 +213,7 @@ const LivestockTagInput = ({
       results = results.filter(filterFn);
     }
 
-    setFiltered(results.slice(0, 12)); // cap dropdown to 12 items
+    return results.slice(0, 12); // cap dropdown to 12 items
   }, [inputValue, allAnimals, filterFn]);
 
   // ── Handle input change ───────────────────────────────────────────────────
@@ -227,7 +237,6 @@ const LivestockTagInput = ({
   const handleSelect = (animal) => {
     setInputValue(animal.tag_id);
     setIsOpen(false);
-    setFiltered([]);
     validate(animal.tag_id, allAnimals);
     onChange?.(name, animal.tag_id, animal.raw);
   };

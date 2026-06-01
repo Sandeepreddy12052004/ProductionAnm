@@ -29,6 +29,10 @@ const ROUTE_PERMISSION_MAP = {
   '/api/milk/collections':             'MILK',
   '/api/milk/quality':                 'MILK',
   '/api/tags':                         'CATTLE_MANAGEMENT',
+  '/api/logs/crossing':                'CROSSING_LOG',
+  '/api/logs/sale':                    'SALE_LOG',
+  '/api/logs/shed':                    'SHED_LOG',
+  '/api/logs/purchase':                'PURCHASE_LOG',
 };
 
 // ---------------------------------------------------------------------------
@@ -425,5 +429,25 @@ export const api = {
     create:              (data)     => apiRequest('/api/roles', 'POST', data),
     update:              (id, data) => apiRequest(`/api/roles/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/roles/${id}`, 'DELETE'),
+  },
+
+  // Operational logs (stored in database)
+  shed: {
+    getAll:              ()         => apiRequest('/api/logs/shed'),
+    create:              (data)     => apiRequest('/api/logs/shed', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/logs/shed/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/logs/shed/${id}`, 'DELETE'),
+  },
+  purchase: {
+    getAll:              ()         => apiRequest('/api/logs/purchase'),
+    create:              (data)     => apiRequest('/api/logs/purchase', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/logs/purchase/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/logs/purchase/${id}`, 'DELETE'),
+  },
+  sale: {
+    getAll:              ()         => apiRequest('/api/logs/sale'),
+    create:              (data)     => apiRequest('/api/logs/sale', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/logs/sale/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/logs/sale/${id}`, 'DELETE'),
   },
 };

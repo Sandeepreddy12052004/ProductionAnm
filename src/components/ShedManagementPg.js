@@ -15,7 +15,8 @@ const ShedManagementPg = () => {
     code: "",
     lines: 0,
     capacity: 0,
-    status: "ACTIVE"
+    status: "ACTIVE",
+    remarks: ""
   });
   const [editingId, setEditingId] = useState(null);
 
@@ -86,7 +87,7 @@ const ShedManagementPg = () => {
         await api.sheds.create(payload);
         swalSuccess("Success", "Shed created successfully!");
       }
-      setFormData({ farmId: "", code: "", lines: 0, capacity: 0, status: "ACTIVE" });
+      setFormData({ farmId: "", code: "", lines: 0, capacity: 0, status: "ACTIVE", remarks: "" });
       setEditingId(null);
       setShowForm(false);
       fetchShedsAndFarms();
@@ -105,7 +106,8 @@ const ShedManagementPg = () => {
       code: shed.code || "",
       lines: shed.lines || 0,
       capacity: shed.capacity || 0,
-      status: shed.status || "ACTIVE"
+      status: shed.status || "ACTIVE",
+      remarks: shed.remarks || ""
     });
     setEditingId(shed._id || shed.id);
     setShowForm(true);
@@ -297,6 +299,18 @@ const ShedManagementPg = () => {
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="INACTIVE">INACTIVE</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Remarks</label>
+                <textarea
+                  name="remarks"
+                  value={formData.remarks || ""}
+                  onChange={handleChange}
+                  placeholder="Enter remarks..."
+                  rows="3"
+                  className="w-full border border-gray-200 rounded-lg p-3 outline-none focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 text-sm font-semibold resize-none"
+                />
               </div>
 
             </div>

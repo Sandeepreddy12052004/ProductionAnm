@@ -50,11 +50,11 @@ export default function SalePage() {
     icon: '📤',
     fields: [
       { name: 'tag', label: 'Tag ID' },
-      { name: 'saleDate', label: 'Sale Date', type: 'date' },
-      { name: 'buyer', label: 'Buyer Name' },
-      { name: "contact", label: 'Buyer Contact', type: 'number' },
-      { name: 'reason', label: 'Reason for Sale' },
-      { name: 'price', label: 'Price', type: 'number' }
+      { name: 'date', label: 'Sale Date', type: 'date' },
+      { name: 'buyerName', label: 'Buyer Name' },
+      { name: "buyerPhone", label: 'Buyer Contact', type: 'number' },
+      { name: 'remarks', label: 'Reason for Sale' },
+      { name: 'salePrice', label: 'Price', type: 'number' }
     ]
   };
 

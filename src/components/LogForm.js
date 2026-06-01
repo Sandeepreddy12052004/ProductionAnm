@@ -38,9 +38,25 @@
 
 
   const getShedFromLivestock = (tagValue) => {
-    const livestock = JSON.parse(localStorage.getItem("global_livestock_logs")) || [];
-    const found = livestock.find(item => item.tag === tagValue);
-    return found ? found.shed : "";
+    try {
+      const cached = sessionStorage.getItem('__livestock_tag_cache__');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.list)) {
+          const cleanTag = String(tagValue).trim().toUpperCase();
+          const found = parsed.list.find(item => {
+            const itemTag = String(item.tag_id || item.tag || '').trim().toUpperCase();
+            return itemTag === cleanTag;
+          });
+          if (found) {
+            return found.shed || found.shedId || "";
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    return "";
   };
 
 
@@ -58,15 +74,15 @@
           // --- PD Date (3 Months) ---
           const pdDate = new Date(baseDate);
           pdDate.setMonth(pdDate.getMonth() + 3);
-          updated["PD date"] = pdDate.toISOString().split('T')[0];
+          updated["pdDate"] = pdDate.toISOString().split('T')[0];
 
           // --- Estimated Calving Date (10 Months) ---
           const estCalving = new Date(baseDate);
           estCalving.setMonth(estCalving.getMonth() + 10);
-          updated["estimated calving date"] = estCalving.toISOString().split('T')[0];
+          updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
         } else {
-          updated["PD date"] = "";
-          updated["estimated calving date"] = "";
+          updated["pdDate"] = "";
+          updated["estimatedCalvingDate"] = "";
         }
       }
 
@@ -106,51 +122,51 @@
         updated[name] = value.replace(/[^0-9]/g, '');
       }
 
-      if (name === "actual calving date" && value) {
+      if (name === "actualCalvingDate" && value) {
         const calvingDate = new Date(value);
         // Add 45 days
         calvingDate.setDate(calvingDate.getDate() + 45);
         
         const heatDateFormatted = calvingDate.toISOString().split('T')[0];
-        updated["heat monitoring 1st notification"] = heatDateFormatted;
+        updated["heatMonitoring1stNotification"] = heatDateFormatted;
       }
 
 
-      if (name === "pregnancy status" && value === "Positive") {
+      if (name === "pregnancyStatus" && value === "Positive") {
     //  ADD THIS: Auto-calculate Est. Calving if CrossingDate exists
     if (updated["crossingDate"]) {
       const baseDate = new Date(updated["crossingDate"]);
       const estCalving = new Date(baseDate);
       estCalving.setMonth(estCalving.getMonth() + 10);
-      updated["estimated calving date"] = estCalving.toISOString().split('T')[0];
+      updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
     }
   }
 
-    if (name === "pregnancy status" && value === "Negative") {
-      updated["pregnancy confirmed date"] = "";
-      updated["estimated calving date"] = "";
-      updated["actual calving date"] = "";
-      updated["calf tag"] = "";
+    if (name === "pregnancyStatus" && value === "Negative") {
+      updated["pregnancyConfirmedDate"] = "";
+      updated["estimatedCalvingDate"] = "";
+      updated["actualCalvingDate"] = "";
+      updated["calfTag"] = "";
       updated["breedType"] = "";
-      updated["heat monitoring 2nd notification"] = ""; 
+      updated["heatMonitoring2ndNotification"] = ""; 
 
-      const pdDateValue = updated["PD date"];
+      const pdDateValue = updated["pdDate"];
       if (pdDateValue) {
           const hDate = new Date(pdDateValue);
           hDate.setDate(hDate.getDate() + 21);
-          updated["heat monitoring 1st notification"] = hDate.toISOString().split('T')[0];
+          updated["heatMonitoring1stNotification"] = hDate.toISOString().split('T')[0];
       }
   }
 
 
-      if (name === "pregnancy status" && value == "Pending") {
-    updated["pregnancy confirmed date"] = "";
-    updated["estimated calving date"] = "";
-    updated["actual calving date"] = "";
-    updated["calf tag"] = "";
+      if (name === "pregnancyStatus" && value == "Pending") {
+    updated["pregnancyConfirmedDate"] = "";
+    updated["estimatedCalvingDate"] = "";
+    updated["actualCalvingDate"] = "";
+    updated["calfTag"] = "";
     updated["breedType"] = "";
-    updated["heat monitoring 1st notification"] = "";
-    updated["heat monitoring 2nd notification"] = "";
+    updated["heatMonitoring1stNotification"] = "";
+    updated["heatMonitoring2ndNotification"] = "";
   }
 
 
@@ -160,7 +176,7 @@
 
 
     // NEW: AUTO-CALCULATE PREGNANT AGE (Y M D Format)
-      if ((name === "pregnancy status" && value === "Positive") || (name === "crossingDate" && updated["pregnancy status"] === "Positive")) {
+      if ((name === "pregnancyStatus" && value === "Positive") || (name === "crossingDate" && updated["pregnancyStatus"] === "Positive")) {
         const cDateVal = name === "crossingDate" ? value : updated["crossingDate"];
         
         if (cDateVal) {
@@ -186,16 +202,16 @@
             if (months > 0) pAgeText += ` ${months} M`;
             if (days > 0) pAgeText += ` ${days} D`;
             
-            updated["Pregnant age"] = pAgeText;
+            updated["pregnantAge"] = pAgeText;
           } else {
-            updated["Pregnant age"] = "Invalid Date";
+            updated["pregnantAge"] = "Invalid Date";
           }
         }
       }
 
       // NEW: Clear Pregnant Age if status is no longer Positive
-      if (name === "pregnancy status" && value !== "Positive") {
-        updated["Pregnant age"] = "";
+      if (name === "pregnancyStatus" && value !== "Positive") {
+        updated["pregnantAge"] = "";
       }
 
 
@@ -258,8 +274,9 @@
   const noFutureDates = [
     "dob",
     "crossingDate",
-    "actual calving date",
+    "actualCalvingDate",
     "saleDate",
+    "date",
     "purchaseDate",
     "shiftingDate"
   ];
@@ -451,10 +468,10 @@
 
   value={
       /*  Show "-" for Pregnant Age if not Positive */
-      field.name === "Pregnant age" && formData["pregnancy status"] !== "Positive"
+      field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive"
         ? "-"
-        : (["pregnancy confirmed date", "estimated calving date", "actual calving date", "calf tag", "heat monitoring 2nd notification"].includes(field.name) && formData["pregnancy status"] !== "Positive") ||
-          (field.name === "heat monitoring 1st notification" && !["Positive", "Negative"].includes(formData["pregnancy status"])) ||
+        : (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
+          (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
           (field.name === "purchaseDate" && formData.farmBorn === "Yes")
         ? "-" 
         : formData[field.name] || ""
@@ -465,41 +482,41 @@
      required={
   !field.optional && (
     field.name === "breedType"
-      ? !!formData["actual calving date"]
-    : ["pregnancy confirmed date", "estimated calving date"].includes(field.name) 
-      ? formData["pregnancy status"] === "Positive"
-    : ["calf tag", "heat monitoring 1st notification"].includes(field.name)
-      ? !!formData["actual calving date"] 
+      ? !!formData["actualCalvingDate"]
+    : ["pregnancyConfirmedDate", "estimatedCalvingDate"].includes(field.name) 
+      ? formData["pregnancyStatus"] === "Positive"
+    : ["calfTag", "heatMonitoring1stNotification"].includes(field.name)
+      ? !!formData["actualCalvingDate"] 
     : field.name === "purchaseDate" 
       ? formData.farmBorn === "No"
     : field.name !== "age" && 
-      !["actual calving date", "remarks", "heat monitoring 2nd notification"].includes(field.name)
+      !["actualCalvingDate", "remarks", "heatMonitoring2ndNotification"].includes(field.name)
   )
 }
 
 
     /*  Updated Disabled Logic: 1st Notification remains enabled if status is Negative */
   disabled={
-      (field.name === "Pregnant age" && formData["pregnancy status"] !== "Positive") ||
-      (["pregnancy confirmed date", "estimated calving date", "actual calving date", "calf tag", "heat monitoring 2nd notification"].includes(field.name) && formData["pregnancy status"] !== "Positive") ||
-      (field.name === "heat monitoring 1st notification" && !["Positive", "Negative"].includes(formData["pregnancy status"])) ||
+      (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
+      (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
+      (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       field.name === "age" || 
-      field.name === "Pregnant age"
+      field.name === "pregnantAge"
     }
 
     /*  Added Whole Number protection */
     min={field.type === "number" ? "0" : undefined}
     step={field.type === "number" ? "1" : undefined}
     
-    readOnly={field.name === "age" || field.name === "Pregnant age"}
+    readOnly={field.name === "age" || field.name === "pregnantAge"}
     
     className={`mt-1 block w-full border rounded-xl p-2.5 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 ${
       field.name === "age" || 
-      field.name === "Pregnant age" || 
+      field.name === "pregnantAge" || 
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
-      (["pregnancy confirmed date", "estimated calving date", "actual calving date", "calf tag", "heat monitoring 2nd notification"].includes(field.name) && formData["pregnancy status"] !== "Positive") ||
-      (field.name === "heat monitoring 1st notification" && !["Positive", "Negative"].includes(formData["pregnancy status"]))
+      (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
+      (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"]))
         ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400" 
         : "bg-white text-black border-slate-200"
     }`}

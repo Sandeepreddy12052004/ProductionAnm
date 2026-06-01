@@ -59,17 +59,17 @@ export default function CrossingLogPage() {
       { name: 'maleTag', label: 'Male Tag ID' },
       { name: 'crossingDate', label: 'Crossing Date', type: 'date' },
       { name: 'crossingAttemptNumber', label: 'Crossing Attempt No.', type: 'number' },
-      { name: 'PD date', label: 'PD Test Date', type: 'date' },
-      { name: 'pregnancy status', label: 'Pregnancy Status', type: 'select', options: ['Positive', 'Negative', 'Pending'] },
-      { name: 'pregnancy confirmed date', label: 'Pregnancy Confirmed Date', type: 'date' },
-      { name: 'estimated calving date', label: 'Estimated Calving Date', type: 'date' },
-      { name: 'Pregnant age', label: 'Pregnant Age', type: 'number' },
-      { name: 'actual calving date', label: 'Actual Calving Date', type: 'date' },
-      { name: 'calf tag', label: 'Calf Tag ID' },
+      { name: 'pdDate', label: 'PD Test Date', type: 'date' },
+      { name: 'pregnancyStatus', label: 'Pregnancy Status', type: 'select', options: ['Positive', 'Negative', 'Pending'] },
+      { name: 'pregnancyConfirmedDate', label: 'Pregnancy Confirmed Date', type: 'date' },
+      { name: 'estimatedCalvingDate', label: 'Estimated Calving Date', type: 'date' },
+      { name: 'pregnantAge', label: 'Pregnant Age', type: 'number' },
+      { name: 'actualCalvingDate', label: 'Actual Calving Date', type: 'date' },
+      { name: 'calfTag', label: 'Calf Tag ID' },
       { name: 'remarks', label: 'Remarks', type: 'textarea' },
       { name: 'breedType', label: 'Breed Type' },
-      { name: 'heat monitoring 1st notification', label: 'Heat Monitoring 1st Notification', type: 'date' },
-      { name: 'heat monitoring 2nd notification', label: 'Heat Monitoring 2nd Notification', type: 'date' }
+      { name: 'heatMonitoring1stNotification', label: 'Heat Monitoring 1st Notification', type: 'date' },
+      { name: 'heatMonitoring2ndNotification', label: 'Heat Monitoring 2nd Notification', type: 'date' }
     ]
   };
 
