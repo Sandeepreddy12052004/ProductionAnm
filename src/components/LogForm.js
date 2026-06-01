@@ -1,6 +1,22 @@
   import React, { useState } from 'react';
   import LivestockTagInput from './LivestockTagInput';
 
+  const parseDateString = (dateVal) => {
+    if (!dateVal) return null;
+    if (dateVal instanceof Date) return dateVal;
+    const valStr = String(dateVal).trim();
+    if (valStr.includes("/")) {
+      const parts = valStr.split("/");
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    const parsed = new Date(valStr);
+    if (!isNaN(parsed.getTime())) return parsed;
+    return null;
+  };
+
   const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
 
     const formatInitialData = (data, fields) => {
@@ -16,8 +32,8 @@
             }
           }
           try {
-            const d = new Date(rawVal);
-            if (!isNaN(d.getTime())) {
+            const d = parseDateString(rawVal);
+            if (d && !isNaN(d.getTime())) {
               formatted[field.name] = d.toISOString().split('T')[0];
             }
           } catch (e) {
@@ -101,20 +117,29 @@
         updated["shed"] = ""; // Clear selected shed when farm changes
       }
 
+      if (name === "crossingType") {
+        if (value === "Artificial") {
+          updated["maleTag"] = "";
+        } else if (value === "Natural") {
+          updated["batchNumber"] = "";
+        }
+      }
+
 
       if (name === "crossingDate") {
         if (value) {
-          const baseDate = new Date(value);
-          
-          // --- PD Date (3 Months) ---
-          const pdDate = new Date(baseDate);
-          pdDate.setMonth(pdDate.getMonth() + 3);
-          updated["pdDate"] = pdDate.toISOString().split('T')[0];
+          const baseDate = parseDateString(value);
+          if (baseDate) {
+            // --- PD Date (3 Months) ---
+            const pdDate = new Date(baseDate);
+            pdDate.setMonth(pdDate.getMonth() + 3);
+            updated["pdDate"] = pdDate.toISOString().split('T')[0];
 
-          // --- Estimated Calving Date (10 Months) ---
-          const estCalving = new Date(baseDate);
-          estCalving.setMonth(estCalving.getMonth() + 10);
-          updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
+            // --- Estimated Calving Date (10 Months) ---
+            const estCalving = new Date(baseDate);
+            estCalving.setMonth(estCalving.getMonth() + 10);
+            updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
+          }
         } else {
           updated["pdDate"] = "";
           updated["estimatedCalvingDate"] = "";
@@ -123,8 +148,9 @@
 
       if (name === "dateOfBirth") {
         if (value) {
-          const dob = new Date(value);
-          const today = new Date();
+          const dob = parseDateString(value);
+          if (dob) {
+            const today = new Date();
           
           let years = today.getFullYear() - dob.getFullYear();
           let months = today.getMonth() - dob.getMonth();
@@ -147,6 +173,7 @@
           } else {
               updated.age = `0 Mos`;
           }
+          }
         } else {
           updated.age = "";
         }
@@ -158,22 +185,26 @@
       }
 
       if (name === "actualCalvingDate" && value) {
-        const calvingDate = new Date(value);
-        // Add 45 days
-        calvingDate.setDate(calvingDate.getDate() + 45);
-        
-        const heatDateFormatted = calvingDate.toISOString().split('T')[0];
-        updated["heatMonitoring1stNotification"] = heatDateFormatted;
+        const calvingDate = parseDateString(value);
+        if (calvingDate) {
+          // Add 45 days
+          calvingDate.setDate(calvingDate.getDate() + 45);
+          
+          const heatDateFormatted = calvingDate.toISOString().split('T')[0];
+          updated["heatMonitoring1stNotification"] = heatDateFormatted;
+        }
       }
 
 
       if (name === "pregnancyStatus" && value === "Positive") {
     //  ADD THIS: Auto-calculate Est. Calving if CrossingDate exists
     if (updated["crossingDate"]) {
-      const baseDate = new Date(updated["crossingDate"]);
-      const estCalving = new Date(baseDate);
-      estCalving.setMonth(estCalving.getMonth() + 10);
-      updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
+      const baseDate = parseDateString(updated["crossingDate"]);
+      if (baseDate) {
+        const estCalving = new Date(baseDate);
+        estCalving.setMonth(estCalving.getMonth() + 10);
+        updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
+      }
     }
   }
 
@@ -187,9 +218,11 @@
 
       const pdDateValue = updated["pdDate"];
       if (pdDateValue) {
-          const hDate = new Date(pdDateValue);
-          hDate.setDate(hDate.getDate() + 21);
-          updated["heatMonitoring1stNotification"] = hDate.toISOString().split('T')[0];
+          const hDate = parseDateString(pdDateValue);
+          if (hDate) {
+            hDate.setDate(hDate.getDate() + 21);
+            updated["heatMonitoring1stNotification"] = hDate.toISOString().split('T')[0];
+          }
       }
   }
 
@@ -215,10 +248,10 @@
         const cDateVal = name === "crossingDate" ? value : updated["crossingDate"];
         
         if (cDateVal) {
-          const start = new Date(cDateVal);
+          const start = parseDateString(cDateVal);
           const today = new Date();
           
-          if (start <= today) {
+          if (start && start <= today) {
             let years = today.getFullYear() - start.getFullYear();
             let months = today.getMonth() - start.getMonth();
             let days = today.getDate() - start.getDate();
@@ -253,10 +286,10 @@
   // AUTO CALCULATE AGE WHEN DOB
   if (name === "dob") {
     if (value) {
-      const birth = new Date(value);
+      const birth = parseDateString(value);
       const today = new Date();
 
-      if (birth > today) {
+      if (birth && birth > today) {
         updated.age = "Invalid Date";
         setDobError("Future date not allowed");
         return updated;
@@ -264,7 +297,8 @@
         setDobError("");
       }
 
-      const years = today.getFullYear() - birth.getFullYear();
+      if (birth) {
+        const years = today.getFullYear() - birth.getFullYear();
       const months = today.getMonth() - birth.getMonth();
       const days = today.getDate() - birth.getDate();
 
@@ -296,6 +330,7 @@
       }
 
       updated.age = ageText;
+      }
     } else {
       updated.age = "";
     }
@@ -341,8 +376,14 @@
             }} 
             className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
           >
-            {fields.map((field) => (
-              <div key={field.name}>
+            {fields.map((field) => {
+              // Dynamic conditional fields for Crossing Log (Natural vs Artificial)
+              const cType = formData.crossingType || 'Natural';
+              if (field.name === 'maleTag' && cType === 'Artificial') return null;
+              if (field.name === 'batchNumber' && cType === 'Natural') return null;
+
+              return (
+                <div key={field.name}>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">{field.label}</label>
                 {field.type === "select" ? (
                   field.name === "role" && title?.includes("User") ? (
@@ -503,17 +544,17 @@
                       );
                     })()
                   )
-) : (field.name === 'tag' || field.name === 'tagId' || field.name === 'animalId') && !title?.toLowerCase().includes('live stock') ? (
+) : (field.name === 'tag' || field.name === 'tagId' || field.name === 'animalId' || field.name === 'maleTag') && !title?.toLowerCase().includes('live stock') ? (
   <LivestockTagInput
     name={field.name}
     value={formData[field.name] || ''}
-    required={!field.optional}
+    required={!field.optional && (field.name !== 'maleTag' || (formData.crossingType || 'Natural') === 'Natural')}
     disabled={false}
     placeholder={`Type or scan ${field.label}...`}
     validationMode="must_exist"
     filterFn={
       title?.toLowerCase().includes('crossing')
-        ? (animal) => animal.gender === 'female'
+        ? (field.name === 'maleTag' ? (animal) => animal.gender === 'male' : (animal) => animal.gender === 'female')
         : null
     }
     onChange={(fieldName, tagValue, animalRecord) => {
@@ -678,8 +719,9 @@
     </>
 
       )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
             <div className="flex gap-3 mt-7">
               {/* <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg">Save</button>
               <button type="button" onClick={onClose} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancel</button> */}

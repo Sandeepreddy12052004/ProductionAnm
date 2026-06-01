@@ -56,7 +56,9 @@ export default function CrossingLogPage() {
     icon: '🧬',
     fields: [
       { name: 'tag', label: 'Tag ID' },
-      { name: 'maleTag', label: 'Male Tag ID' },
+      { name: 'crossingType', label: 'Crossing Type', type: 'select', options: ['Natural', 'Artificial'] },
+      { name: 'maleTag', label: 'Male Tag ID', optional: true },
+      { name: 'batchNumber', label: 'Batch Number', optional: true },
       { name: 'crossingDate', label: 'Crossing Date', type: 'date' },
       { name: 'crossingAttemptNumber', label: 'Crossing Attempt No.', type: 'number' },
       { name: 'pdDate', label: 'PD Test Date', type: 'date' },

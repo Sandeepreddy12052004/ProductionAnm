@@ -166,7 +166,13 @@ const LivestockTagInput = ({
       return;
     }
 
-    const match = animals.find((a) => a.tag_id === val);
+    const match = animals.find((a) => {
+      if (a.tag_id !== val) return false;
+      if (typeof filterFn === 'function') {
+        return filterFn(a);
+      }
+      return true;
+    });
 
     if (validationMode === 'must_not_exist') {
       if (match) {
@@ -198,7 +204,7 @@ const LivestockTagInput = ({
       setValidationMsg('');
       onValidation?.(true, '');
     }
-  }, [validationMode, onValidation]);
+  }, [validationMode, onValidation, filterFn]);
 
   // ── Filter dropdown list as user types ────────────────────────────────────
   const filtered = useMemo(() => {
