@@ -246,7 +246,8 @@ const OpsLogPg = ({ moduleConfig }) => {
       closeAllModals();
     } catch (e) {
       console.error('[OpsLogPg] Save error:', e);
-      swalError('Error', e?.message || 'Failed to save. Please try again.');
+      const errMsg = typeof e === 'string' ? e : (e?.message || 'Failed to save. Please try again.');
+      swalError('Error', errMsg);
     } finally {
       setIsLoading(false);
     }
