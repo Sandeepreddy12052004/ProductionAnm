@@ -128,6 +128,10 @@ const fetchLogs = async () => {
       const formattedDate = dateValue ? formatDateToDDMMYYYY(dateValue) : "";
       return {
         ...log,
+        purchaseFrom: log.purchaseFrom || log.sellerName || '',
+        purchasePrice: log.purchasePrice || log.price || 0,
+        sellerName: log.sellerName || log.purchaseFrom || '',
+        price: log.price || log.purchasePrice || 0,
         tag: log.tag || log.tag_id || log.tagId || '',
         tagId: log.tagId || log.tag_id || log.tag || '',
         entryDate: formattedDate || log.entryDate || '-'
