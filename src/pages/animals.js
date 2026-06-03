@@ -36,6 +36,7 @@ export default function AnimalsPage() {
         type: 'select',
         options: shedOptions.length > 0 ? shedOptions : ['-']
       },
+      { name: 'lineNo', label: 'Row / Line No', type: 'number' },
       { name: 'dateOfBirth', label: 'Date of Birth', type: 'date' },
       { name: 'age', label: 'Age' },
       { name: 'breed', label: 'Breed' },

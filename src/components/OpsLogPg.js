@@ -120,7 +120,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
           animal_opts = list.map(c => ({
             label: `${c.tag || c.tag_id} (${c.cattleType || c.animalType || ''})`,
-            value: c._id || c.id
+            value: c._id || c.id,
+            shed: c.shed || c.shedId || ''
           }));
           tryMerge();
         })
@@ -172,10 +173,64 @@ const OpsLogPg = ({ moduleConfig }) => {
       const now = new Date();
       const formattedDate = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
 
-      const payload = { ...data };
-      if (!isEditing) {
-        payload.entryDate = formattedDate;
-        payload.date = now.toISOString();
+      let payload;
+      if (Array.isArray(data)) {
+        payload = data.map(item => {
+          const itemPayload = { ...item };
+          if (current.id === 'feeding') {
+            const feedingFields = [
+              'greenGrass',
+              'dryGrass',
+              'cottonCake',
+              'chunni',
+              'maize',
+              'wheatBran',
+              'salt',
+              'oralCalcium',
+              'mineralMixture'
+            ];
+            feedingFields.forEach(f => {
+              if (itemPayload[f] === "" || itemPayload[f] === undefined || itemPayload[f] === null) {
+                itemPayload[f] = 0;
+              } else {
+                const numVal = Number(itemPayload[f]);
+                itemPayload[f] = isNaN(numVal) ? 0 : numVal;
+              }
+            });
+          }
+          if (!isEditing) {
+            itemPayload.entryDate = formattedDate;
+            itemPayload.date = now.toISOString();
+          }
+          return itemPayload;
+        });
+      } else {
+        payload = { ...data };
+        if (current.id === 'feeding') {
+          const feedingFields = [
+            'greenGrass',
+            'dryGrass',
+            'cottonCake',
+            'chunni',
+            'maize',
+            'wheatBran',
+            'salt',
+            'oralCalcium',
+            'mineralMixture'
+          ];
+          feedingFields.forEach(f => {
+            if (payload[f] === "" || payload[f] === undefined || payload[f] === null) {
+              payload[f] = 0;
+            } else {
+              const numVal = Number(payload[f]);
+              payload[f] = isNaN(numVal) ? 0 : numVal;
+            }
+          });
+        }
+        if (!isEditing) {
+          payload.entryDate = formattedDate;
+          payload.date = now.toISOString();
+        }
       }
 
       const entryId = selectedEntry?.id || selectedEntry?._id;
@@ -476,11 +531,17 @@ const OpsLogPg = ({ moduleConfig }) => {
                   onClick={() => setSelectedEntry(log)}
                 >
                   <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
-                  {current.fields.map(f => (
-                    <td key={f.name} className="p-4 font-semibold text-black text-sm">
-                      {log[f.name] ?? '-'}
-                    </td>
-                  ))}
+                  {current.fields.map(f => {
+                    let cellVal = log[f.name];
+                    if (f.type === 'date' && cellVal) {
+                      cellVal = formatDateToDDMMYYYY(cellVal);
+                    }
+                    return (
+                      <td key={f.name} className="p-4 font-semibold text-black text-sm">
+                        {cellVal ?? '-'}
+                      </td>
+                    );
+                  })}
                   <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
                 </tr>
               ))
@@ -550,12 +611,18 @@ const OpsLogPg = ({ moduleConfig }) => {
                 <span className="font-semibold text-gray-500">Date</span>
                 <span className="text-right">{selectedEntry.entryDate}</span>
               </div>
-              {current.fields.map(field => (
-                <div key={field.name} className="flex justify-between border-b pb-2">
-                  <span className="font-semibold text-gray-500">{field.label}</span>
-                  <span className="text-right font-medium">{selectedEntry[field.name] ?? '-'}</span>
-                </div>
-              ))}
+              {current.fields.map(field => {
+                let cellVal = selectedEntry[field.name];
+                if (field.type === 'date' && cellVal) {
+                  cellVal = formatDateToDDMMYYYY(cellVal);
+                }
+                return (
+                  <div key={field.name} className="flex justify-between border-b pb-2">
+                    <span className="font-semibold text-gray-500">{field.label}</span>
+                    <span className="text-right font-medium">{cellVal ?? '-'}</span>
+                  </div>
+                );
+              })}
             </div>
             <button onClick={() => setViewMode(false)}
               className="mt-6 w-full bg-gray-200 hover:bg-gray-300 py-2 rounded-lg font-semibold transition-all">

@@ -1,5 +1,6 @@
   import React, { useState } from 'react';
   import LivestockTagInput from './LivestockTagInput';
+  import { swalError } from '../utils/swal';
 
   const parseDateString = (dateVal) => {
     if (!dateVal) return null;
@@ -18,6 +19,26 @@
   };
 
   const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
+    const [checkedRows, setCheckedRows] = useState({});
+    const [selectedRow, setSelectedRow] = useState("");
+    const [livestockList, setLivestockList] = useState([]);
+
+    const getShedObject = (shedValue) => {
+      if (!shedValue) return null;
+      const cleanValue = String(shedValue).trim().toUpperCase();
+      return allShedsList.find(s => 
+        String(s.name || '').trim().toUpperCase() === cleanValue || 
+        String(s.code || '').trim().toUpperCase() === cleanValue
+      );
+    };
+
+    const getAnimalsInShed = (shedValue) => {
+      const cleanShed = String(shedValue).trim().toUpperCase();
+      return livestockList.filter(item => {
+        const itemShed = String(item.shed || item.shedId || '').trim().toUpperCase();
+        return itemShed === cleanShed;
+      });
+    };
 
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
@@ -75,21 +96,54 @@
     };
 
     React.useEffect(() => {
-      const needsLivestock = (fields || []).some(f => f.name === 'tag' || f.name === 'tagId');
+      const needsLivestock = (fields || []).some(f => f.name === 'tag' || f.name === 'tagId' || f.name === 'animalId');
       if (needsLivestock) {
         const cached = sessionStorage.getItem('__livestock_tag_cache__');
-        if (!cached) {
-          import('../utils/api').then(({ api }) => {
-            api.cattle.getAll().then(res => {
-              const raw = Array.isArray(res) ? res : (res?.data ?? []);
-              sessionStorage.setItem('__livestock_tag_cache__', JSON.stringify({ list: raw, ts: Date.now() }));
-            }).catch(err => {
-              console.error("Failed to prefetch livestock in LogForm:", err);
-            });
-          });
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed && Array.isArray(parsed.list)) {
+              setLivestockList(parsed.list);
+            }
+          } catch (e) {}
         }
+        import('../utils/api').then(({ api }) => {
+          api.cattle.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            sessionStorage.setItem('__livestock_tag_cache__', JSON.stringify({ list: raw, ts: Date.now() }));
+            setLivestockList(raw);
+          }).catch(err => {
+            console.error("Failed to prefetch livestock in LogForm:", err);
+          });
+        });
       }
     }, [fields]);
+
+    React.useEffect(() => {
+      const selectedShed = formData.shedId || formData.shed || "";
+      if (selectedShed && livestockList.length > 0) {
+        const shedObj = getShedObject(selectedShed);
+        const numRows = shedObj ? (shedObj.lines || 0) : 0;
+        let rows = [];
+        if (numRows > 0) {
+          rows = Array.from({ length: numRows }, (_, i) => i + 1);
+        } else {
+          const animals = getAnimalsInShed(selectedShed);
+          rows = Array.from(new Set(animals.map(a => a.lineNo || 0)));
+        }
+        setCheckedRows(prev => {
+          const updated = { ...prev };
+          let changed = false;
+          rows.forEach(r => {
+            if (updated[r] === undefined) {
+              updated[r] = false;
+              changed = true;
+            }
+          });
+          return changed ? updated : prev;
+        });
+      }
+    }, [livestockList, allShedsList, formData.shedId, formData.shed]);
 
     React.useEffect(() => {
       const hasShedField = (fields || []).some(f => ['shed', 'oldShed', 'newShed', 'shedId'].includes(f.name));
@@ -173,6 +227,26 @@
 
       if (name === "farmId") {
         updated["shed"] = ""; // Clear selected shed when farm changes
+      }
+
+      if (name === "shedId" || name === "shed") {
+        updated["animalId"] = ""; // Clear selected animal when shed changes
+        updated["lineNo"] = ""; // Clear selected row line No when shed changes
+        setSelectedRow(""); // Clear selected row state
+        const shedObj = getShedObject(value);
+        const numRows = shedObj ? (shedObj.lines || 0) : 0;
+        let rows = [];
+        if (numRows > 0) {
+          rows = Array.from({ length: numRows }, (_, i) => i + 1);
+        } else {
+          const animals = getAnimalsInShed(value);
+          rows = Array.from(new Set(animals.map(a => a.lineNo || 0)));
+        }
+        const initialChecked = {};
+        rows.forEach(r => {
+          initialChecked[r] = false;
+        });
+        setCheckedRows(initialChecked);
       }
 
       if (name === "crossingType") {
@@ -430,7 +504,22 @@
             onSubmit={(e) => { 
               e.preventDefault(); 
               if (tagError || dobError || userIdError) return;
-              onSubmit(formData); 
+
+              const isFeedingNew = fields.some(f => f.name === 'animalId' && f.label?.includes("Animal")) && !initialData?.id && !initialData?._id;
+              if (isFeedingNew) {
+                if (!selectedRow) {
+                  swalError("Validation Error", "Please select a row.");
+                  return;
+                }
+                const finalData = {
+                  ...formData,
+                  animalId: `Row ${selectedRow}`,
+                  tag_id: `Row ${selectedRow}`
+                };
+                onSubmit(finalData);
+              } else {
+                onSubmit(formData); 
+              }
             }} 
             className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
           >
@@ -442,7 +531,9 @@
 
               return (
                 <div key={field.name}>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">{field.label}</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">
+                  {(field.name === 'animalId' && field.label?.includes("Animal") && !initialData?.id && !initialData?._id) ? "Rows" : field.label}
+                </label>
                 {field.type === "select" ? (
                   field.name === "role" && title?.includes("User") ? (
                     <div className="flex flex-col gap-2">
@@ -549,6 +640,90 @@
                     </div>
                   ) : (
                     (() => {
+                      if (field.name === 'animalId' && field.label?.includes("Animal") && !initialData?.id && !initialData?._id) {
+                        const selectedShed = formData.shedId || formData.shed;
+                        if (!selectedShed) {
+                          return (
+                            <div className="mt-1 text-xs text-slate-400 font-bold border border-slate-200 rounded-xl p-3 bg-slate-50">
+                              Please select a shed first to view animal options.
+                            </div>
+                          );
+                        }
+                        const shedObj = getShedObject(selectedShed);
+                        const numRows = shedObj ? (shedObj.lines || 0) : 0;
+                        let sortedRowNums = [];
+                        if (numRows > 0) {
+                          sortedRowNums = Array.from({ length: numRows }, (_, i) => i + 1);
+                        } else {
+                          const animalsInShed = getAnimalsInShed(selectedShed);
+                          sortedRowNums = Array.from(new Set(animalsInShed.map(a => a.lineNo || 0))).sort((a, b) => a - b);
+                        }
+
+                        if (sortedRowNums.length === 0) {
+                          return (
+                            <div className="mt-1 text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                              No rows defined or found in shed "{selectedShed}".
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <select
+                            name="selectedRow"
+                            value={selectedRow}
+                            onChange={(e) => setSelectedRow(e.target.value)}
+                            required
+                            className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-[#16223F] outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 text-sm font-semibold"
+                          >
+                            <option value="">Select Row</option>
+                            {sortedRowNums.map(rowNum => (
+                              <option key={rowNum} value={rowNum}>
+                                Row {rowNum}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      }
+
+                      if (field.name === 'lineNo') {
+                        const selectedShed = formData.shedId || formData.shed;
+                        if (!selectedShed) {
+                          return (
+                            <div className="mt-1 text-xs text-slate-400 font-bold border border-slate-200 rounded-xl p-3 bg-slate-50">
+                              Please select a shed first to view row options.
+                            </div>
+                          );
+                        }
+                        const shedObj = getShedObject(selectedShed);
+                        const numRows = shedObj ? (shedObj.lines || 0) : 0;
+                        let rowOptions = [];
+                        if (numRows > 0) {
+                          rowOptions = Array.from({ length: numRows }, (_, i) => i + 1);
+                        } else {
+                          const animals = getAnimalsInShed(selectedShed);
+                          rowOptions = Array.from(new Set(animals.map(a => a.lineNo || 0))).filter(r => r > 0).sort((a, b) => a - b);
+                          if (rowOptions.length === 0) {
+                            rowOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // fallback
+                          }
+                        }
+
+                        return (
+                          <select
+                            name="lineNo"
+                            value={formData.lineNo || ""}
+                            required={!field.optional}
+                            disabled={field.disabled}
+                            className="mt-1 block w-full border border-slate-200 rounded-xl p-2.5 bg-white text-[#16223F] outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 text-sm font-semibold"
+                            onChange={handleChange}
+                          >
+                            <option value="">Select Row / Line</option>
+                            {rowOptions.map(r => (
+                              <option key={r} value={r}>Row {r}</option>
+                            ))}
+                          </select>
+                        );
+                      }
+
                       let selectOptions = field.options || [];
                       if (['shed', 'oldShed', 'newShed', 'shedId'].includes(field.name) && allShedsList.length > 0) {
                         if (field.name === 'shed' || field.name === 'shedId') {
@@ -828,6 +1003,8 @@
                 </div>
               );
             })}
+
+
             <div className="flex gap-3 mt-7">
               {/* <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-lg">Save</button>
               <button type="button" onClick={onClose} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancel</button> */}

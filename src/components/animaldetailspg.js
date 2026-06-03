@@ -382,7 +382,11 @@ const handleSave = async (data) => {
           await api.health.treatments.update(entryId, data);
           swalSuccess("Success", "Treatment log updated successfully!");
         } else if (current.id === 'vaccine') {
-          await api.health.vaccinations.update(entryId, data);
+          const payload = { ...data };
+          if (!payload.date) {
+            payload.date = selectedEntry?.date || new Date().toISOString();
+          }
+          await api.health.vaccinations.update(entryId, payload);
           swalSuccess("Success", "Vaccination log updated successfully!");
         }
       } else {
@@ -440,7 +444,11 @@ const handleSave = async (data) => {
           await api.health.treatments.create(data);
           swalSuccess("Success", "Treatment log created successfully!");
         } else if (current.id === 'vaccine') {
-          await api.health.vaccinations.create(data);
+          const payload = { ...data };
+          if (!payload.date) {
+            payload.date = new Date().toISOString();
+          }
+          await api.health.vaccinations.create(payload);
           swalSuccess("Success", "Vaccination log created successfully!");
         }
       }
