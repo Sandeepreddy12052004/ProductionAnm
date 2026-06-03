@@ -1113,7 +1113,7 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           </div>
           <p className="text-xs text-black opacity-60 mb-4 leading-relaxed">
-            These animals have been recently recorded under **Purchase Logs** and have entered the farm. Click **"Complete Profile"** on any card below to input their breed, age, gender, and parenting details to officially register them into the active herd registry.
+            These animals have been recently recorded under **Purchase Logs** and have entered the farm. Click **Complete Profile** on any card below to input their breed, age, gender, and parenting details to officially register them into the active herd registry.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingPurchases.map(animal => (
@@ -1182,7 +1182,7 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           </div>
           <p className="text-xs text-black opacity-60 mb-4 leading-relaxed">
-            These calves have been recently recorded via **Crossing Log Calving Events**. Click **"Register Calf"** on any card below to input their gender, breed, current shed assignment, and officially register them into the active herd.
+            These calves have been recently recorded via **Crossing Log Calving Events**. Click **Register Calf** on any card below to input their gender, breed, current shed assignment, and officially register them into the active herd.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingCalves.map(animal => (

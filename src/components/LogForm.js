@@ -475,6 +475,7 @@
 
   const noFutureDates = [
     "dob",
+    "dateOfBirth",
     "crossingDate",
     "actualCalvingDate",
     "saleDate",
