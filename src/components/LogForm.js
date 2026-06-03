@@ -477,6 +477,7 @@
     "dob",
     "dateOfBirth",
     "crossingDate",
+    "pregnancyConfirmedDate",
     "actualCalvingDate",
     "saleDate",
     "date",
