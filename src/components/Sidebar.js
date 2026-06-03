@@ -37,8 +37,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     (isFarmRoute && router.query.tab);
 
   const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["health", "vaccine"].includes(router.query.tab));
-  const isInventoryActive = isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab);
-  const isMilkActive = isFarmRoute && ["milk_prod", "components"].includes(router.query.tab);
+  const isInventoryActive = ["/feed-inventory", "/medicine-inventory"].includes(router.pathname) || (isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab));
+  const isMilkActive = ["/milk", "/milk-quality"].includes(router.pathname) || (isFarmRoute && ["milk_prod", "components"].includes(router.query.tab));
 
   // Dynamic Farms State
   const [farmsList, setFarmsList] = useState([]);
@@ -502,17 +502,17 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                             className="mt-1 space-y-1 pl-3 overflow-hidden"
                           >
                             <li>
-                              <Link href={getTabPath("feed_inv")} onClick={handleCloseSidebar}
+                              <Link href="/feed-inventory" onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/farm", "feed_inv") ? activeStyle : normalStyle
+                                  isLinkActive("/feed-inventory") ? activeStyle : normalStyle
                                 }`}>
                                 🌾 Feed Inventory
                               </Link>
                             </li>
                             <li>
-                              <Link href={getTabPath("med_inv")} onClick={handleCloseSidebar}
+                              <Link href="/medicine-inventory" onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/farm", "med_inv") ? activeStyle : normalStyle
+                                  isLinkActive("/medicine-inventory") ? activeStyle : normalStyle
                                 }`}>
                                 💊 Medicine Inventory
                               </Link>
@@ -526,9 +526,9 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                   {/* Grass Collection */}
                   {hasAccess('GRASS') && (
                     <li>
-                      <Link href={getTabPath("grass")} onClick={handleCloseSidebar}
+                      <Link href="/grass" onClick={handleCloseSidebar}
                         className={`block p-2 rounded border-l-4 ${
-                          isLinkActive("/farm", "grass") ? activeStyle : normalStyle
+                          isLinkActive("/grass") ? activeStyle : normalStyle
                         }`}>
                         🌿 Grass Collection
                       </Link>
@@ -538,9 +538,9 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                   {/* Daily Feeding */}
                   {hasAccess('FEEDING') && (
                     <li>
-                      <Link href={getTabPath("feeding")} onClick={handleCloseSidebar}
+                      <Link href="/feeding" onClick={handleCloseSidebar}
                         className={`block p-2 rounded border-l-4 ${
-                          isLinkActive("/farm", "feeding") ? activeStyle : normalStyle
+                          isLinkActive("/feeding") ? activeStyle : normalStyle
                         }`}>
                         🌾 Daily Feeding
                       </Link>
@@ -570,17 +570,17 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                             className="mt-1 space-y-1 pl-3 overflow-hidden"
                           >
                             <li>
-                              <Link href={getTabPath("milk_prod")} onClick={handleCloseSidebar}
+                              <Link href="/milk" onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/farm", "milk_prod") ? activeStyle : normalStyle
+                                  isLinkActive("/milk") ? activeStyle : normalStyle
                                 }`}>
                                 🥛 Daily Milk Collection
                               </Link>
                             </li>
                             <li>
-                              <Link href={getTabPath("components")} onClick={handleCloseSidebar}
+                              <Link href="/milk-quality" onClick={handleCloseSidebar}
                                 className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/farm", "components") ? activeStyle : normalStyle
+                                  isLinkActive("/milk-quality") ? activeStyle : normalStyle
                                 }`}>
                                 🔬 Milk Q and A
                               </Link>

@@ -1,0 +1,596 @@
+import React, { useState, useEffect } from 'react';
+import LogForm from './LogForm';
+import ExcelJS from 'exceljs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { api } from '@/utils/api';
+import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
+
+// ─── Date Helpers ─────────────────────────────────────────────────────────────
+
+const parseDateString = (dateVal) => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return dateVal;
+  const valStr = String(dateVal).trim();
+  if (valStr.includes('/')) {
+    const parts = valStr.split('/');
+    if (parts.length === 3) {
+      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+  const parsed = new Date(valStr);
+  if (!isNaN(parsed.getTime())) return parsed;
+  return null;
+};
+
+const formatDateToDDMMYYYY = (dateVal) => {
+  const d = parseDateString(dateVal);
+  if (!d) return '-';
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
+// ─── API dispatch ─────────────────────────────────────────────────────────────
+
+const getApiForModule = (id) => {
+  switch (id) {
+    case 'grass':     return api.operations.grassCollection;
+    case 'feeding':   return api.operations.dailyFeeding;
+    case 'milk_prod': return api.milk.collections;
+    case 'components':return api.milk.quality;
+    case 'feed_inv':  return api.inventory.feed;
+    case 'med_inv':   return api.inventory.medicines;
+    default:          return null;
+  }
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const OpsLogPg = ({ moduleConfig }) => {
+  const current = moduleConfig || { id: 'unknown', name: 'Unknown', icon: '📋', fields: [] };
+
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [viewMode, setViewMode] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showFAB, setShowFAB] = useState(true);
+  const [dynamicFields, setDynamicFields] = useState(current.fields);
+
+  const [filters, setFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // ── Scroll-hide FAB ──────────────────────────────────────────────────────
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    const handleScroll = () => {
+      if (Math.abs(window.scrollY - lastScrollY) < 10) return;
+      setShowFAB(window.scrollY <= lastScrollY);
+      lastScrollY = window.scrollY;
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // ── Body scroll lock ─────────────────────────────────────────────────────
+  useEffect(() => {
+    document.body.style.overflow = (showForm || showFilters || viewMode || selectedEntry) ? 'hidden' : 'auto';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [showForm, showFilters, viewMode, selectedEntry]);
+
+  // ── Load dynamic shed/animal options ────────────────────────────────────
+  useEffect(() => {
+    const hasShed = current.fields.some(f => ['shedId', 'shed'].includes(f.name));
+    const hasAnimal = current.fields.some(f => f.name === 'animalId');
+
+    let shed_opts = null;
+    let animal_opts = null;
+
+    const tryMerge = () => {
+      if (
+        (hasShed && !shed_opts) ||
+        (hasAnimal && !animal_opts)
+      ) return;
+
+      setDynamicFields(current.fields.map(f => {
+        if (['shedId', 'shed'].includes(f.name) && shed_opts)
+          return { ...f, options: shed_opts };
+        if (f.name === 'animalId' && animal_opts)
+          return { ...f, options: animal_opts };
+        return f;
+      }));
+    };
+
+    if (hasShed) {
+      api.sheds.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          shed_opts = list.map(s => s.name || s.code).filter(Boolean);
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
+    if (hasAnimal) {
+      api.cattle.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          animal_opts = list.map(c => ({
+            label: `${c.tag || c.tag_id} (${c.cattleType || c.animalType || ''})`,
+            value: c._id || c.id
+          }));
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
+    if (!hasShed && !hasAnimal) {
+      setDynamicFields(current.fields);
+    }
+  }, [moduleConfig]);
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
+  const fetchLogs = async () => {
+    setIsLoading(true);
+    try {
+      const moduleApi = getApiForModule(current.id);
+      let data = moduleApi ? await moduleApi.getAll() : [];
+      const rawList = Array.isArray(data) ? data : (data?.data ?? []);
+
+      const normalized = rawList.map(log => {
+        const dateVal = log.date || log.entryDate || log.createdAt || log.purchaseDate;
+        return {
+          ...log,
+          entryDate: dateVal ? formatDateToDDMMYYYY(dateVal) : (log.entryDate || '-'),
+        };
+      });
+      setLogs(normalized);
+    } catch (e) {
+      console.error(`[OpsLogPg] fetchLogs error for ${current.id}:`, e);
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]);
+    setCurrentPage(1);
+  }, [moduleConfig]);
+
+  // ── Save ─────────────────────────────────────────────────────────────────
+  const handleSave = async (data) => {
+    setIsLoading(true);
+    try {
+      const moduleApi = getApiForModule(current.id);
+      if (!moduleApi) throw new Error('Unsupported module');
+
+      const now = new Date();
+      const formattedDate = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+
+      const payload = { ...data };
+      if (!isEditing) {
+        payload.entryDate = formattedDate;
+        payload.date = now.toISOString();
+      }
+
+      const entryId = selectedEntry?.id || selectedEntry?._id;
+      if (isEditing) {
+        await moduleApi.update(entryId, payload);
+        swalSuccess('Success', `${current.name} updated successfully!`);
+      } else {
+        await moduleApi.create(payload);
+        swalSuccess('Success', `${current.name} entry created successfully!`);
+      }
+
+      await fetchLogs();
+      closeAllModals();
+    } catch (e) {
+      console.error('[OpsLogPg] Save error:', e);
+      swalError('Error', e?.message || 'Failed to save. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Delete ───────────────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    const confirmed = await swalConfirm('Delete Record?', 'Permanently delete this record?');
+    if (!confirmed) return;
+    setIsLoading(true);
+    try {
+      const moduleApi = getApiForModule(current.id);
+      const entryId = selectedEntry?.id || selectedEntry?._id;
+      await moduleApi.delete(entryId);
+      swalSuccess('Deleted', `${current.name} record deleted.`);
+      await fetchLogs();
+      closeAllModals();
+    } catch (e) {
+      swalError('Error', 'Failed to delete record.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeAllModals = () => {
+    setShowForm(false);
+    setSelectedEntry(null);
+    setIsEditing(false);
+    setViewMode(false);
+  };
+
+  // ── Filters ──────────────────────────────────────────────────────────────
+  const filteredLogs = logs.filter(log =>
+    filters.every(f => {
+      if (f.field.toLowerCase().includes('date')) {
+        if (!f.from && !f.to) return true;
+        const logDate = log[f.field] || (f.field === 'entryDate' ? log.date : null);
+        if (!logDate) return false;
+        const current = parseDateString(logDate);
+        if (!current) return false;
+        current.setHours(0, 0, 0, 0);
+        if (f.from) {
+          const from = parseDateString(f.from);
+          if (from) { from.setHours(0,0,0,0); if (current < from) return false; }
+        }
+        if (f.to) {
+          const to = parseDateString(f.to);
+          if (to) { to.setHours(0,0,0,0); if (current > to) return false; }
+        }
+        return true;
+      }
+      if (!f.value) return true;
+      return String(log[f.field] || '').toLowerCase().includes(f.value.toLowerCase());
+    })
+  );
+
+  const totalItems = filteredLogs.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  const activeFilterCount = filters.filter(f => (f.value && f.value.trim()) || f.from || f.to).length;
+
+  // ── Excel Export ─────────────────────────────────────────────────────────
+  const exportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(current.name);
+    worksheet.columns = [
+      { header: 'Date', key: 'entryDate', width: 15 },
+      ...current.fields.map(f => ({ header: f.label, key: f.name, width: 20 }))
+    ];
+    filteredLogs.forEach(log => {
+      worksheet.addRow({ entryDate: log.entryDate, ...current.fields.reduce((a, f) => { a[f.name] = log[f.name]; return a; }, {}) });
+    });
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '16223F' } };
+      cell.font = { name: 'Segoe UI', bold: true, color: { argb: 'FFFFFF' }, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    headerRow.height = 28;
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell(cell => {
+          cell.font = { name: 'Segoe UI', size: 10 };
+          cell.alignment = { vertical: 'middle', horizontal: 'left' };
+          if (rowNumber % 2 === 0) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8FAFC' } };
+          }
+        });
+        row.height = 20;
+      }
+    });
+    worksheet.columns.forEach(col => {
+      let maxLen = 0;
+      col.eachCell({ includeEmpty: true }, cell => {
+        const val = cell.value ? String(cell.value) : '';
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      col.width = Math.max(maxLen + 4, 15);
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${current.name}_logs.xlsx`; a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // ── PDF Export ───────────────────────────────────────────────────────────
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'A4' });
+    const columns = ['Date', ...current.fields.map(f => f.label)];
+    const rows = filteredLogs.map(log => [log.entryDate, ...current.fields.map(f => log[f.name])]);
+    const img = new Image();
+    img.src = '/LOGO.png';
+    const drawTable = (startY) => {
+      autoTable(doc, {
+        head: [columns], body: rows, startY,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 6, overflow: 'linebreak', valign: 'middle' },
+        headStyles: { fillColor: [22, 34, 63], textColor: 255, fontSize: 9, halign: 'center' },
+        bodyStyles: { halign: 'left' },
+        tableWidth: 'auto', margin: { left: 20, right: 20 },
+      });
+      doc.save(`${current.name}_logs.pdf`);
+    };
+    img.onload = () => {
+      doc.addImage(img, 'PNG', 20, 10, 40, 40);
+      doc.setFontSize(16); doc.setTextColor(22, 34, 63); doc.setFont('helvetica', 'bold');
+      doc.text(`${current.icon} ${current.name}`, 75, 26);
+      doc.setFontSize(9); doc.setTextColor(209, 134, 125); doc.setFont('helvetica', 'normal');
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 75, 40);
+      drawTable(60);
+    };
+    img.onerror = () => {
+      doc.setFontSize(16); doc.setTextColor(22, 34, 63); doc.setFont('helvetica', 'bold');
+      doc.text(`${current.icon} ${current.name}`, 20, 25);
+      drawTable(50);
+    };
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+  if (!moduleConfig) {
+    return (
+      <div className="p-20 text-center bg-white min-h-screen">
+        <h1 className="text-2xl font-bold text-red-600">Configuration Error</h1>
+        <p className="text-gray-500">The moduleConfig prop is missing.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
+
+      {/* ── Header ── */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-[#16223F]">{current.icon} {current.name}</h1>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Module: {current.name}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all text-sm">
+            📊 Excel
+          </button>
+          <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all text-sm">
+            📄 PDF
+          </button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative px-4 py-2 rounded-lg font-bold border text-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md ${
+              showFilters ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' : 'bg-white border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            🔍 Filters
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setIsEditing(false); setShowForm(true); }}
+            className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+          >
+            + Add Entry
+          </button>
+        </div>
+      </header>
+
+      {/* ── Filter Modal ── */}
+      {showFilters && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-black">Filters</h3>
+              <button onClick={() => setShowFilters(false)} className="text-gray-500 text-xl font-bold">✕</button>
+            </div>
+            <div className="space-y-3">
+              {filters.map((f, index) => (
+                <div key={index} className="flex flex-col gap-2">
+                  <select
+                    className="px-2 py-1.5 border rounded-lg text-sm"
+                    value={f.field}
+                    onChange={e => {
+                      const updated = [...filters];
+                      updated[index] = { field: e.target.value, value: '', from: '', to: '' };
+                      setFilters(updated);
+                    }}
+                  >
+                    <option value="entryDate">Date</option>
+                    {current.fields.map(field => (
+                      <option key={field.name} value={field.name}>{field.label}</option>
+                    ))}
+                  </select>
+
+                  {f.field.toLowerCase().includes('date') ? (
+                    <div className="flex gap-2">
+                      <input type="date" className="px-2 py-1.5 border rounded-lg text-sm w-full"
+                        value={f.from ? f.from.split('/').reverse().join('-') : ''}
+                        onChange={e => { const u=[...filters]; u[index].from=e.target.value?e.target.value.split('-').reverse().join('/'):''; setFilters(u); }}
+                      />
+                      <input type="date" className="px-2 py-1.5 border rounded-lg text-sm w-full"
+                        value={f.to ? f.to.split('/').reverse().join('-') : ''}
+                        onChange={e => { const u=[...filters]; u[index].to=e.target.value?e.target.value.split('-').reverse().join('/'):''; setFilters(u); }}
+                      />
+                    </div>
+                  ) : (
+                    <input type="text" placeholder="Search..."
+                      className="px-2 py-1.5 border rounded-lg text-sm"
+                      value={f.value}
+                      onChange={e => { const u=[...filters]; u[index].value=e.target.value; setFilters(u); }}
+                    />
+                  )}
+
+                  <button onClick={() => setFilters([{ field: 'entryDate', value: '', from: '', to: '' }])}
+                    className="text-red-600 text-xs font-bold self-end">Remove</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-6 gap-2">
+              <button
+                onClick={() => setFilters([...filters, { field: 'entryDate', value: '', from: '', to: '' }])}
+                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
+              >+ Add Filter</button>
+              <button
+                onClick={() => { setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]); setCurrentPage(1); }}
+                className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm"
+              >Clear</button>
+            </div>
+            <button onClick={() => setShowFilters(false)}
+              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold">
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Table ── */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+        <table className="w-full text-left min-w-full md:min-w-[600px]">
+          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
+            <tr>
+              <th className="p-4 border-b">Date</th>
+              {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
+              <th className="p-4 border-b w-10 text-center"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {isLoading ? (
+              [1,2,3,4,5].map(i => (
+                <tr key={i} className="animate-pulse border-b border-gray-100">
+                  {[...Array(current.fields.length + 2)].map((_, j) => (
+                    <td key={j} className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                  ))}
+                </tr>
+              ))
+            ) : paginatedLogs.length > 0 ? (
+              paginatedLogs.map(log => (
+                <tr
+                  key={log._id || log.id || Math.random()}
+                  className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors"
+                  onClick={() => setSelectedEntry(log)}
+                >
+                  <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
+                  {current.fields.map(f => (
+                    <td key={f.name} className="p-4 font-semibold text-black text-sm">
+                      {log[f.name] ?? '-'}
+                    </td>
+                  ))}
+                  <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={current.fields.length + 2} className="p-12 text-center text-black text-sm font-medium opacity-50">
+                  No records found for {current.name}.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Pagination ── */}
+      <div className="flex justify-between items-center mt-4">
+        <p className="text-sm text-black opacity-60">
+          Showing {totalItems === 0 ? 0 : startIndex + 1}–{Math.min(endIndex, totalItems)} of {totalItems} records
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}
+            className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition disabled:opacity-40">Prev</button>
+          <span className="px-3 py-1 font-semibold text-sm">Page {currentPage}</span>
+          <button onClick={() => setCurrentPage(p => p + 1)} disabled={endIndex >= totalItems}
+            className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition disabled:opacity-40">Next</button>
+        </div>
+      </div>
+
+      {/* ── Action Menu Modal ── */}
+      {selectedEntry && !showForm && !viewMode && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-[320px]">
+            <h3 className="font-bold text-lg mb-4 text-center text-black">Manage Record</h3>
+            <div className="space-y-2">
+              <button onClick={() => setViewMode(true)}
+                className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all">
+                👁️ View Details
+              </button>
+              <button onClick={() => { setIsEditing(true); setShowForm(true); }}
+                className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all">
+                ✏️ Edit Entry
+              </button>
+              <button onClick={handleDelete}
+                className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all">
+                🗑️ Delete Entry
+              </button>
+              <button onClick={() => setSelectedEntry(null)}
+                className="w-full text-black opacity-50 py-2 hover:opacity-100 transition-colors">
+                Close Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── View Details Modal ── */}
+      {selectedEntry && viewMode && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
+            <button onClick={() => setViewMode(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1">
+              ✕
+            </button>
+            <h3 className="text-lg font-bold mb-4 text-center text-black">{current.name} Details</h3>
+            <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
+              <div className="flex justify-between border-b pb-2">
+                <span className="font-semibold text-gray-500">Date</span>
+                <span className="text-right">{selectedEntry.entryDate}</span>
+              </div>
+              {current.fields.map(field => (
+                <div key={field.name} className="flex justify-between border-b pb-2">
+                  <span className="font-semibold text-gray-500">{field.label}</span>
+                  <span className="text-right font-medium">{selectedEntry[field.name] ?? '-'}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setViewMode(false)}
+              className="mt-6 w-full bg-gray-200 hover:bg-gray-300 py-2 rounded-lg font-semibold transition-all">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── LogForm ── */}
+      {showForm && (
+        <LogForm
+          title={isEditing ? `Update ${current.name}` : `New ${current.name}`}
+          fields={dynamicFields}
+          initialData={isEditing ? selectedEntry : {}}
+          onSubmit={handleSave}
+          onClose={closeAllModals}
+        />
+      )}
+
+      {/* ── Mobile FAB ── */}
+      {!showForm && !selectedEntry && !viewMode && !showFilters && (
+        <div className={`md:hidden fixed bottom-20 right-6 z-[100] transition-all duration-300 ${
+          showFAB ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
+        }`}>
+          <button
+            onClick={() => { setIsEditing(false); setShowForm(true); }}
+            className="w-14 h-14 bg-[#D1867D] text-white rounded-full shadow-[0_10px_25px_rgba(209,134,125,0.4)] flex items-center justify-center text-3xl font-bold hover:bg-[#D1867D]/95 hover:-translate-y-1 active:scale-95 transition-all duration-200"
+          >
+            +
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default OpsLogPg;
