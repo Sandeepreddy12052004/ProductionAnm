@@ -48,7 +48,7 @@ export default function AnimalsPage() {
       { name: 'calvings', label: 'No. of Calvings', type: 'number' },
       { name: 'farmBorn', label: 'Farm Born', type: 'select', options: ['Yes', 'No'] },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
-      { name: 'status', label: 'Status', type: 'select', options: ['Active', 'Sold', 'Deceased'] }
+      { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'SOLD', 'DECEASED'] }
     ]
   };
 

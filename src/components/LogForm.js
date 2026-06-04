@@ -664,7 +664,7 @@
                         if (sortedRowNums.length === 0) {
                           return (
                             <div className="mt-1 text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/50">
-                              No rows defined or found in shed "{selectedShed}".
+                              No rows defined or found in shed {selectedShed}.
                             </div>
                           );
                         }
