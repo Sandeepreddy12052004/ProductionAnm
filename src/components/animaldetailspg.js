@@ -1131,7 +1131,7 @@ const getShedFromLivestock = (tagValue) => {
                     </span>
                   </div>
                   <div className="space-y-1.5 text-xs text-black opacity-70 mb-4">
-                    <div className="flex justify-between">
+                    {/* <div className="flex justify-between">
                       <span className="opacity-60">Farm Assigned:</span>
                       <span className="font-bold text-[#16223F]">
                         {(() => {
@@ -1140,7 +1140,40 @@ const getShedFromLivestock = (tagValue) => {
                           return fm ? (fm.name || fm.code) : animal.farmId;
                         })()}
                       </span>
-                    </div>
+                    </div> */}
+
+
+<div className="flex justify-between">
+  <span className="opacity-60">Farm Assigned:</span>
+  <span className="font-bold text-[#16223F]">
+    {(() => {
+      // Get the identifier text of the chosen shed
+      const shedTarget = String(animal.shed || animal.shedId || "").toUpperCase();
+      
+      if (!shedTarget || shedTarget === "-") {
+        // Fallback to basic farm layout matching if no shed is chosen yet
+        if (!animal.farmId) return '-';
+        const fm = farmsList.find(f => f._id === animal.farmId || f.id === animal.farmId || f.code === animal.farmId);
+        return fm ? (fm.name || fm.code) : animal.farmId;
+      }
+
+      // Check key phrasing in your shed names to reverse-engineer the location assignment
+      if (shedTarget.includes("TDR") || shedTarget.includes("Tandur")) {
+        return "Tandur";
+      }
+      
+      if (shedTarget.includes("TKP") || shedTarget.includes("Talakondapally")) {
+        return "Talakondapally";
+      }
+
+      // Final automated backup layout matching 
+      const fm = farmsList.find(f => f._id === animal.farmId || f.id === animal.farmId || f.code === animal.farmId);
+      return fm ? (fm.name || fm.code) : animal.farmId;
+    })()}
+  </span>
+</div>
+
+
                     <div className="flex justify-between">
                       <span className="opacity-60">Seller:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[120px]">{animal.purchaseFrom || '-'}</span>
@@ -1200,7 +1233,7 @@ const getShedFromLivestock = (tagValue) => {
                     </span>
                   </div>
                   <div className="space-y-1.5 text-xs text-black opacity-70 mb-4">
-                    <div className="flex justify-between">
+                    {/* <div className="flex justify-between">
                       <span className="opacity-60">Farm Assigned:</span>
                       <span className="font-bold text-[#16223F]">
                         {(() => {
@@ -1209,7 +1242,39 @@ const getShedFromLivestock = (tagValue) => {
                           return fm ? (fm.name || fm.code) : animal.farmId;
                         })()}
                       </span>
-                    </div>
+                    </div> */}
+
+                    <div className="flex justify-between">
+  <span className="opacity-60">Farm Assigned:</span>
+  <span className="font-bold text-[#16223F]">
+    {(() => {
+      // Get the identifier text of the chosen shed
+      const shedTarget = String(animal.shed || animal.shedId || "").toUpperCase();
+      
+      if (!shedTarget || shedTarget === "-") {
+        // Fallback to basic farm layout matching if no shed is chosen yet
+        if (!animal.farmId) return '-';
+        const fm = farmsList.find(f => f._id === animal.farmId || f.id === animal.farmId || f.code === animal.farmId);
+        return fm ? (fm.name || fm.code) : animal.farmId;
+      }
+
+      // Check key phrasing in your shed names to reverse-engineer the location assignment
+      if (shedTarget.includes("TDR") || shedTarget.includes("Tandur")) {
+        return "Tandur";
+      }
+      
+      if (shedTarget.includes("TKP") || shedTarget.includes("Talakondapally")) {
+        return "Talakondapally";
+      }
+
+      // Final automated backup layout matching 
+      const fm = farmsList.find(f => f._id === animal.farmId || f.id === animal.farmId || f.code === animal.farmId);
+      return fm ? (fm.name || fm.code) : animal.farmId;
+    })()}
+  </span>
+</div>
+
+
                     <div className="flex justify-between">
                       <span className="opacity-60">Dame ID (Mother):</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[120px]">{animal.dameId || '-'}</span>
