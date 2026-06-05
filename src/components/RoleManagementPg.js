@@ -25,15 +25,26 @@ const MODULE_GROUPS = {
       { name: 'Shed Log', baseToken: 'SHED_LOG', prefix: 'SHED_LOG' },
       { name: 'Crossing Log', baseToken: 'CROSSING_LOG', prefix: 'CROSSING_LOG' },
       { name: 'Purchase Log', baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG' },
-      { name: 'Sale Log', baseToken: 'SALE_LOG', prefix: 'SALE_LOG' }
+      { name: 'Sale Log', baseToken: 'SALE_LOG', prefix: 'SALE_LOG' },
+      { name: 'Treatment Log', baseToken: 'HEALTH', prefix: 'HEALTH' },
+  { name: 'Vaccination Log', baseToken: 'HEALTH', prefix: 'HEALTH' },
+
+  { name: 'Feed Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY' },
+  { name: 'Medicine Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY' },
+
+  { name: 'Grass Collection', baseToken: 'GRASS', prefix: 'GRASS' },
+  { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING' },
+
+  { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK' },
+  { name: 'Milk Q and A', baseToken: 'MILK', prefix: 'MILK' }
     ]
   },
-  HEALTH: {
-    title: 'HEALTH',
-    modules: [
-      { name: 'Health', baseToken: 'HEALTH', prefix: 'HEALTH' }
-    ]
-  }
+  // HEALTH: {
+  //   title: 'HEALTH',
+  //   modules: [
+  //     { name: 'Health', baseToken: 'HEALTH', prefix: 'HEALTH' }
+  //   ]
+  // }
 };
 
 const ACTIONS = ['view', 'create', 'edit', 'delete'];
