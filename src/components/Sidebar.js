@@ -436,92 +436,54 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
  
  
                   {/* Health Dropdown */}
-                  {hasAccess('HEALTH') && (
-                    <li>
-                      <button
-                        onClick={() => toggleState(setHealthOpen, 'healthOpen', healthOpen)}
-                        className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                      >
-                        <span>🩺 Health</span>
-                        <motion.span animate={{ rotate: healthOpen ? 180 : 0 }}>
-                          ▼
-                        </motion.span>
-                      </button>
- 
-                      <AnimatePresence>
-                        {healthOpen && (
-                          <motion.ul
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="mt-1 space-y-1 pl-3 overflow-hidden"
-                          >
-                            <li>
-                              <Link href="/treatment" onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/treatment") ? activeStyle : normalStyle
-                                }`}>
-                                📋 Treatment Log
-                              </Link>
-                            </li>
-                            <li>
-                              <Link href="/vaccination" onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/vaccination") ? activeStyle : normalStyle
-                                }`}>
-                                💉 Vaccination Log
-                              </Link>
-                            </li>
-                          </motion.ul>
-                        )}
-                      </AnimatePresence>
-                    </li>
-                  )}
+                 {/* Treatment Log */}
+{hasAccess('HEALTH') && (
+  <li>
+    <Link href="/treatment" onClick={handleCloseSidebar}
+      className={`block p-2 rounded border-l-4 ${
+        isLinkActive("/treatment") ? activeStyle : normalStyle
+      }`}>
+      📋 Treatment Log
+    </Link>
+  </li>
+)}
+
+{/* Vaccination Log */}
+{hasAccess('HEALTH') && (
+  <li>
+    <Link href="/vaccination" onClick={handleCloseSidebar}
+      className={`block p-2 rounded border-l-4 ${
+        isLinkActive("/vaccination") ? activeStyle : normalStyle
+      }`}>
+      💉 Vaccination Log
+    </Link>
+  </li>
+)}
  
                   {/* Inventory Dropdown */}
-                  {hasAccess('INVENTORY') && (
-                    <li>
-                      <button
-                        onClick={() => toggleState(setInventoryOpen, 'inventoryOpen', inventoryOpen)}
-                        className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                      >
-                        <span>📦 Inventory</span>
-                        <motion.span animate={{ rotate: inventoryOpen ? 180 : 0 }}>
-                          ▼
-                        </motion.span>
-                      </button>
- 
-                      <AnimatePresence>
-                        {inventoryOpen && (
-                          <motion.ul
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="mt-1 space-y-1 pl-3 overflow-hidden"
-                          >
-                            <li>
-                              <Link href="/feed-inventory" onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/feed-inventory") ? activeStyle : normalStyle
-                                }`}>
-                                🌾 Feed Inventory
-                              </Link>
-                            </li>
-                            <li>
-                              <Link href="/medicine-inventory" onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/medicine-inventory") ? activeStyle : normalStyle
-                                }`}>
-                                💊 Medicine Inventory
-                              </Link>
-                            </li>
-                          </motion.ul>
-                        )}
-                      </AnimatePresence>
-                    </li>
-                  )}
+                  {/* Feed Inventory */}
+{hasAccess('INVENTORY') && (
+  <li>
+    <Link href="/feed-inventory" onClick={handleCloseSidebar}
+      className={`block p-2 rounded border-l-4 ${
+        isLinkActive("/feed-inventory") ? activeStyle : normalStyle
+      }`}>
+      🌾 Feed Inventory
+    </Link>
+  </li>
+)}
+
+{/* Medicine Inventory */}
+{hasAccess('INVENTORY') && (
+  <li>
+    <Link href="/medicine-inventory" onClick={handleCloseSidebar}
+      className={`block p-2 rounded border-l-4 ${
+        isLinkActive("/medicine-inventory") ? activeStyle : normalStyle
+      }`}>
+      💊 Medicine Inventory
+    </Link>
+  </li>
+)}
  
                   {/* Grass Collection */}
                   {hasAccess('GRASS') && (
@@ -548,48 +510,29 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                   )}
  
                   {/* Milk Production Dropdown */}
-                  {hasAccess('MILK') && (
-                    <li>
-                      <button
-                        onClick={() => toggleState(setMilkOpen, 'milkOpen', milkOpen)}
-                        className="w-full flex justify-between items-center text-gray-600 text-[11px] uppercase font-bold px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                      >
-                        <span>🥛 Milk Production</span>
-                        <motion.span animate={{ rotate: milkOpen ? 180 : 0 }}>
-                          ▼
-                        </motion.span>
-                      </button>
- 
-                      <AnimatePresence>
-                        {milkOpen && (
-                          <motion.ul
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="mt-1 space-y-1 pl-3 overflow-hidden"
-                          >
-                            <li>
-                              <Link href="/milk" onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/milk") ? activeStyle : normalStyle
-                                }`}>
-                                🥛 Daily Milk Collection
-                              </Link>
-                            </li>
-                            <li>
-                              <Link href="/milk-quality" onClick={handleCloseSidebar}
-                                className={`block p-1.5 text-sm rounded border-l-4 ${
-                                  isLinkActive("/milk-quality") ? activeStyle : normalStyle
-                                }`}>
-                                🔬 Milk Q and A
-                              </Link>
-                            </li>
-                          </motion.ul>
-                        )}
-                      </AnimatePresence>
-                    </li>
-                  )}
+                  {/* Daily Milk Collection */}
+{hasAccess('MILK') && (
+  <li>
+    <Link href="/milk" onClick={handleCloseSidebar}
+      className={`block p-2 rounded border-l-4 ${
+        isLinkActive("/milk") ? activeStyle : normalStyle
+      }`}>
+      🥛 Daily Milk Collection
+    </Link>
+  </li>
+)}
+
+{/* Milk Q and A */}
+{hasAccess('MILK') && (
+  <li>
+    <Link href="/milk-quality" onClick={handleCloseSidebar}
+      className={`block p-2 rounded border-l-4 ${
+        isLinkActive("/milk-quality") ? activeStyle : normalStyle
+      }`}>
+      🔬 Milk Q and A
+    </Link>
+  </li>
+)}
                 </motion.ul>
               )}
             </AnimatePresence>
