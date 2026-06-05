@@ -382,10 +382,22 @@ const handleSave = async (data) => {
         } else if (current.id === 'sale') {
           await api.sale.update(entryId, data);
           swalSuccess("Success", "Sale log updated successfully!");
+        // } else if (current.id === 'health') {
+        //   await api.health.treatments.update(entryId, data);
+        //   swalSuccess("Success", "Treatment log updated successfully!");
+        // }
         } else if (current.id === 'health') {
-          await api.health.treatments.update(entryId, data);
-          swalSuccess("Success", "Treatment log updated successfully!");
-        } else if (current.id === 'vaccine') {
+
+  const payload = {
+    ...data,
+    diagnosis: data.diagnosis?.trim() || "-"
+  };
+
+  await api.health.treatments.update(entryId, payload);
+  swalSuccess("Success", "Treatment log updated successfully!");
+}
+        
+        else if (current.id === 'vaccine') {
           const payload = { ...data };
           if (!payload.date) {
             payload.date = selectedEntry?.date || new Date().toISOString();
@@ -444,10 +456,21 @@ const handleSave = async (data) => {
         } else if (current.id === 'sale') {
           await api.sale.create(data);
           swalSuccess("Success", "Sale log created successfully!");
+        // } else if (current.id === 'health') {
+        //   await api.health.treatments.create(data);
+        //   swalSuccess("Success", "Treatment log created successfully!");
+        // } 
         } else if (current.id === 'health') {
-          await api.health.treatments.create(data);
-          swalSuccess("Success", "Treatment log created successfully!");
-        } else if (current.id === 'vaccine') {
+
+  const payload = {
+    ...data,
+    diagnosis: data.diagnosis?.trim() || "-"
+  };
+
+  await api.health.treatments.create(payload);
+  swalSuccess("Success", "Treatment log created successfully!");
+}
+        else if (current.id === 'vaccine') {
           const payload = { ...data };
           if (!payload.date) {
             payload.date = new Date().toISOString();
