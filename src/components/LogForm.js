@@ -1,6 +1,7 @@
   import React, { useState } from 'react';
   import LivestockTagInput from './LivestockTagInput';
   import { swalError } from '../utils/swal';
+  import Swal from 'sweetalert2';
 
   const parseDateString = (dateVal) => {
     if (!dateVal) return null;
@@ -20,7 +21,12 @@
 
   const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
     const [checkedRows, setCheckedRows] = useState({});
-    const [selectedRow, setSelectedRow] = useState("");
+    const [selectedRow, setSelectedRow] = useState(() => {
+      if (initialData?.animalId && String(initialData.animalId).startsWith("Row ")) {
+        return String(initialData.animalId).replace("Row ", "");
+      }
+      return "";
+    });
     const [livestockList, setLivestockList] = useState([]);
 
     const getShedObject = (shedValue) => {
@@ -507,8 +513,8 @@
               e.preventDefault(); 
               if (tagError || dobError || userIdError) return;
 
-              const isFeedingNew = fields.some(f => f.name === 'animalId' && f.label?.includes("Animal")) && !initialData?.id && !initialData?._id;
-              if (isFeedingNew) {
+              const isFeeding = fields.some(f => f.name === 'animalId' && f.label?.includes("Animal"));
+              if (isFeeding) {
                 if (!selectedRow) {
                   swalError("Validation Error", "Please select a row.");
                   return;
@@ -530,6 +536,60 @@
               const cType = formData.crossingType || 'Natural';
               if (field.name === 'maleTag' && cType === 'Artificial') return null;
               if (field.name === 'batchNumber' && cType === 'Natural') return null;
+
+              if (field.name === 'password' && (initialData?.id || initialData?._id)) {
+                return (
+                  <div key={field.name}>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const { value: newPassword } = await Swal.fire({
+                          title: 'Reset Password',
+                          input: 'password',
+                          inputLabel: 'Enter new password for this user',
+                          inputPlaceholder: 'Minimum 6 characters',
+                          showCancelButton: true,
+                          confirmButtonText: 'Update Password',
+                          confirmButtonColor: '#16223F',
+                          cancelButtonColor: '#e11d48',
+                          inputAttributes: {
+                            minlength: '6',
+                            autocapitalize: 'off',
+                            autocorrect: 'off'
+                          },
+                          inputValidator: (value) => {
+                            if (!value) {
+                              return 'You need to write something!';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters!';
+                            }
+                          }
+                        });
+
+                        if (newPassword) {
+                          setFormData(prev => ({ ...prev, password: newPassword }));
+                          Swal.fire({
+                            icon: 'success',
+                            title: 'Password Set',
+                            text: 'The password has been set in the form. Please click "Save" to submit the changes.',
+                            confirmButtonColor: '#16223F'
+                          });
+                        }
+                      }}
+                      className="bg-slate-100 hover:bg-slate-200 text-[#16223F] font-bold py-2.5 px-4 rounded-xl border border-slate-200 text-xs transition-all w-full flex items-center justify-center gap-2"
+                    >
+                      🔑 Reset User Password
+                    </button>
+                    {formData.password && (
+                      <p className="text-emerald-600 text-xs font-bold mt-1.5 ml-0.5">✓ New password staged (will save on submit)</p>
+                    )}
+                  </div>
+                );
+              }
 
               return (
                 <div key={field.name}>
@@ -642,7 +702,7 @@
                     </div>
                   ) : (
                     (() => {
-                      if (field.name === 'animalId' && field.label?.includes("Animal") && !initialData?.id && !initialData?._id) {
+                       if (field.name === 'animalId' && field.label?.includes("Animal")) {
                         const selectedShed = formData.shedId || formData.shed;
                         if (!selectedShed) {
                           return (
@@ -729,7 +789,9 @@
                       let selectOptions = field.options || [];
                       if (['shed', 'oldShed', 'newShed', 'shedId'].includes(field.name) && allShedsList.length > 0) {
                         if (field.name === 'shed' || field.name === 'shedId') {
-                          const selectedFarmId = formData.farmId;
+                          const selectedFarmId = formData.farmId && typeof formData.farmId === 'object'
+                            ? (formData.farmId._id || formData.farmId.id)
+                            : formData.farmId;
                           if (selectedFarmId) {
                             const matchingSheds = allShedsList.filter(s => {
                               const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
@@ -873,6 +935,8 @@
       ? !!formData["actualCalvingDate"] 
     : field.name === "purchaseDate" 
       ? formData.farmBorn === "No"
+    : field.name === "password" && (initialData?.id || initialData?._id || title?.toLowerCase().includes("update") || title?.toLowerCase().includes("edit"))
+      ? false
     : field.name !== "age" && 
       !["actualCalvingDate", "remarks", "heatMonitoring2ndNotification"].includes(field.name)
   )

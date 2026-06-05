@@ -38,7 +38,7 @@ const FarmTDR = () => {
         { name: 'animalType', label: 'Animal Type (Auto)', disabled: true, optional: true },
         { name: 'shedId', label: 'Shed', type: 'select', options: ['-'] },
         { name: 'symptoms', label: 'Symptoms' },
-        { name: 'diagnosis', label: 'Diagnosis/Issue' },
+        { name: 'diagnosis', label: 'Diagnosis/Issue', optional: true },
         { name: 'treatment', label: 'Action Taken' },
         { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
       ]

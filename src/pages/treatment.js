@@ -10,7 +10,7 @@ export default function TreatmentLogPage() {
       { name: 'animalType', label: 'Animal Type', disabled: true },
       { name: 'shedId', label: 'Shed', type: 'select', options: ['-'], disabled: true },
       { name: 'symptoms', label: 'Symptoms' },
-      { name: 'diagnosis', label: 'Diagnosis/Issue', required: false ,optional: true},
+      { name: 'diagnosis', label: 'Diagnosis/Issue', optional: true },
       { name: 'treatment', label: 'Action Taken' },
       { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
     ]

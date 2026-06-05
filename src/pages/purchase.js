@@ -3,18 +3,18 @@ import { api } from '@/utils/api';
 import AnimalDetailsPg from '../components/animaldetailspg';
 
 export default function PurchaseLogPage() {
-  const [shedOptions, setShedOptions] = useState([]);
+  const [farmOptions, setFarmOptions] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
-    api.sheds.getAll()
+    api.farms.getAll()
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
-          const names = res.map(s => s.name || s.code || String(s._id || s.id));
-          if (names.length > 0) setShedOptions(names);
+          const opts = res.map(f => ({ label: f.name || f.code, value: f._id || f.id }));
+          if (opts.length > 0) setFarmOptions(opts);
         }
       })
-      .catch(err => console.error("Failed to fetch sheds:", err));
+      .catch(err => console.error("Failed to fetch farms:", err));
     return () => { isMounted = false; };
   }, []);
 
@@ -29,10 +29,10 @@ export default function PurchaseLogPage() {
       { name: 'purchasePrice', label: 'Purchase Price (₹)', type: 'number' },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
       {
-        name: 'shed',
-        label: 'Shed Assigned',
+        name: 'farmId',
+        label: 'Farm Assigned',
         type: 'select',
-        options: shedOptions.length > 0 ? shedOptions : ['-']
+        options: farmOptions.length > 0 ? farmOptions : [{ label: '-', value: '' }]
       }
     ]
   };

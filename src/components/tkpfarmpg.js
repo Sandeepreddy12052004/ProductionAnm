@@ -119,7 +119,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
         { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
         { name: 'symptoms', label: 'Symptoms' },
-        { name: 'diagnosis', label: 'Diagnosis' },
+        { name: 'diagnosis', label: 'Diagnosis', optional: true },
         { name: 'treatment', label: 'Treatment' },
         { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
       ]

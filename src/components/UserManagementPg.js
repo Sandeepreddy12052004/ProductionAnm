@@ -309,10 +309,38 @@ const UserManagementPg = ({ moduleConfig }) => {
       (user.name?.toLowerCase() || '').includes(searchLower) ||
       (user.userId?.toLowerCase() || '').includes(searchLower);
 
-    const userFarmName = getFarmName(user);
-    const matchFarm = !filters.farm || userFarmName === filters.farm || filters.farm === 'All Farms';
-    const matchDept = !filters.department || user.department === filters.department;
-    const matchRole = !filters.role || user.role === filters.role;
+    const matchFarm = (() => {
+      if (!filters.farm) return true;
+      
+      const userFarmId = user.farmId && typeof user.farmId === 'object'
+        ? (user.farmId._id || user.farmId.id)
+        : user.farmId;
+
+      if (userFarmId && String(userFarmId) === String(filters.farm)) return true;
+
+      // Fallback matching by name/code
+      if (farmsData) {
+        const selectedFarmObj = farmsData.find(f => f._id === filters.farm || f.id === filters.farm);
+        if (selectedFarmObj) {
+          const selectedName = selectedFarmObj.name || selectedFarmObj.code;
+          const userFarmName = getFarmName(user);
+          if (selectedName && userFarmName && selectedName.toLowerCase() === userFarmName.toLowerCase()) {
+            return true;
+          }
+        }
+      }
+      return false;
+    })();
+
+    const userDeptName = user.department && typeof user.department === 'object'
+      ? user.department.name
+      : user.department;
+    const matchDept = !filters.department || String(userDeptName).toLowerCase() === String(filters.department).toLowerCase();
+
+    const userRoleName = user.role && typeof user.role === 'object'
+      ? user.role.name
+      : user.role;
+    const matchRole = !filters.role || String(userRoleName).toLowerCase() === String(filters.role).toLowerCase();
     
     const userStatusStr = (user.status === false || user.status === 'Inactive' || user.status === 'INACTIVE') ? 'Inactive' : 'Active';
     const matchStatus = !filters.status || userStatusStr === filters.status;
@@ -537,16 +565,23 @@ const UserManagementPg = ({ moduleConfig }) => {
         />
 
         <select
+          value={filters.farm}
           onChange={(e) => setFilters({ ...filters, farm: e.target.value })}
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
           <option value="">All Farms</option>
-          {moduleConfig.fields.find(f => f.name === 'farm')?.options?.filter(opt => opt !== 'All Farms').map(opt => (
+          {moduleConfig.fields.find(f => f.name === 'farmId')?.options?.filter(opt => {
+            if (typeof opt === 'object' && opt !== null) {
+              return opt.value !== 'ALL' && opt.label !== 'All Farms';
+            }
+            return opt !== 'All Farms';
+          }).map(opt => (
             typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
 
         <select
+          value={filters.department}
           onChange={(e) => setFilters({ ...filters, department: e.target.value })}
           className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
         >
@@ -629,8 +664,8 @@ const UserManagementPg = ({ moduleConfig }) => {
                   <td className="p-4 text-sm text-gray-500 font-sans">{user.email || "-"}</td>
                   <td className="p-4 text-sm text-gray-500 font-sans">{user.phone || user.mobile || "-"}</td>
                   <td className="p-4 text-sm font-semibold text-black">{getFarmName(user)}</td>
-                  <td className="p-4 text-sm font-semibold text-gray-600">{user.department}</td>
-                  <td className="p-4 text-sm font-semibold text-gray-600">{user.role}</td>
+                  <td className="p-4 text-sm font-semibold text-gray-600">{typeof user.department === 'object' && user.department !== null ? (user.department.name || user.department.code || '-') : (user.department || '-')}</td>
+                  <td className="p-4 text-sm font-semibold text-gray-600">{typeof user.role === 'object' && user.role !== null ? (user.role.name || user.role.code || '-') : (user.role || '-')}</td>
 
                   {/* ✅ STATUS CLICKABLE */}
                   <td className="p-4 text-center align-middle">
@@ -703,12 +738,23 @@ const UserManagementPg = ({ moduleConfig }) => {
             <div className="space-y-4 mb-6">
               {moduleConfig.fields.map(field => {
                 if (field.name === 'password') return null;
+                let displayValue;
+                if (field.name === 'farmId' || field.name === 'farm') {
+                  displayValue = getFarmName(selectedEntry);
+                } else {
+                  const raw = selectedEntry[field.name];
+                  if (raw === null || raw === undefined) {
+                    displayValue = '-';
+                  } else if (typeof raw === 'object') {
+                    displayValue = raw.name || raw.code || raw.label || String(raw._id || raw.id || '-');
+                  } else {
+                    displayValue = String(raw) || '-';
+                  }
+                }
                 return (
                   <div key={field.name} className="border-b border-slate-50 pb-2">
                     <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
-                    <span className="text-sm font-semibold text-slate-800">{
-                      field.name === 'farm' ? getFarmName(selectedEntry) : (selectedEntry[field.name] || "-")
-                    }</span>
+                    <span className="text-sm font-semibold text-slate-800">{displayValue}</span>
                   </div>
                 );
               })}
