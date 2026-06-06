@@ -40,7 +40,6 @@ export default function CattleManagementPage() {
         options: [
           'ACTIVE',
           'PREGNANT',
-          'SICK',
           'DRY'
         ]
       },
