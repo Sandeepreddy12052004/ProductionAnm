@@ -350,8 +350,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
 
                   {hasAccess('CATTLE_MANAGEMENT') && (
                     <li>
-                      <Link href="/animals" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
+                      <Link href="/cattle-management" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/cattle-management") ? activeStyle : normalStyle}`}>
                         🐄 Cattle Management
                       </Link>
                     </li>
