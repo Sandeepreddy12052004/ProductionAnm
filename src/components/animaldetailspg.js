@@ -374,7 +374,56 @@ const handleSave = async (data) => {
             }, 1000);
           }
         } else if (current.id === 'shed') {
-          await api.shed.update(entryId, data);
+          const payload = {
+            ...data,
+            shed: data.newShed && data.newShed !== '-' ? data.newShed : undefined,
+            shedId: data.newShed && data.newShed !== '-' ? data.newShed : undefined,
+          };
+          await api.shed.update(entryId, payload);
+
+          // Update corresponding animal's shed & farm in live stock
+          const tagToSearch = String(data.tag || '').trim().toUpperCase();
+          if (tagToSearch) {
+            try {
+              const [cattleList, shedsList] = await Promise.all([
+                api.cattle.getAll(),
+                api.sheds.getAll()
+              ]);
+              const rawList = Array.isArray(cattleList) ? cattleList : (cattleList?.data ?? []);
+              const rawSheds = Array.isArray(shedsList) ? shedsList : (shedsList?.data ?? []);
+              
+              const animal = rawList.find(a => String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === tagToSearch);
+              if (animal) {
+                const newShedName = String(data.newShed || '').trim().toUpperCase();
+                const matchingShedObj = rawSheds.find(s => 
+                  String(s.name || '').trim().toUpperCase() === newShedName ||
+                  String(s.code || '').trim().toUpperCase() === newShedName
+                );
+                
+                let updatedFarmId = animal.farmId;
+                if (matchingShedObj) {
+                  const sFarmId = matchingShedObj.farmId?._id || matchingShedObj.farmId?.id || matchingShedObj.farmId;
+                  if (sFarmId) {
+                    updatedFarmId = sFarmId;
+                  }
+                }
+
+                const animalId = animal.id || animal._id;
+                const resolvedShed = data.newShed && data.newShed !== '-' ? data.newShed : '-';
+                const updatedAnimal = {
+                  ...animal,
+                  tagId: animal.tag || animal.tagId,
+                  shed: resolvedShed,
+                  shedId: resolvedShed,
+                  farmId: updatedFarmId,
+                };
+                await api.cattle.update(animalId, updatedAnimal);
+              }
+            } catch (err) {
+              console.error("Failed to sync shed log to livestock:", err);
+            }
+          }
+
           swalSuccess("Success", "Shed log updated successfully!");
         } else if (current.id === 'purchase') {
           await api.purchase.update(entryId, data);
@@ -438,7 +487,56 @@ const handleSave = async (data) => {
             }, 1000);
           }
         } else if (current.id === 'shed') {
-          await api.shed.create(data);
+          const payload = {
+            ...data,
+            shed: data.newShed && data.newShed !== '-' ? data.newShed : undefined,
+            shedId: data.newShed && data.newShed !== '-' ? data.newShed : undefined,
+          };
+          await api.shed.create(payload);
+
+          // Update corresponding animal's shed & farm in live stock
+          const tagToSearch = String(data.tag || '').trim().toUpperCase();
+          if (tagToSearch) {
+            try {
+              const [cattleList, shedsList] = await Promise.all([
+                api.cattle.getAll(),
+                api.sheds.getAll()
+              ]);
+              const rawList = Array.isArray(cattleList) ? cattleList : (cattleList?.data ?? []);
+              const rawSheds = Array.isArray(shedsList) ? shedsList : (shedsList?.data ?? []);
+              
+              const animal = rawList.find(a => String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === tagToSearch);
+              if (animal) {
+                const newShedName = String(data.newShed || '').trim().toUpperCase();
+                const matchingShedObj = rawSheds.find(s => 
+                  String(s.name || '').trim().toUpperCase() === newShedName ||
+                  String(s.code || '').trim().toUpperCase() === newShedName
+                );
+                
+                let updatedFarmId = animal.farmId;
+                if (matchingShedObj) {
+                  const sFarmId = matchingShedObj.farmId?._id || matchingShedObj.farmId?.id || matchingShedObj.farmId;
+                  if (sFarmId) {
+                    updatedFarmId = sFarmId;
+                  }
+                }
+
+                const animalId = animal.id || animal._id;
+                const resolvedShed = data.newShed && data.newShed !== '-' ? data.newShed : '-';
+                const updatedAnimal = {
+                  ...animal,
+                  tagId: animal.tag || animal.tagId,
+                  shed: resolvedShed,
+                  shedId: resolvedShed,
+                  farmId: updatedFarmId,
+                };
+                await api.cattle.update(animalId, updatedAnimal);
+              }
+            } catch (err) {
+              console.error("Failed to sync shed log to livestock:", err);
+            }
+          }
+
           swalSuccess("Success", "Shed log created successfully!");
         } else if (current.id === 'purchase') {
           await api.purchase.create(data);

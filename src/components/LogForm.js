@@ -816,6 +816,19 @@
                         }
                       }
 
+                      let optionsToRender = [...selectOptions];
+                      const curVal = formData[field.name];
+                      if (curVal && curVal !== '-') {
+                        const hasVal = optionsToRender.some(opt => {
+                          const isObj = typeof opt === 'object' && opt !== null;
+                          const val = isObj ? opt.value : opt;
+                          return String(val) === String(curVal);
+                        });
+                        if (!hasVal) {
+                          optionsToRender.push(curVal);
+                        }
+                      }
+
                       return (
                         <select
                           name={field.name}
@@ -830,7 +843,7 @@
                           onChange={handleChange}
                         >
                           <option value="">Select {field.label}</option>
-                          {selectOptions.map((opt) => {
+                          {optionsToRender.map((opt) => {
                             const isObj = typeof opt === 'object' && opt !== null;
                             const val = isObj ? opt.value : opt;
                             const label = isObj ? opt.label : opt;
