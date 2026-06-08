@@ -1,4 +1,4 @@
-import CattleManagementPg from '@/components/CattleManagementpg';
+import CattleManagementPg from '@/components/CattleManagementPg';
 
 export default function CattleManagementPage() {
 
