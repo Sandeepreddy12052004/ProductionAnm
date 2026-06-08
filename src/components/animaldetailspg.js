@@ -1760,7 +1760,25 @@ const getShedFromLivestock = (tagValue) => {
           if (base.isPendingDetails && base.onboardingType === 'CALVING') {
             base.farmBorn = base.farmBorn || 'Yes';
             if (!base.cattleType || base.cattleType === 'PENDING') {
-              base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+              // Automatically resolve animal type (buffalo calf vs cow calf) based on mother (dameId)
+              const motherTag = String(base.dameId || '').trim().toUpperCase();
+              let mother = null;
+              if (motherTag) {
+                mother = logs.find(a => String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === motherTag);
+              }
+              
+              if (mother) {
+                const motherType = String(mother.cattleType || mother.animalType || '').toUpperCase();
+                if (motherType.includes('BUFFALO')) {
+                  base.cattleType = 'Buffalo Calf';
+                } else if (motherType.includes('COW')) {
+                  base.cattleType = 'Cow Calf';
+                } else {
+                  base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                }
+              } else {
+                base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+              }
             }
           }
           return base;

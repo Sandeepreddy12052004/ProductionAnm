@@ -69,7 +69,7 @@ export default function CrossingLogPage() {
       { name: 'actualCalvingDate', label: 'Actual Calving Date', type: 'date' },
       { name: 'calfTag', label: 'Calf Tag ID' },
       { name: 'remarks', label: 'Remarks', type: 'textarea' },
-      { name: 'breedType', label: 'Breed Type' },
+      { name: 'breedType', label: 'Breed Type', type: 'select', options: ['Murrah', 'Bhuri', 'Mixed', 'Gir', 'Punganur'] },
       { name: 'heatMonitoring1stNotification', label: 'Heat Monitoring 1st Notification', type: 'date' },
       { name: 'heatMonitoring2ndNotification', label: 'Heat Monitoring 2nd Notification', type: 'date' }
     ]

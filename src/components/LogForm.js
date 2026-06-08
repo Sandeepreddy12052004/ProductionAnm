@@ -818,7 +818,7 @@
 
                       let optionsToRender = [...selectOptions];
                       const curVal = formData[field.name];
-                      if (curVal && curVal !== '-') {
+                      if (curVal && curVal !== '-' && String(curVal).toUpperCase() !== 'PENDING') {
                         const hasVal = optionsToRender.some(opt => {
                           const isObj = typeof opt === 'object' && opt !== null;
                           const val = isObj ? opt.value : opt;
@@ -833,7 +833,8 @@
                         <select
                           name={field.name}
                           value={
-                            (field.name === "shed" || field.name === "shedId") && formData[field.name] === "-"
+                            ((field.name === "shed" || field.name === "shedId") && formData[field.name] === "-") ||
+                            ((field.name === "cattleType" || field.name === "animalType") && String(formData[field.name]).toUpperCase() === "PENDING")
                               ? ""
                               : (formData[field.name] || "")
                           }
