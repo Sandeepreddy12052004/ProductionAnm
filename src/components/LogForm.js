@@ -832,7 +832,11 @@
                       return (
                         <select
                           name={field.name}
-                          value={formData[field.name] || ""}
+                          value={
+                            (field.name === "shed" || field.name === "shedId") && formData[field.name] === "-"
+                              ? ""
+                              : (formData[field.name] || "")
+                          }
                           required={!field.optional && field.name !== "age" && field.name !== "oldShed"}
                           disabled={field.name === "oldShed" || field.disabled}
                           className={`mt-1 block w-full border rounded-xl p-2.5 outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 ${
