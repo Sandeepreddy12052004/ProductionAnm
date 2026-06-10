@@ -47,9 +47,26 @@
 //   );
 // }
 
+import { useState, useEffect } from 'react';
+import { api } from '@/utils/api';
 import AnimalDetailsPg from '../components/animaldetailspg';
 
 export default function CrossingLogPage() {
+  const [breedOptions, setBreedOptions] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.breeds.getAll()
+      .then(res => {
+        if (isMounted && res && Array.isArray(res)) {
+          const names = res.filter(b => b && !b.isDeleted && b.status !== false).map(b => b.name);
+          if (names.length > 0) setBreedOptions(names);
+        }
+      })
+      .catch(err => console.error("Failed to fetch breeds:", err));
+    return () => { isMounted = false; };
+  }, []);
+
   const config = {
     id: 'crossing',
     name: 'Crossing Log',
@@ -69,7 +86,7 @@ export default function CrossingLogPage() {
       { name: 'actualCalvingDate', label: 'Actual Calving Date', type: 'date' },
       { name: 'calfTag', label: 'Calf Tag ID' },
       { name: 'remarks', label: 'Remarks', type: 'textarea' },
-      { name: 'breedType', label: 'Breed Type', type: 'select', options: ['Murrah', 'Bhuri', 'Mixed', 'Gir', 'Punganur'] },
+      { name: 'breedType', label: 'Breed Type', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'heatMonitoring1stNotification', label: 'Heat Monitoring 1st Notification', type: 'date' },
       { name: 'heatMonitoring2ndNotification', label: 'Heat Monitoring 2nd Notification', type: 'date' }
     ]

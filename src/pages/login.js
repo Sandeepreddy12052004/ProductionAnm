@@ -4,7 +4,9 @@ import Image from "next/image";
 import { motion } from "framer-motion"; // For that premium smooth entrance
 import { swalError } from "@/utils/swal";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://farm.agasthyanutromilk.com';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://farm.agasthyanutromilk.com/';
+const cleanBaseUrl = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const response = await fetch(`${BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${cleanBaseUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

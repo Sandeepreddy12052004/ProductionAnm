@@ -15,7 +15,11 @@ const MODULE_GROUPS = {
       { name: 'Department', baseToken: 'DEPARTMENTS', prefix: 'DEPARTMENT' },
       { name: 'Farm Management', baseToken: 'FARMS', prefix: 'FARM_MANAGEMENT' },
       { name: 'Shed Management', baseToken: 'SHEDS', prefix: 'SHED_MANAGEMENT' },
-      { name: 'Cattle Management', baseToken: 'CATTLE', prefix: 'CATTLE_MANAGEMENT' }
+      { name: 'Cattle Management', baseToken: 'CATTLE', prefix: 'CATTLE_MANAGEMENT' },
+      { name: 'Health Management', baseToken: 'HEALTH', prefix: 'HEALTH_MANAGEMENT' },
+      { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS' },
+      { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT' },
+      { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT' }
     ]
   },
   MODULES: {

@@ -6,7 +6,7 @@ export default function FeedInventoryPage() {
     name: 'Feed Inventory',
     icon: '📦',
     fields: [
-      { name: 'feedType',        label: 'Feed Item',       type: 'select', options: ['Green Grass', 'Dry Grass', 'Cotton Cake', 'Chunni', 'Maize', 'Wheat Bran'] },
+      { name: 'feedType',        label: 'Feed Item',       type: 'select', options: [] },
       { name: 'oldStock',        label: 'Old Stock',       type: 'number' },
       { name: 'bought',          label: 'Bought',          type: 'number' },
       { name: 'usage',           label: 'Bags / Usage',    type: 'number' },

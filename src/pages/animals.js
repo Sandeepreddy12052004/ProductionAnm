@@ -4,6 +4,7 @@ import { api } from '@/utils/api';
 
 export default function AnimalsPage() {
   const [shedOptions, setShedOptions] = useState([]);
+  const [breedOptions, setBreedOptions] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -15,6 +16,19 @@ export default function AnimalsPage() {
         }
       })
       .catch(err => console.error("Failed to fetch sheds:", err));
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.breeds.getAll()
+      .then(res => {
+        if (isMounted && res && Array.isArray(res)) {
+          const names = res.filter(b => b && !b.isDeleted && b.status !== false).map(b => b.name);
+          if (names.length > 0) setBreedOptions(names);
+        }
+      })
+      .catch(err => console.error("Failed to fetch breeds:", err));
     return () => { isMounted = false; };
   }, []);
 
@@ -38,12 +52,12 @@ export default function AnimalsPage() {
       },
       { name: 'dateOfBirth', label: 'Date of Birth', type: 'date' },
       { name: 'age', label: 'Age' },
-      { name: 'breed', label: 'Breed', type: 'select', options: ['Murrah', 'Bhuri', 'Mixed', 'Gir', 'Punganur'] },
+      { name: 'breed', label: 'Breed', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female'] },
       { name: 'dameId', label: 'Dame ID (Mother)', type: 'text' },
-      { name: 'dameBreed', label: 'Dame Breed', type: 'select', options: ['Murrah', 'Bhuri', 'Mixed', 'Gir', 'Punganur'] },
+      { name: 'dameBreed', label: 'Dame Breed', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'sireId', label: 'Sire ID (Father)', type: 'text' },
-      { name: 'sireBreed', label: 'Sire Breed', type: 'select', options: ['Murrah', 'Bhuri', 'Mixed', 'Gir', 'Punganur'] },
+      { name: 'sireBreed', label: 'Sire Breed', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'calvings', label: 'No. of Calvings', type: 'number' },
       { name: 'farmBorn', label: 'Farm Born', type: 'select', options: ['Yes', 'No'] },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },

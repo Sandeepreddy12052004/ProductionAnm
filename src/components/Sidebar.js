@@ -29,7 +29,12 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/roles",
     "/shed",
     "/animals",
-    "/farms"
+    "/farms",
+    "/cattle-management",
+    "/health-management",
+    "/feed-items",
+    "/tag-management",
+    "/breed-management"
   ].includes(router.pathname) && !router.query.tab;
 
   const isNormalRoute = 
@@ -279,7 +284,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
           )}
 
           {/* CORE MODULES GROUP */}
-          {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT')) && (
+          {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT')) && (
           <li className="mt-4">
             <button
               onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
@@ -353,6 +358,42 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                       <Link href="/cattle-management" onClick={handleCloseSidebar}
                         className={`block p-2 rounded border-l-4 ${isLinkActive("/cattle-management") ? activeStyle : normalStyle}`}>
                         🐄 Cattle Management
+                      </Link>
+                    </li>
+                  )}
+
+                  {hasAccess('HEALTH_MANAGEMENT') && (
+                    <li>
+                      <Link href="/health-management" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/health-management") ? activeStyle : normalStyle}`}>
+                        🩺 Health Management
+                      </Link>
+                    </li>
+                  )}
+
+                  {hasAccess('FEED_ITEMS') && (
+                    <li>
+                      <Link href="/feed-items" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/feed-items") ? activeStyle : normalStyle}`}>
+                        🌾 Feed Items
+                      </Link>
+                    </li>
+                  )}
+
+                  {hasAccess('TAG_MANAGEMENT') && (
+                    <li>
+                      <Link href="/tag-management" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/tag-management") ? activeStyle : normalStyle}`}>
+                        🏷️ Tag Management
+                      </Link>
+                    </li>
+                  )}
+
+                  {hasAccess('BREED_MANAGEMENT') && (
+                    <li>
+                      <Link href="/breed-management" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/breed-management") ? activeStyle : normalStyle}`}>
+                        🧬 Breed Management
                       </Link>
                     </li>
                   )}

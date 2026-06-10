@@ -79,6 +79,17 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       })
       .catch(console.error);
 
+    // Fetch dynamic feeds
+    api.feedItems.getAll()
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isMounted && list.length > 0) {
+          const feedOpts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+          setFeeds(feedOpts);
+        }
+      })
+      .catch(console.error);
+
     return () => { isMounted = false; };
   }, [userObj]);
   const [logs, setLogs] = useState([]);
@@ -92,6 +103,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const [availableFarms, setAvailableFarms] = useState([]);
   const [sheds, setSheds] = useState([]);
   const [animals, setAnimals] = useState([]);
+  const [feeds, setFeeds] = useState([]);
 
   const [filters, setFilters] = useState([
     { field: "entryDate", value: "", from: "", to: "" }
@@ -173,7 +185,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       name: 'Feed Inventory',
       icon: '📦',
       fields: [
-        { name: 'feedType', label: 'Feed Item', type: 'select', options: ['Green Grass', 'Dry Grass', 'Cotton Cake', 'Chunni', 'Maize', 'Wheat Bran'] },
+        { name: 'feedType', label: 'Feed Item', type: 'select', options: feeds },
         { name: 'oldStock', label: 'Old Stock', type: 'number' },
         { name: 'bought', label: 'Bought', type: 'number' },
         { name: 'usage', label: 'Bags/Usage', type: 'number' },

@@ -15,13 +15,7 @@ export default function CattleManagementPage() {
         name: 'breed',
         label: 'Breed',
         type: 'select',
-        options: [
-          'Murrah',
-          'Bhuri',
-          'Mixed',
-          'Gir',
-          'Punganur'
-        ]
+        options: []
       },
 
       {

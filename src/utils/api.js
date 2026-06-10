@@ -1,7 +1,10 @@
 import { swalError } from './swal';
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://farm.agasthyanutromilk.com';
+  process.env.NEXT_PUBLIC_API_URL || 'https://farm.agasthyanutromilk.com/';
+
+const cleanBaseUrl = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+
 
 // ---------------------------------------------------------------------------
 // ROUTE → PERMISSION KEY REGISTRY
@@ -30,6 +33,8 @@ const ROUTE_PERMISSION_MAP = {
   '/api/milk/collections':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
   '/api/milk/quality':                 ['MILK', 'INCHARGE', 'FARM_ADMIN'],
   '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'FARM_ADMIN'],
+  '/api/feed-items':                   ['FEED_ITEMS', 'FARM_ADMIN'],
+  '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
   '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
   '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],
@@ -177,7 +182,7 @@ function evaluateFirewall(endpoint) {
 async function verifyTokenSession(token) {
   if (!token) return false;
   try {
-    const response = await fetch(`${BASE_URL}/api/auth/verify`, {
+    const response = await fetch(`${cleanBaseUrl}/api/auth/verify`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -245,7 +250,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 
   // ── 3. NETWORK CALL ───────────────────────────────────────────────────────
   try {
-    const response = await fetch(`${BASE_URL}${finalEndpoint}`, config);
+    const response = await fetch(`${cleanBaseUrl}${finalEndpoint}`, config);
 
     // ── 401 Unauthorized: token dead/missing → force re-login ──────────────
     if (response.status === 401) {
@@ -462,5 +467,21 @@ export const api = {
     create:              (data)     => apiRequest('/api/logs/sale', 'POST', data),
     update:              (id, data) => apiRequest(`/api/logs/sale/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/logs/sale/${id}`, 'DELETE'),
+  },
+  
+  // Feed Items Configuration
+  feedItems: {
+    getAll:              ()         => apiRequest('/api/feed-items'),
+    create:              (data)     => apiRequest('/api/feed-items', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/feed-items/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/feed-items/${id}`, 'DELETE'),
+  },
+
+  // Breed Management Configuration
+  breeds: {
+    getAll:              ()         => apiRequest('/api/breeds'),
+    create:              (data)     => apiRequest('/api/breeds', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/breeds/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/breeds/${id}`, 'DELETE'),
   },
 };

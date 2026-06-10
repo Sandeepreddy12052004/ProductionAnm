@@ -81,18 +81,21 @@ const OpsLogPg = ({ moduleConfig }) => {
     return () => { document.body.style.overflow = 'auto'; };
   }, [showForm, showFilters, viewMode, selectedEntry]);
 
-  // ── Load dynamic shed/animal options ────────────────────────────────────
+  // ── Load dynamic shed/animal/feed options ──────────────────────────────
   useEffect(() => {
     const hasShed = current.fields.some(f => ['shedId', 'shed'].includes(f.name));
     const hasAnimal = current.fields.some(f => f.name === 'animalId');
+    const hasFeedType = current.fields.some(f => f.name === 'feedType');
 
     let shed_opts = null;
     let animal_opts = null;
+    let feed_opts = null;
 
     const tryMerge = () => {
       if (
         (hasShed && !shed_opts) ||
-        (hasAnimal && !animal_opts)
+        (hasAnimal && !animal_opts) ||
+        (hasFeedType && !feed_opts)
       ) return;
 
       setDynamicFields(current.fields.map(f => {
@@ -100,6 +103,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           return { ...f, options: shed_opts };
         if (f.name === 'animalId' && animal_opts)
           return { ...f, options: animal_opts };
+        if (f.name === 'feedType' && feed_opts)
+          return { ...f, options: feed_opts };
         return f;
       }));
     };
@@ -128,7 +133,17 @@ const OpsLogPg = ({ moduleConfig }) => {
         .catch(console.error);
     }
 
-    if (!hasShed && !hasAnimal) {
+    if (hasFeedType) {
+      api.feedItems.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          feed_opts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
+    if (!hasShed && !hasAnimal && !hasFeedType) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);

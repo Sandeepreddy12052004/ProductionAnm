@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import LogForm from "@/components/LogForm";
 import { swalSuccess, swalError, swalConfirm } from "@/utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import { api } from "@/utils/api";
 import {
   Search,
   Filter,
@@ -12,7 +13,26 @@ import {
 export default function CattleManagementPg({
   moduleConfig,
 }) {
-  const fields = moduleConfig?.fields || [];
+  const [dynamicFields, setDynamicFields] = useState(moduleConfig?.fields || []);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.breeds.getAll()
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isMounted && list.length > 0) {
+          const breedOpts = list.filter(b => b.status !== false).map(b => b.name).filter(Boolean);
+          setDynamicFields(prev => prev.map(f => {
+            if (f.name === 'breed') {
+              return { ...f, options: breedOpts };
+            }
+            return f;
+          }));
+        }
+      })
+      .catch(console.error);
+    return () => { isMounted = false; };
+  }, [moduleConfig]);
 
   const statusStyles = {
     ACTIVE: "bg-emerald-50 text-emerald-700 border border-emerald-100",
@@ -199,7 +219,7 @@ export default function CattleManagementPg({
       if (!f.value) return true;
 
       // Exact match check for select options to keep it clean (e.g. status)
-      const fieldConfig = fields.find(field => field.name === f.field);
+      const fieldConfig = dynamicFields.find(field => field.name === f.field);
       if (fieldConfig?.type === "select") {
         return String(item[f.field] || "").toLowerCase() === f.value.toLowerCase();
       }
@@ -405,7 +425,7 @@ export default function CattleManagementPg({
                       setFilters(updated);
                     }}
                   >
-                    {fields.map(field => (
+                    {dynamicFields.map(field => (
                       <option key={field.name} value={field.name}>
                         {field.label}
                       </option>
@@ -414,7 +434,7 @@ export default function CattleManagementPg({
 
                   {/* VALUE INPUTS */}
                   {(() => {
-                    const fieldConfig = fields.find(field => field.name === f.field);
+                    const fieldConfig = dynamicFields.find(field => field.name === f.field);
 
                     // 📅 DATE RANGE FIELD (generic fallback check)
                     if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
@@ -587,7 +607,7 @@ export default function CattleManagementPg({
               border-b border-gray-200
             ">
               <tr>
-                {fields.map((field) => (
+                {dynamicFields.map((field) => (
                   <th
                     key={field.name}
                     className="
@@ -609,11 +629,11 @@ export default function CattleManagementPg({
 
             <tbody className="divide-y divide-gray-100">
               {isFetching ? (
-                <SkeletonLoader type="table" columns={fields.length + 1} />
+                <SkeletonLoader type="table" columns={dynamicFields.length + 1} />
               ) : filteredData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={fields.length + 1}
+                    colSpan={dynamicFields.length + 1}
                     className="p-16 text-center text-slate-500 text-sm font-semibold"
                   >
                     No cattle found
@@ -634,7 +654,7 @@ export default function CattleManagementPg({
                       cursor-pointer
                     "
                   >
-                    {fields.map((field) => (
+                    {dynamicFields.map((field) => (
                       <td
                         key={field.name}
                         className="p-4 text-sm font-semibold text-black"
@@ -823,7 +843,7 @@ export default function CattleManagementPg({
             <h3 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight pr-8">Cattle Details</h3>
 
             <div className="space-y-4 mb-6 text-black">
-              {fields.map(field => (
+              {dynamicFields.map(field => (
                 <div key={field.name} className="border-b border-slate-50 pb-2">
                   <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
                   <span className="text-sm font-semibold text-slate-800">
@@ -856,7 +876,7 @@ export default function CattleManagementPg({
       {showAddModal && (
         <LogForm
           title="Add Cattle"
-          fields={fields}
+          fields={dynamicFields}
           onSubmit={handleAdd}
           onClose={() => setShowAddModal(false)}
         />
@@ -866,7 +886,7 @@ export default function CattleManagementPg({
       {showEditModal && selectedAnimal && (
         <LogForm
           title="Edit Cattle"
-          fields={fields}
+          fields={dynamicFields}
           initialData={selectedAnimal}
           onSubmit={handleEdit}
           onClose={() => {
