@@ -8,6 +8,15 @@ import { api } from '@/utils/api';
 import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
 import FarmOverview from './FarmOverview';
 
+const toCamelCase = (str) => {
+  return str
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
+      index === 0 ? word.toLowerCase() : word.toUpperCase()
+    )
+    .replace(/\s+/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '');
+};
+
 const FarmTKP = ({ farmCode = 'TKP' }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
@@ -144,15 +153,32 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         { name: 'date', label: 'Date', type: 'date' },
         { name: 'shedId', label: 'Shed Number', type: 'select', options: sheds },
         { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: animals },
-        { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
-        { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
-        { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
-        { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
-        { name: 'maize', label: 'Maize (KG)', type: 'number' },
-        { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
-        { name: 'salt', label: 'Salt (G)', type: 'number' },
-        { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
-        { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
+        ...(feeds.length > 0
+          ? feeds.map(feedName => {
+              const camelName = toCamelCase(feedName);
+              let unit = 'KG';
+              const lowerName = feedName.toLowerCase();
+              if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
+              else if (lowerName.includes('calcium')) unit = 'ML';
+              return {
+                name: camelName,
+                label: `${feedName} (${unit})`,
+                type: 'number',
+                optional: true
+              };
+            })
+          : [
+              { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
+              { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
+              { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
+              { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
+              { name: 'maize', label: 'Maize (KG)', type: 'number' },
+              { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
+              { name: 'salt', label: 'Salt (G)', type: 'number' },
+              { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
+              { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
+            ]
+        )
       ]
     },
     {

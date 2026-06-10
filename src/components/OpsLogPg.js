@@ -6,6 +6,15 @@ import autoTable from 'jspdf-autotable';
 import { api } from '@/utils/api';
 import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
 
+const toCamelCase = (str) => {
+  return str
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
+      index === 0 ? word.toLowerCase() : word.toUpperCase()
+    )
+    .replace(/\s+/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '');
+};
+
 // ─── Date Helpers ─────────────────────────────────────────────────────────────
 
 const parseDateString = (dateVal) => {
@@ -86,19 +95,41 @@ const OpsLogPg = ({ moduleConfig }) => {
     const hasShed = current.fields.some(f => ['shedId', 'shed'].includes(f.name));
     const hasAnimal = current.fields.some(f => f.name === 'animalId');
     const hasFeedType = current.fields.some(f => f.name === 'feedType');
+    const isFeeding = current.id === 'feeding';
 
     let shed_opts = null;
     let animal_opts = null;
     let feed_opts = null;
+    let dynamic_feeds = null;
 
     const tryMerge = () => {
       if (
         (hasShed && !shed_opts) ||
         (hasAnimal && !animal_opts) ||
-        (hasFeedType && !feed_opts)
+        (hasFeedType && !feed_opts) ||
+        (isFeeding && !dynamic_feeds)
       ) return;
 
-      setDynamicFields(current.fields.map(f => {
+      let baseFields = current.fields;
+      if (isFeeding && dynamic_feeds && dynamic_feeds.length > 0) {
+        const keepFields = current.fields.filter(f => ['date', 'shedId', 'animalId'].includes(f.name));
+        const feedFields = dynamic_feeds.map(feedName => {
+          const camelName = toCamelCase(feedName);
+          let unit = 'KG';
+          const lowerName = feedName.toLowerCase();
+          if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
+          else if (lowerName.includes('calcium')) unit = 'ML';
+          return {
+            name: camelName,
+            label: `${feedName} (${unit})`,
+            type: 'number',
+            optional: true
+          };
+        });
+        baseFields = [...keepFields, ...feedFields];
+      }
+
+      setDynamicFields(baseFields.map(f => {
         if (['shedId', 'shed'].includes(f.name) && shed_opts)
           return { ...f, options: shed_opts };
         if (f.name === 'animalId' && animal_opts)
@@ -143,7 +174,21 @@ const OpsLogPg = ({ moduleConfig }) => {
         .catch(console.error);
     }
 
-    if (!hasShed && !hasAnimal && !hasFeedType) {
+    if (isFeeding) {
+      api.feedItems.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          dynamic_feeds = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+          tryMerge();
+        })
+        .catch(err => {
+          console.error(err);
+          dynamic_feeds = [];
+          tryMerge();
+        });
+    }
+
+    if (!hasShed && !hasAnimal && !hasFeedType && !isFeeding) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);
@@ -193,17 +238,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         payload = data.map(item => {
           const itemPayload = { ...item };
           if (current.id === 'feeding') {
-            const feedingFields = [
-              'greenGrass',
-              'dryGrass',
-              'cottonCake',
-              'chunni',
-              'maize',
-              'wheatBran',
-              'salt',
-              'oralCalcium',
-              'mineralMixture'
-            ];
+            const feedingFields = dynamicFields.filter(f => f.type === 'number').map(f => f.name);
             feedingFields.forEach(f => {
               if (itemPayload[f] === "" || itemPayload[f] === undefined || itemPayload[f] === null) {
                 itemPayload[f] = 0;
@@ -222,17 +257,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       } else {
         payload = { ...data };
         if (current.id === 'feeding') {
-          const feedingFields = [
-            'greenGrass',
-            'dryGrass',
-            'cottonCake',
-            'chunni',
-            'maize',
-            'wheatBran',
-            'salt',
-            'oralCalcium',
-            'mineralMixture'
-          ];
+          const feedingFields = dynamicFields.filter(f => f.type === 'number').map(f => f.name);
           feedingFields.forEach(f => {
             if (payload[f] === "" || payload[f] === undefined || payload[f] === null) {
               payload[f] = 0;
@@ -331,10 +356,10 @@ const OpsLogPg = ({ moduleConfig }) => {
     const worksheet = workbook.addWorksheet(current.name);
     worksheet.columns = [
       { header: 'Date', key: 'entryDate', width: 15 },
-      ...current.fields.map(f => ({ header: f.label, key: f.name, width: 20 }))
+      ...dynamicFields.map(f => ({ header: f.label, key: f.name, width: 20 }))
     ];
     filteredLogs.forEach(log => {
-      worksheet.addRow({ entryDate: log.entryDate, ...current.fields.reduce((a, f) => { a[f.name] = log[f.name]; return a; }, {}) });
+      worksheet.addRow({ entryDate: log.entryDate, ...dynamicFields.reduce((a, f) => { a[f.name] = log[f.name]; return a; }, {}) });
     });
     const headerRow = worksheet.getRow(1);
     headerRow.eachCell(cell => {
@@ -374,8 +399,8 @@ const OpsLogPg = ({ moduleConfig }) => {
   // ── PDF Export ───────────────────────────────────────────────────────────
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'A4' });
-    const columns = ['Date', ...current.fields.map(f => f.label)];
-    const rows = filteredLogs.map(log => [log.entryDate, ...current.fields.map(f => log[f.name])]);
+    const columns = ['Date', ...dynamicFields.map(f => f.label)];
+    const rows = filteredLogs.map(log => [log.entryDate, ...dynamicFields.map(f => log[f.name])]);
     const img = new Image();
     img.src = '/LOGO.png';
     const drawTable = (startY) => {
@@ -473,7 +498,7 @@ const OpsLogPg = ({ moduleConfig }) => {
                     }}
                   >
                     <option value="entryDate">Date</option>
-                    {current.fields.map(field => (
+                    {dynamicFields.map(field => (
                       <option key={field.name} value={field.name}>{field.label}</option>
                     ))}
                   </select>
@@ -526,7 +551,7 @@ const OpsLogPg = ({ moduleConfig }) => {
           <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
               <th className="p-4 border-b">Date</th>
-              {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
+              {dynamicFields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
               <th className="p-4 border-b w-10 text-center"></th>
             </tr>
           </thead>
@@ -534,7 +559,7 @@ const OpsLogPg = ({ moduleConfig }) => {
             {isLoading ? (
               [1,2,3,4,5].map(i => (
                 <tr key={i} className="animate-pulse border-b border-gray-100">
-                  {[...Array(current.fields.length + 2)].map((_, j) => (
+                  {[...Array(dynamicFields.length + 2)].map((_, j) => (
                     <td key={j} className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
                   ))}
                 </tr>
@@ -547,7 +572,7 @@ const OpsLogPg = ({ moduleConfig }) => {
                   onClick={() => setSelectedEntry(log)}
                 >
                   <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
-                  {current.fields.map(f => {
+                  {dynamicFields.map(f => {
                     let cellVal = log[f.name];
                     if (f.type === 'date' && cellVal) {
                       cellVal = formatDateToDDMMYYYY(cellVal);
@@ -563,7 +588,7 @@ const OpsLogPg = ({ moduleConfig }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={current.fields.length + 2} className="p-12 text-center text-black text-sm font-medium opacity-50">
+                <td colSpan={dynamicFields.length + 2} className="p-12 text-center text-black text-sm font-medium opacity-50">
                   No records found for {current.name}.
                 </td>
               </tr>
@@ -627,7 +652,7 @@ const OpsLogPg = ({ moduleConfig }) => {
                 <span className="font-semibold text-gray-500">Date</span>
                 <span className="text-right">{selectedEntry.entryDate}</span>
               </div>
-              {current.fields.map(field => {
+              {dynamicFields.map(field => {
                 let cellVal = selectedEntry[field.name];
                 if (field.type === 'date' && cellVal) {
                   cellVal = formatDateToDDMMYYYY(cellVal);

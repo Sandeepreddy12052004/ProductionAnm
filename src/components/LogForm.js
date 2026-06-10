@@ -380,6 +380,23 @@
         updated.purchaseDate = "";
       }
 
+      if (name === "oldStock" || name === "bought" || name === "usage" || name === "used") {
+        const oldVal = Number(name === "oldStock" ? value : (updated.oldStock || 0));
+        const boughtVal = Number(name === "bought" ? value : (updated.bought || 0));
+        const usageField = fields.some(f => f.name === 'usage') ? 'usage' : (fields.some(f => f.name === 'used') ? 'used' : null);
+        const usageVal = Number(usageField ? (name === usageField ? value : (updated[usageField] || 0)) : 0);
+        
+        const remaining = oldVal + boughtVal - usageVal;
+        const remField = fields.some(f => f.name === 'remainingStock') ? 'remainingStock' : (fields.some(f => f.name === 'presentStock') ? 'presentStock' : null);
+        if (remField) {
+          updated[remField] = isNaN(remaining) ? 0 : remaining;
+        }
+      }
+
+      if (name === "bought" && !Number(value)) {
+        updated.purchaseDate = "";
+      }
+
 
     // NEW: AUTO-CALCULATE PREGNANT AGE (Y M D Format)
       if ((name === "pregnancyStatus" && value === "Positive") || (name === "crossingDate" && updated["pregnancyStatus"] === "Positive")) {
@@ -952,11 +969,13 @@
     : ["calfTag", "heatMonitoring1stNotification"].includes(field.name)
       ? !!formData["actualCalvingDate"] 
     : field.name === "purchaseDate" 
-      ? formData.farmBorn === "No"
+      ? (title?.toLowerCase().includes("feed") ? !!Number(formData.bought) : formData.farmBorn === "No")
+    : ["sireId", "dameId"].includes(field.name)
+      ? formData.farmBorn === "Yes"
     : field.name === "password" && (initialData?.id || initialData?._id || title?.toLowerCase().includes("update") || title?.toLowerCase().includes("edit"))
       ? false
     : field.name !== "age" && 
-      !["actualCalvingDate", "remarks", "heatMonitoring2ndNotification"].includes(field.name)
+      !["actualCalvingDate", "remarks", "heatMonitoring2ndNotification", "sireId", "dameId"].includes(field.name)
   )
 }
 
@@ -964,6 +983,7 @@
     /*  Updated Disabled Logic: 1st Notification remains enabled if status is Negative */
   disabled={
       field.disabled === true ||
+      (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
       (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
@@ -983,6 +1003,7 @@
       field.name === "age" || 
       field.name === "pregnantAge" || 
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
+      (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"]))
         ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-500 font-semibold" 

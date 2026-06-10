@@ -44,6 +44,7 @@ export default function AnimalsPage() {
         type: 'select',
         options: ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf']
       },
+      { name: 'farmBorn', label: 'Farm Born', type: 'select', options: ['Yes', 'No'] },
       {
         name: 'shed',
         label: 'Shed Number',
@@ -59,7 +60,6 @@ export default function AnimalsPage() {
       { name: 'sireId', label: 'Sire ID (Father)', type: 'text' },
       { name: 'sireBreed', label: 'Sire Breed', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'calvings', label: 'No. of Calvings', type: 'number' },
-      { name: 'farmBorn', label: 'Farm Born', type: 'select', options: ['Yes', 'No'] },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
       { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'SOLD', 'DECEASED'] }
     ]

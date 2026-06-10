@@ -85,10 +85,10 @@ export default function CrossingLogPage() {
       { name: 'pregnantAge', label: 'Pregnant Age', type: 'number' },
       { name: 'actualCalvingDate', label: 'Actual Calving Date', type: 'date' },
       { name: 'calfTag', label: 'Calf Tag ID' },
-      { name: 'remarks', label: 'Remarks', type: 'textarea' },
       { name: 'breedType', label: 'Breed Type', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'heatMonitoring1stNotification', label: 'Heat Monitoring 1st Notification', type: 'date' },
-      { name: 'heatMonitoring2ndNotification', label: 'Heat Monitoring 2nd Notification', type: 'date' }
+      { name: 'heatMonitoring2ndNotification', label: 'Heat Monitoring 2nd Notification', type: 'date' },
+      { name: 'remarks', label: 'Remarks', type: 'textarea' }
     ]
   };
 
