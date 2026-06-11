@@ -14,33 +14,9 @@ export default function CattleManagementPg({
   moduleConfig,
 }) {
   const [dynamicFields, setDynamicFields] = useState(moduleConfig?.fields || []);
-
-  useEffect(() => {
-    let isMounted = true;
-    api.breeds.getAll()
-      .then(res => {
-        const list = Array.isArray(res) ? res : (res?.data ?? []);
-        if (isMounted && list.length > 0) {
-          const breedOpts = list.filter(b => b.status !== false).map(b => b.name).filter(Boolean);
-          setDynamicFields(prev => prev.map(f => {
-            if (f.name === 'breed') {
-              return { ...f, options: breedOpts };
-            }
-            return f;
-          }));
-        }
-      })
-      .catch(console.error);
-    return () => { isMounted = false; };
-  }, [moduleConfig]);
-
-  const statusStyles = {
-    ACTIVE: "bg-emerald-50 text-emerald-700 border border-emerald-100",
-    PREGNANT: "bg-violet-50 text-violet-700 border border-violet-100",
-    SICK: "bg-red-50 text-red-700 border border-red-100",
-    DRY: "bg-orange-50 text-orange-700 border border-orange-100",
-  };
-
+  const [cattleData, setCattleData] = useState([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,73 +25,118 @@ export default function CattleManagementPg({
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
   
-  // Dynamic Filters State aligned with animaldetailspg
+  // Dynamic Filters State
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
-
-  const [cattleData, setCattleData] = useState([]);
-  const [isFetching, setIsFetching] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
-  // Load from local storage
-  useEffect(() => {
-    const saved = localStorage.getItem("global_cattle-management_logs");
-    if (saved) {
-      try {
-        setCattleData(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse cattle data:", e);
-      }
-    } else {
-      setCattleData([]);
-    }
-    setIsFetching(false);
-  }, []);
-
-  const saveToStorage = (newData) => {
-    setCattleData(newData);
-    localStorage.setItem("global_cattle-management_logs", JSON.stringify(newData));
+  const statusStyles = {
+    ACTIVE: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+    PREGNANT: "bg-violet-50 text-violet-700 border border-violet-100",
+    SICK: "bg-red-50 text-red-700 border border-red-100",
+    DRY: "bg-orange-50 text-orange-700 border border-orange-100",
+    PENDING: "bg-amber-50 text-amber-700 border border-amber-100",
   };
 
-  const handleAdd = (data) => {
-    setIsLoading(true);
+  const fetchCattleData = async () => {
+    setIsFetching(true);
     try {
-      const newEntry = {
-        ...data,
-        id: Date.now(),
-        _id: String(Date.now()),
-      };
-      const updated = [newEntry, ...cattleData];
-      saveToStorage(updated);
-      swalSuccess("Success", "Cattle added successfully!");
-      setShowAddModal(false);
+      const res = await api.cattle.getAll();
+      const raw = Array.isArray(res) ? res : (res?.data ?? []);
+      setCattleData(raw);
     } catch (err) {
       console.error(err);
-      swalError("Error", "Failed to add cattle.");
+      swalError("Error", "Failed to retrieve cattle records from server.");
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // Fetch options for Select fields (breeds, sheds, farms)
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadOptions = async () => {
+      try {
+        const [breedsRes, shedsRes, farmsRes] = await Promise.all([
+          api.breeds.getAll(),
+          api.sheds.getAll(),
+          api.farms.getAll()
+        ]);
+
+        if (isMounted) {
+          const breedList = Array.isArray(breedsRes) ? breedsRes : (breedsRes?.data ?? []);
+          const breedOpts = breedList.filter(b => b.status !== false).map(b => b.name).filter(Boolean);
+
+          const shedList = Array.isArray(shedsRes) ? shedsRes : (shedsRes?.data ?? []);
+          const shedOpts = shedList.map(s => s.name || s.code).filter(Boolean);
+
+          const farmList = Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []);
+          const farmOpts = farmList.map(f => ({ label: f.name, value: f._id || f.id }));
+
+          setDynamicFields(prev => prev.map(f => {
+            if (f.name === 'breed') return { ...f, options: breedOpts };
+            if (f.name === 'shed') return { ...f, options: shedOpts };
+            if (f.name === 'farmId') return { ...f, options: farmOpts };
+            return f;
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load options for cattle registration", err);
+      }
+    };
+
+    loadOptions();
+    fetchCattleData();
+
+    return () => { isMounted = false; };
+  }, [moduleConfig]);
+
+  const handleAdd = async (data) => {
+    setIsLoading(true);
+    try {
+      const resolvedShed = data.shed && data.shed !== '' && data.shed !== '-' ? data.shed : (data.shedId || '-');
+      const resolvedType = data.cattleType || data.animalType || 'COW';
+      const payload = {
+        ...data,
+        tag: data.tag || data.tagId,
+        code: data.code || `CTL-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        farmId: data.farmId || null,
+        shed: resolvedShed,
+        shedId: resolvedShed,
+        cattleType: resolvedType,
+        animalType: resolvedType,
+      };
+
+      await api.cattle.create(payload);
+      swalSuccess("Success", "Cattle added successfully!");
+      setShowAddModal(false);
+      fetchCattleData();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", typeof err === 'string' ? err : "Failed to add cattle record.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEdit = (data) => {
+  const handleEdit = async (data) => {
     setIsLoading(true);
     try {
       const id = selectedAnimal?.id || selectedAnimal?._id;
-      const updated = cattleData.map(item => {
-        if ((item.id || item._id) === id) {
-          return { ...item, ...data };
-        }
-        return item;
-      });
-      saveToStorage(updated);
+      const payload = { 
+        ...data, 
+        tagId: data.tag || data.tagId 
+      };
+
+      await api.cattle.update(id, payload);
       swalSuccess("Success", "Cattle updated successfully!");
       setShowEditModal(false);
       setSelectedAnimal(null);
+      fetchCattleData();
     } catch (err) {
       console.error(err);
-      swalError("Error", "Failed to update cattle.");
+      swalError("Error", typeof err === 'string' ? err : "Failed to update cattle.");
     } finally {
       setIsLoading(false);
     }
@@ -128,11 +149,11 @@ export default function CattleManagementPg({
     if (confirmed) {
       setIsLoading(true);
       try {
-        const updated = cattleData.filter(item => (item.id || item._id) !== id);
-        saveToStorage(updated);
+        await api.cattle.delete(id);
         swalSuccess("Deleted", "Cattle record deleted successfully!");
         setShowActionModal(false);
         setSelectedAnimal(null);
+        fetchCattleData();
       } catch (err) {
         console.error(err);
         swalError("Error", "Failed to delete cattle.");
@@ -148,7 +169,7 @@ export default function CattleManagementPg({
   };
 
   const activeFilterCount = filters.filter(
-    (f) => (f.value && String(f.value).trim() !== "") || f.from || f.to
+    (f) => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || f.from || f.to
   ).length;
 
   const filteredData = cattleData.filter((item) => {
@@ -156,16 +177,16 @@ export default function CattleManagementPg({
     const q = search.toLowerCase();
     const matchesSearch =
       !q ||
-      (item.tag || "").toLowerCase().includes(q) ||
+      (item.tag || item.tag_id || "").toLowerCase().includes(q) ||
       (item.breed || "").toLowerCase().includes(q) ||
       (item.gender || "").toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
 
-    // Filter array condition match matching animaldetailspg logic
+    // Filter array condition matches
     return filters.every((f) => {
       // 📅 DATE RANGE FILTER (if any date field exists in config)
-      if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
+      if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth") {
         if (!f.from && !f.to) return true;
 
         const val = item[f.field];
@@ -215,15 +236,18 @@ export default function CattleManagementPg({
         return true;
       }
 
-      // 🔁 NORMAL FILTER
-      if (!f.value) return true;
-
-      // Exact match check for select options to keep it clean (e.g. status)
+      // 🔁 MULTI-SELECT CHECKBOX MATCH
       const fieldConfig = dynamicFields.find(field => field.name === f.field);
       if (fieldConfig?.type === "select") {
-        return String(item[f.field] || "").toLowerCase() === f.value.toLowerCase();
+        const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+        if (selectedValues.length === 0) return true;
+
+        const recordVal = String(item[f.field] || "").toLowerCase();
+        return selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
       }
 
+      // ✏️ DEFAULT TEXT
+      if (!f.value) return true;
       return String(item[f.field] || "")
         .toLowerCase()
         .includes(f.value.toLowerCase());
@@ -238,14 +262,14 @@ export default function CattleManagementPg({
   );
 
   return (
-    <div className="w-full flex flex-col text-black">
+    <div className="w-full flex flex-col text-black font-sans">
       {/* HEADER */}
       <div className="mb-5">
         <h1 className="text-3xl font-bold text-[#16223F]">
           {moduleConfig?.name}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Manage and track cattle records
+          Manage and track cattle records directly connected to unified livestock entries.
         </p>
       </div>
 
@@ -436,8 +460,8 @@ export default function CattleManagementPg({
                   {(() => {
                     const fieldConfig = dynamicFields.find(field => field.name === f.field);
 
-                    // 📅 DATE RANGE FIELD (generic fallback check)
-                    if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
+                    // 📅 DATE RANGE FIELD
+                    if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth") {
                       return (
                         <div className="flex gap-2">
                           <input
@@ -496,40 +520,41 @@ export default function CattleManagementPg({
                       );
                     }
 
-                    // 🔢 NUMBER FIELD
-                    if (fieldConfig?.type === "number") {
-                      return (
-                        <input
-                          type="number"
-                          placeholder="Enter number..."
-                          className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
-                          value={f.value || ""}
-                          onChange={(e) => {
-                            const updated = [...filters];
-                            updated[index].value = e.target.value;
-                            setFilters(updated);
-                          }}
-                        />
-                      );
-                    }
-
-                    // 📋 SELECT FIELD
+                    // 📋 SELECT FIELD (MULTI-SELECT CHECKBOXES)
                     if (fieldConfig?.type === "select") {
+                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                      const options = fieldConfig.options || [];
+
                       return (
-                        <select
-                          className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
-                          value={f.value || ""}
-                          onChange={(e) => {
-                            const updated = [...filters];
-                            updated[index].value = e.target.value;
-                            setFilters(updated);
-                          }}
-                        >
-                          <option value="">Select Option...</option>
-                          {fieldConfig.options.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
+                        <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                          {options.map((opt) => {
+                            const valStr = typeof opt === 'object' ? opt.value : opt;
+                            const labelStr = typeof opt === 'object' ? opt.label : opt;
+                            const isChecked = currentSelected.includes(valStr);
+
+                            return (
+                              <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    let nextVal;
+                                    if (e.target.checked) {
+                                      nextVal = [...currentSelected, valStr];
+                                    } else {
+                                      nextVal = currentSelected.filter((v) => v !== valStr);
+                                    }
+                                    updated[index].value = nextVal;
+                                    setFilters(updated);
+                                  }}
+                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                />
+                                {labelStr}
+                              </label>
+                            );
+                          })}
+                        </div>
                       );
                     }
 
@@ -654,25 +679,32 @@ export default function CattleManagementPg({
                       cursor-pointer
                     "
                   >
-                    {dynamicFields.map((field) => (
-                      <td
-                        key={field.name}
-                        className="p-4 text-sm font-semibold text-black"
-                      >
-                        {field.name === "status" ? (
-                          <span
-                            className={
-                              "px-3 py-1 rounded-full text-xs font-bold " +
-                              statusStyles[item.status]
-                            }
-                          >
-                            {item.status}
-                          </span>
-                        ) : (
-                          item[field.name] || "-"
-                        )}
-                      </td>
-                    ))}
+                    {dynamicFields.map((field) => {
+                      let cellVal = item[field.name];
+                      if (field.name === 'farmId') {
+                        cellVal = item.farmName || cellVal;
+                      }
+
+                      return (
+                        <td
+                          key={field.name}
+                          className="p-4 text-sm font-semibold text-black"
+                        >
+                          {field.name === "status" ? (
+                            <span
+                              className={
+                                "px-3 py-1 rounded-full text-xs font-bold " +
+                                (statusStyles[item.status] || "bg-slate-50 text-slate-700")
+                              }
+                            >
+                              {item.status}
+                            </span>
+                          ) : (
+                            cellVal || "-"
+                          )}
+                        </td>
+                      );
+                    })}
 
                     <td className="p-4">
                       <button
@@ -843,20 +875,27 @@ export default function CattleManagementPg({
             <h3 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight pr-8">Cattle Details</h3>
 
             <div className="space-y-4 mb-6 text-black">
-              {dynamicFields.map(field => (
-                <div key={field.name} className="border-b border-slate-50 pb-2">
-                  <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
-                  <span className="text-sm font-semibold text-slate-800">
-                    {field.name === 'status' ? (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusStyles[selectedAnimal[field.name]] || ''}`}>
-                        {selectedAnimal[field.name]}
-                      </span>
-                    ) : (
-                      selectedAnimal[field.name] || '-'
-                    )}
-                  </span>
-                </div>
-              ))}
+              {dynamicFields.map(field => {
+                let cellVal = selectedAnimal[field.name];
+                if (field.name === 'farmId') {
+                  cellVal = selectedAnimal.farmName || cellVal;
+                }
+
+                return (
+                  <div key={field.name} className="border-b border-slate-50 pb-2">
+                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{field.label}</span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {field.name === 'status' ? (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusStyles[selectedAnimal[field.name]] || ''}`}>
+                          {selectedAnimal[field.name]}
+                        </span>
+                      ) : (
+                        cellVal || '-'
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             <button

@@ -7,6 +7,7 @@ const HealthManagementPg = () => {
   const [activeTab, setActiveTab] = useState("treatments");
   const [treatments, setTreatments] = useState([]);
   const [vaccinations, setVaccinations] = useState([]);
+  const [medicines, setMedicines] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
@@ -15,17 +16,12 @@ const HealthManagementPg = () => {
   // Treatment Form state
   const [treatmentFormData, setTreatmentFormData] = useState({
     id: null,
-    tag_id: "",
     symptoms: "",
     diagnosis: "",
-    treatment: "",
-    healthStatus: "Pending",
-    cost: "",
-    startDate: new Date().toISOString().split("T")[0],
-    remarks: "",
   });
+  const [selectedMedicines, setSelectedMedicines] = useState([""]);
 
-  // Vaccination Form state
+  // Vaccination Form state (simplified: only tag_id, vaccinationName, batchNo, manufactureDate, expiryDate)
   const [vaccineFormData, setVaccineFormData] = useState({
     id: null,
     tag_id: "",
@@ -33,22 +29,31 @@ const HealthManagementPg = () => {
     batchNo: "",
     manufactureDate: "",
     expiryDate: "",
-    treatmentOrStatus: "Completed",
-    remarks: "",
+  });
+
+  // Medicine Form state
+  const [medicineFormData, setMedicineFormData] = useState({
+    id: null,
+    name: "",
+    type: "Injection",
+    description: "",
+    status: true,
   });
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [treatmentData, vaccinationData] = await Promise.all([
+      const [treatmentData, vaccinationData, medicineData] = await Promise.all([
         api.health.treatments.getAll(),
         api.health.vaccinations.getAll(),
+        api.medicines.getAll(),
       ]);
       setTreatments(treatmentData || []);
       setVaccinations(vaccinationData || []);
+      setMedicines(medicineData || []);
     } catch (err) {
       console.error(err);
-      swalError("Error", "Failed to retrieve health and vaccination records.");
+      swalError("Error", "Failed to retrieve health records.");
     } finally {
       setIsLoading(false);
     }
@@ -72,47 +77,52 @@ const HealthManagementPg = () => {
     });
   };
 
+  const handleMedicineChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setMedicineFormData({
+      ...medicineFormData,
+      [name]: type === 'checkbox' ? checked : value,
+    });
+  };
+
   const handleSaveTreatment = async (e) => {
     e.preventDefault();
-    if (!treatmentFormData.tag_id.trim()) {
-      swalError("Error", "Tag ID is required");
-      return;
-    }
     if (!treatmentFormData.symptoms.trim()) {
       swalError("Error", "Symptoms are required");
       return;
     }
-    if (!treatmentFormData.treatment.trim()) {
-      swalError("Error", "Treatment/Action Taken is required");
+    const activeMeds = selectedMedicines.map(m => m.trim()).filter(Boolean);
+    if (activeMeds.length === 0) {
+      swalError("Error", "At least one medicine is required");
       return;
     }
+    const treatmentString = activeMeds.join(", ");
 
     setIsLoadingForm(true);
     try {
       const payload = {
-        tag_id: treatmentFormData.tag_id.trim().toUpperCase(),
-        tagId: treatmentFormData.tag_id.trim().toUpperCase(),
+        tag_id: "GENERAL",
         symptoms: treatmentFormData.symptoms.trim(),
         diagnosis: treatmentFormData.diagnosis.trim(),
-        treatment: treatmentFormData.treatment.trim(),
-        healthStatus: treatmentFormData.healthStatus,
-        cost: treatmentFormData.cost ? Number(treatmentFormData.cost) : 0,
-        startDate: treatmentFormData.startDate,
-        remarks: treatmentFormData.remarks.trim(),
+        treatment: treatmentString,
+        healthStatus: "Pending",
+        cost: 0,
+        startDate: new Date().toISOString().split("T")[0],
+        remarks: "",
       };
 
       if (treatmentFormData.id) {
         await api.health.treatments.update(treatmentFormData.id, payload);
-        swalSuccess("Success", "Treatment log updated successfully");
+        swalSuccess("Success", "Treatment record updated successfully");
       } else {
         await api.health.treatments.create(payload);
-        swalSuccess("Success", "Treatment log added successfully");
+        swalSuccess("Success", "Treatment record added successfully");
       }
       setShowForm(false);
       fetchData();
     } catch (err) {
       console.error(err);
-      swalError("Error", typeof err === "string" ? err : "Failed to save treatment entry. Make sure the Tag ID exists in the active Live Stock registry.");
+      swalError("Error", typeof err === "string" ? err : "Failed to save treatment entry.");
     } finally {
       setIsLoadingForm(false);
     }
@@ -137,8 +147,8 @@ const HealthManagementPg = () => {
         batchNo: vaccineFormData.batchNo.trim(),
         manufactureDate: vaccineFormData.manufactureDate || null,
         expiryDate: vaccineFormData.expiryDate || null,
-        treatmentOrStatus: vaccineFormData.treatmentOrStatus,
-        remarks: vaccineFormData.remarks.trim(),
+        treatmentOrStatus: "Completed",
+        remarks: "",
       };
 
       if (vaccineFormData.id) {
@@ -158,19 +168,47 @@ const HealthManagementPg = () => {
     }
   };
 
+  const handleSaveMedicine = async (e) => {
+    e.preventDefault();
+    if (!medicineFormData.name.trim()) {
+      swalError("Error", "Medicine Name is required");
+      return;
+    }
+
+    setIsLoadingForm(true);
+    try {
+      const payload = {
+        name: medicineFormData.name.trim(),
+        type: medicineFormData.type || "Injection",
+        description: medicineFormData.description.trim(),
+        status: medicineFormData.status,
+      };
+
+      if (medicineFormData.id) {
+        await api.medicines.update(medicineFormData.id, payload);
+        swalSuccess("Success", "Medicine updated successfully");
+      } else {
+        await api.medicines.create(payload);
+        swalSuccess("Success", "Medicine added successfully");
+      }
+      setShowForm(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", typeof err === "string" ? err : "Failed to save medicine.");
+    } finally {
+      setIsLoadingForm(false);
+    }
+  };
+
   const handleEditTreatment = (log) => {
-    const formattedDate = log.startDate ? new Date(log.startDate).toISOString().split("T")[0] : "";
     setTreatmentFormData({
       id: log.id || log._id,
-      tag_id: log.tag_id || log.tagId || "",
       symptoms: log.symptoms || "",
       diagnosis: log.diagnosis || "",
-      treatment: log.treatment || "",
-      healthStatus: log.healthStatus || "Pending",
-      cost: log.cost || "",
-      startDate: formattedDate,
-      remarks: log.remarks || "",
     });
+    const medsArray = log.treatment ? log.treatment.split(",").map(s => s.trim()).filter(Boolean) : [];
+    setSelectedMedicines(medsArray.length > 0 ? medsArray : [""]);
     setActiveTab("treatments");
     setShowForm(true);
   };
@@ -185,20 +223,30 @@ const HealthManagementPg = () => {
       batchNo: log.batchNo || "",
       manufactureDate: mfgDate,
       expiryDate: expDate,
-      treatmentOrStatus: log.treatmentOrStatus || "Completed",
-      remarks: log.remarks || "",
     });
     setActiveTab("vaccinations");
     setShowForm(true);
   };
 
+  const handleEditMedicine = (med) => {
+    setMedicineFormData({
+      id: med.id || med._id,
+      name: med.name || "",
+      type: med.type || "Injection",
+      description: med.description || "",
+      status: med.status !== undefined ? med.status : true,
+    });
+    setActiveTab("medicines");
+    setShowForm(true);
+  };
+
   const handleDeleteTreatment = async (id) => {
-    const confirmed = await swalConfirm("Delete Treatment Record?", "Are you sure you want to delete this treatment log? This action cannot be undone.");
+    const confirmed = await swalConfirm("Delete Treatment Record?", "Are you sure you want to delete this treatment record? This action cannot be undone.");
     if (!confirmed) return;
 
     try {
       await api.health.treatments.delete(id);
-      swalSuccess("Deleted", "Treatment log removed successfully");
+      swalSuccess("Deleted", "Treatment record removed successfully");
       fetchData();
     } catch (err) {
       console.error(err);
@@ -220,14 +268,26 @@ const HealthManagementPg = () => {
     }
   };
 
+  const handleDeleteMedicine = async (id) => {
+    const confirmed = await swalConfirm("Delete Medicine?", "Are you sure you want to delete this medicine from the registry?");
+    if (!confirmed) return;
+
+    try {
+      await api.medicines.delete(id);
+      swalSuccess("Deleted", "Medicine deleted successfully");
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", "Failed to delete medicine");
+    }
+  };
+
   const filteredTreatments = treatments.filter((t) => {
     const query = searchQuery.toLowerCase();
     return (
-      (t.tag_id || "").toLowerCase().includes(query) ||
       (t.symptoms || "").toLowerCase().includes(query) ||
       (t.diagnosis || "").toLowerCase().includes(query) ||
-      (t.treatment || "").toLowerCase().includes(query) ||
-      (t.healthStatus || "").toLowerCase().includes(query)
+      (t.treatment || "").toLowerCase().includes(query)
     );
   });
 
@@ -236,8 +296,15 @@ const HealthManagementPg = () => {
     return (
       (v.tag_id || "").toLowerCase().includes(query) ||
       (v.vaccinationName || "").toLowerCase().includes(query) ||
-      (v.batchNo || "").toLowerCase().includes(query) ||
-      (v.treatmentOrStatus || "").toLowerCase().includes(query)
+      (v.batchNo || "").toLowerCase().includes(query)
+    );
+  });
+
+  const filteredMedicines = medicines.filter((m) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (m.name || "").toLowerCase().includes(query) ||
+      (m.description || "").toLowerCase().includes(query)
     );
   });
 
@@ -259,16 +326,11 @@ const HealthManagementPg = () => {
             if (activeTab === "treatments") {
               setTreatmentFormData({
                 id: null,
-                tag_id: "",
                 symptoms: "",
                 diagnosis: "",
-                treatment: "",
-                healthStatus: "Pending",
-                cost: "",
-                startDate: new Date().toISOString().split("T")[0],
-                remarks: "",
               });
-            } else {
+              setSelectedMedicines([""]);
+            } else if (activeTab === "vaccinations") {
               setVaccineFormData({
                 id: null,
                 tag_id: "",
@@ -276,39 +338,44 @@ const HealthManagementPg = () => {
                 batchNo: "",
                 manufactureDate: "",
                 expiryDate: "",
-                treatmentOrStatus: "Completed",
-                remarks: "",
+              });
+            } else {
+              setMedicineFormData({
+                id: null,
+                name: "",
+                type: "Injection",
+                description: "",
+                status: true,
               });
             }
             setShowForm(true);
           }}
           className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
         >
-          <span>+ Add {activeTab === "treatments" ? "Treatment Log" : "Vaccination Log"}</span>
+          <span>
+            + Add{" "}
+            {activeTab === "treatments"
+              ? "Treatment Record"
+              : activeTab === "vaccinations"
+              ? "Vaccination Log"
+              : "Medicine"}
+          </span>
         </button>
       </div>
 
       {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
           <h4 className="text-xs font-black text-gray-400 uppercase">Total Treatments</h4>
           <p className="text-2xl font-black text-[#16223F] mt-1">{treatments.length}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
-          <h4 className="text-xs font-black text-gray-400 uppercase">Pending Cases</h4>
-          <p className="text-2xl font-black text-red-600 mt-1">
-            {treatments.filter(t => t.healthStatus === "Pending" || t.healthStatus === "Critical").length}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
-          <h4 className="text-xs font-black text-gray-400 uppercase">Completed Cases</h4>
-          <p className="text-2xl font-black text-emerald-600 mt-1">
-            {treatments.filter(t => t.healthStatus === "Completed").length}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
           <h4 className="text-xs font-black text-gray-400 uppercase">Vaccinations Done</h4>
           <p className="text-2xl font-black text-[#16223F] mt-1">{vaccinations.length}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
+          <h4 className="text-xs font-black text-gray-400 uppercase">Registered Medicines</h4>
+          <p className="text-2xl font-black text-emerald-600 mt-1">{medicines.length}</p>
         </div>
       </div>
 
@@ -325,7 +392,7 @@ const HealthManagementPg = () => {
               : "text-gray-400 hover:text-gray-600"
           }`}
         >
-          📋 Treatment Logs ({filteredTreatments.length})
+          📋 Treatment Management ({filteredTreatments.length})
         </button>
         <button
           onClick={() => {
@@ -338,7 +405,20 @@ const HealthManagementPg = () => {
               : "text-gray-400 hover:text-gray-600"
           }`}
         >
-          💉 Vaccination Logs ({filteredVaccinations.length})
+          💉 Vaccination Management ({filteredVaccinations.length})
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("medicines");
+            setSearchQuery("");
+          }}
+          className={`pb-3 text-sm font-black transition-all ${
+            activeTab === "medicines"
+              ? "border-b-2 border-[#16223F] text-[#16223F]"
+              : "text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          💊 Medicine Management ({filteredMedicines.length})
         </button>
       </div>
 
@@ -346,7 +426,13 @@ const HealthManagementPg = () => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5">
         <input
           type="text"
-          placeholder={`Search ${activeTab === "treatments" ? "treatments by tag, symptoms, status..." : "vaccinations by tag, name, batch..."}`}
+          placeholder={
+            activeTab === "treatments"
+              ? "Search treatments by symptoms, diagnosis, medicines..."
+              : activeTab === "vaccinations"
+              ? "Search vaccinations by tag, name, batch..."
+              : "Search medicines by name, description..."
+          }
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
@@ -359,51 +445,29 @@ const HealthManagementPg = () => {
           <>
             {!isLoading && filteredTreatments.length === 0 && (
               <div className="p-16 text-center">
-                <h3 className="text-lg font-bold text-gray-700">No Treatments Logged</h3>
-                <p className="text-gray-500 mt-2 text-sm">Create a new treatment log record above.</p>
+                <h3 className="text-lg font-bold text-gray-700">No Treatments Configured</h3>
+                <p className="text-gray-500 mt-2 text-sm">Create a new treatment record above.</p>
               </div>
             )}
             {(isLoading || filteredTreatments.length > 0) && (
-              <table className="w-full text-left min-w-[900px] relative">
+              <table className="w-full text-left min-w-[700px] relative">
                 <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
                   <tr>
-                    <th className="p-4 border-b">Animal Tag ID</th>
                     <th className="p-4 border-b">Symptoms</th>
                     <th className="p-4 border-b">Diagnosis</th>
-                    <th className="p-4 border-b">Treatment</th>
-                    <th className="p-4 border-b">Cost (₹)</th>
-                    <th className="p-4 border-b">Date</th>
-                    <th className="p-4 border-b text-center">Status</th>
+                    <th className="p-4 border-b">Treatment (Medicine)</th>
                     <th className="p-4 border-b text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading ? (
-                    <SkeletonLoader type="table" columns={8} />
+                    <SkeletonLoader type="table" columns={4} />
                   ) : (
                     filteredTreatments.map((log) => (
                       <tr key={log.id || log._id} className="hover:bg-[#D1867D]/5 transition-colors">
-                        <td className="p-4 text-sm font-black text-black">🐄 {log.tag_id}</td>
-                        <td className="p-4 text-sm font-bold text-gray-600 truncate max-w-[150px]">{log.symptoms}</td>
-                        <td className="p-4 text-sm font-bold text-gray-600 truncate max-w-[150px]">{log.diagnosis || "-"}</td>
-                        <td className="p-4 text-sm text-gray-500 truncate max-w-[150px]">{log.treatment}</td>
-                        <td className="p-4 text-sm font-bold text-gray-800">₹{log.cost || 0}</td>
-                        <td className="p-4 text-sm text-gray-500">
-                          {log.startDate ? new Date(log.startDate).toLocaleDateString() : "-"}
-                        </td>
-                        <td className="p-4 text-center">
-                          <span
-                            className={`text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${
-                              log.healthStatus === "Completed"
-                                ? "text-emerald-600 bg-emerald-100/50 border-emerald-200/50"
-                                : log.healthStatus === "Critical"
-                                ? "text-red-600 bg-red-100/50 border-red-200/50 animate-pulse"
-                                : "text-amber-600 bg-amber-100/50 border-amber-200/50"
-                            }`}
-                          >
-                            {log.healthStatus || "Pending"}
-                          </span>
-                        </td>
+                        <td className="p-4 text-sm font-black text-black">{log.symptoms}</td>
+                        <td className="p-4 text-sm font-bold text-gray-600 truncate max-w-[200px]">{log.diagnosis || "-"}</td>
+                        <td className="p-4 text-sm text-gray-500 truncate max-w-[350px]">{log.treatment}</td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
                             <button
@@ -427,7 +491,7 @@ const HealthManagementPg = () => {
               </table>
             )}
           </>
-        ) : (
+        ) : activeTab === "vaccinations" ? (
           <>
             {!isLoading && filteredVaccinations.length === 0 && (
               <div className="p-16 text-center">
@@ -436,7 +500,7 @@ const HealthManagementPg = () => {
               </div>
             )}
             {(isLoading || filteredVaccinations.length > 0) && (
-              <table className="w-full text-left min-w-[900px] relative">
+              <table className="w-full text-left min-w-[700px] relative">
                 <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
                   <tr>
                     <th className="p-4 border-b">Animal Tag ID</th>
@@ -444,13 +508,12 @@ const HealthManagementPg = () => {
                     <th className="p-4 border-b">Batch No</th>
                     <th className="p-4 border-b">Mfg Date</th>
                     <th className="p-4 border-b">Expiry Date</th>
-                    <th className="p-4 border-b text-center">Status</th>
                     <th className="p-4 border-b text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading ? (
-                    <SkeletonLoader type="table" columns={7} />
+                    <SkeletonLoader type="table" columns={6} />
                   ) : (
                     filteredVaccinations.map((log) => (
                       <tr key={log.id || log._id} className="hover:bg-[#D1867D]/5 transition-colors">
@@ -463,17 +526,6 @@ const HealthManagementPg = () => {
                         <td className="p-4 text-sm text-gray-500">
                           {log.expiryDate ? new Date(log.expiryDate).toLocaleDateString() : "-"}
                         </td>
-                        <td className="p-4 text-center">
-                          <span
-                            className={`text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${
-                              log.treatmentOrStatus === "Completed"
-                                ? "text-emerald-600 bg-emerald-100/50 border-emerald-200/50"
-                                : "text-amber-600 bg-amber-100/50 border-amber-200/50"
-                            }`}
-                          >
-                            {log.treatmentOrStatus || "Completed"}
-                          </span>
-                        </td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
                             <button
@@ -484,6 +536,68 @@ const HealthManagementPg = () => {
                             </button>
                             <button
                               onClick={() => handleDeleteVaccine(log.id || log._id)}
+                              className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </>
+        ) : (
+          <>
+            {!isLoading && filteredMedicines.length === 0 && (
+              <div className="p-16 text-center">
+                <h3 className="text-lg font-bold text-gray-700">No Medicines Registered</h3>
+                <p className="text-gray-500 mt-2 text-sm">Add a new medicine to the registry above.</p>
+              </div>
+            )}
+            {(isLoading || filteredMedicines.length > 0) && (
+              <table className="w-full text-left min-w-[600px] relative">
+                <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
+                  <tr>
+                    <th className="p-4 border-b">Medicine Name</th>
+                    <th className="p-4 border-b">Type</th>
+                    <th className="p-4 border-b">Description</th>
+                    <th className="p-4 border-b text-center">Status</th>
+                    <th className="p-4 border-b text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {isLoading ? (
+                    <SkeletonLoader type="table" columns={5} />
+                  ) : (
+                    filteredMedicines.map((med) => (
+                      <tr key={med.id || med._id} className="hover:bg-[#D1867D]/5 transition-colors">
+                        <td className="p-4 text-sm font-black text-black">💊 {med.name}</td>
+                        <td className="p-4 text-sm font-semibold text-gray-700">{med.type || "-"}</td>
+                        <td className="p-4 text-sm font-bold text-gray-600">{med.description || "-"}</td>
+                        <td className="p-4 text-center">
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${
+                              med.status !== false
+                                ? "text-emerald-600 bg-emerald-100/50 border-emerald-200/50"
+                                : "text-slate-600 bg-slate-100/50 border-slate-200/50"
+                            }`}
+                          >
+                            {med.status !== false ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => handleEditMedicine(med)}
+                              className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMedicine(med.id || med._id)}
                               className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
                             >
                               Delete
@@ -513,25 +627,14 @@ const HealthManagementPg = () => {
 
             <h2 className="text-2xl font-black text-[#071437] mb-6 pr-10">
               {activeTab === "treatments"
-                ? treatmentFormData.id ? "Edit Treatment Log" : "Log Animal Treatment"
-                : vaccineFormData.id ? "Edit Vaccination Log" : "Log Immunization Event"}
+                ? treatmentFormData.id ? "Edit Treatment Record" : "Add Treatment Record"
+                : activeTab === "vaccinations"
+                ? vaccineFormData.id ? "Edit Vaccination Log" : "Log Immunization Event"
+                : medicineFormData.id ? "Edit Medicine" : "Add New Medicine"}
             </h2>
 
             {activeTab === "treatments" ? (
               <form onSubmit={handleSaveTreatment} className="space-y-4">
-                {/* tag_id */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Animal Tag ID *</label>
-                  <input
-                    type="text"
-                    name="tag_id"
-                    value={treatmentFormData.tag_id}
-                    onChange={handleTreatmentChange}
-                    placeholder="e.g. CO-892"
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                  />
-                </div>
-
                 {/* Symptoms */}
                 <div>
                   <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Symptoms *</label>
@@ -540,87 +643,68 @@ const HealthManagementPg = () => {
                     name="symptoms"
                     value={treatmentFormData.symptoms}
                     onChange={handleTreatmentChange}
-                    placeholder="e.g. Cough, High Temperature"
+                    placeholder="e.g. Coughing, Fever"
                     className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
                   />
                 </div>
 
                 {/* Diagnosis */}
                 <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Diagnosis / Health Condition</label>
+                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Diagnosis</label>
                   <input
                     type="text"
                     name="diagnosis"
                     value={treatmentFormData.diagnosis}
                     onChange={handleTreatmentChange}
-                    placeholder="e.g. Mild Pneumonia"
+                    placeholder="e.g. Pneumonia"
                     className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
                   />
                 </div>
 
-                {/* Treatment */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Treatment / Action Taken *</label>
-                  <input
-                    type="text"
-                    name="treatment"
-                    value={treatmentFormData.treatment}
-                    onChange={handleTreatmentChange}
-                    placeholder="e.g. Administered antibiotic booster"
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                  />
-                </div>
-
-                {/* Cost */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Total Treatment Cost (₹)</label>
-                  <input
-                    type="number"
-                    name="cost"
-                    value={treatmentFormData.cost}
-                    onChange={handleTreatmentChange}
-                    placeholder="e.g. 1200"
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                  />
-                </div>
-
-                {/* startDate */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Log Date</label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={treatmentFormData.startDate}
-                    onChange={handleTreatmentChange}
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                  />
-                </div>
-
-                {/* healthStatus */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Current Health Status</label>
-                  <select
-                    name="healthStatus"
-                    value={treatmentFormData.healthStatus}
-                    onChange={handleTreatmentChange}
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
+                {/* Treatment (Medicines) */}
+                <div className="space-y-2">
+                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Treatment (Medicines) *</label>
+                  {selectedMedicines.map((med, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <select
+                        value={med}
+                        onChange={(e) => {
+                          const updated = [...selectedMedicines];
+                          updated[index] = e.target.value;
+                          setSelectedMedicines(updated);
+                        }}
+                        className="flex-1 border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
+                      >
+                        <option value="">-- Select Medicine --</option>
+                        {medicines
+                          .filter(m => m.status !== false)
+                          .map((m) => (
+                            <option key={m.id || m._id} value={m.name}>
+                              {m.name} ({m.type || "N/A"})
+                            </option>
+                          ))}
+                      </select>
+                      {selectedMedicines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = selectedMedicines.filter((_, idx) => idx !== index);
+                            setSelectedMedicines(updated);
+                          }}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-3 rounded-xl border border-red-200"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMedicines([...selectedMedicines, ""])}
+                    className="text-xs bg-[#eef2f7] hover:bg-[#e3e8f0] text-[#071437] px-4 py-2.5 rounded-xl font-bold transition-all"
                   >
-                    <option value="Pending">Pending</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                </div>
-
-                {/* Remarks */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Remarks / Notes</label>
-                  <textarea
-                    name="remarks"
-                    rows={2}
-                    value={treatmentFormData.remarks}
-                    onChange={handleTreatmentChange}
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437] resize-none"
-                  />
+                    + Add Medicine
+                  </button>
                 </div>
 
                 <div className="flex gap-4 mt-6 pt-4 border-t border-[#edf1f7]">
@@ -629,7 +713,7 @@ const HealthManagementPg = () => {
                     disabled={isLoadingForm}
                     className="flex-1 bg-[#071437] hover:bg-[#0d1f4d] text-white py-3.5 rounded-xl font-black text-sm shadow-md transition-all disabled:opacity-50"
                   >
-                    {isLoadingForm ? "Saving..." : "Save Treatment Entry"}
+                    {isLoadingForm ? "Saving..." : "Save Treatment Record"}
                   </button>
                   <button
                     type="button"
@@ -640,7 +724,7 @@ const HealthManagementPg = () => {
                   </button>
                 </div>
               </form>
-            ) : (
+            ) : activeTab === "vaccinations" ? (
               <form onSubmit={handleSaveVaccine} className="space-y-4">
                 {/* tag_id */}
                 <div>
@@ -705,30 +789,80 @@ const HealthManagementPg = () => {
                   />
                 </div>
 
-                {/* treatmentOrStatus */}
+                <div className="flex gap-4 mt-6 pt-4 border-t border-[#edf1f7]">
+                  <button
+                    type="submit"
+                    disabled={isLoadingForm}
+                    className="flex-1 bg-[#071437] hover:bg-[#0d1f4d] text-white py-3.5 rounded-xl font-black text-sm shadow-md transition-all disabled:opacity-50"
+                  >
+                    {isLoadingForm ? "Saving..." : "Save Immunization Log"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="flex-1 bg-[#eef2f7] hover:bg-[#e3e8f0] text-[#071437] py-3.5 rounded-xl font-black text-sm transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSaveMedicine} className="space-y-4">
+                {/* Name */}
                 <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Immunization Status</label>
+                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Medicine Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={medicineFormData.name}
+                    onChange={handleMedicineChange}
+                    placeholder="e.g. Paracetamol"
+                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
+                  />
+                </div>
+
+                {/* Type */}
+                <div>
+                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Type *</label>
                   <select
-                    name="treatmentOrStatus"
-                    value={vaccineFormData.treatmentOrStatus}
-                    onChange={handleVaccineChange}
+                    name="type"
+                    value={medicineFormData.type || "Injection"}
+                    onChange={handleMedicineChange}
                     className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
                   >
-                    <option value="Completed">Completed</option>
-                    <option value="Pending">Pending</option>
+                    <option value="Injection">Injection</option>
+                    <option value="Tablet">Tablet</option>
+                    <option value="Liquid">Liquid</option>
+                    <option value="Powder">Powder</option>
                   </select>
                 </div>
 
-                {/* Remarks */}
+                {/* Description */}
                 <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Remarks</label>
-                  <textarea
-                    name="remarks"
-                    rows={2}
-                    value={vaccineFormData.remarks}
-                    onChange={handleVaccineChange}
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437] resize-none"
+                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Description</label>
+                  <input
+                    type="text"
+                    name="description"
+                    value={medicineFormData.description}
+                    onChange={handleMedicineChange}
+                    placeholder="e.g. Pain reliever and fever reducer"
+                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
                   />
+                </div>
+
+                {/* Status */}
+                <div className="flex items-center gap-2 py-2">
+                  <input
+                    type="checkbox"
+                    id="medicineStatusCheckbox"
+                    name="status"
+                    checked={medicineFormData.status}
+                    onChange={handleMedicineChange}
+                    className="w-4 h-4 text-[#071437] border-gray-300 rounded focus:ring-[#071437]"
+                  />
+                  <label htmlFor="medicineStatusCheckbox" className="text-sm font-bold text-[#071437] cursor-pointer">
+                     Active (Available for stock logging)
+                  </label>
                 </div>
 
                 <div className="flex gap-4 mt-6 pt-4 border-t border-[#edf1f7]">
@@ -737,7 +871,7 @@ const HealthManagementPg = () => {
                     disabled={isLoadingForm}
                     className="flex-1 bg-[#071437] hover:bg-[#0d1f4d] text-white py-3.5 rounded-xl font-black text-sm shadow-md transition-all disabled:opacity-50"
                   >
-                    {isLoadingForm ? "Saving..." : "Save Immunization Log"}
+                    {isLoadingForm ? "Saving..." : "Save Medicine"}
                   </button>
                   <button
                     type="button"

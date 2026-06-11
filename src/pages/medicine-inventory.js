@@ -6,8 +6,8 @@ export default function MedicineInventoryPage() {
     name: 'Medicine Inventory',
     icon: '💊',
     fields: [
-      { name: 'medicineName',  label: 'Medicine Name' },
-      { name: 'type',          label: 'Type',          type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
+      { name: 'medicineName',  label: 'Medicine Name', type: 'select', options: [] },
+      { name: 'type',          label: 'Type',          type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'], disabled: true },
       { name: 'oldStock',      label: 'Old Stock',     type: 'number' },
       { name: 'bought',        label: 'Bought',        type: 'number' },
       { name: 'used',          label: 'Used',          type: 'number' },

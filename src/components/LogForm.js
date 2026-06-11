@@ -228,8 +228,39 @@
     const handleChange = (e) => {
     const { name, value, type } = e.target;
 
+    if (name === "tag" || name === "tagId" || name === "tag_id") {
+      const cleanTag = String(value).trim().toUpperCase();
+      if (cleanTag) {
+        import('../utils/api').then(({ api }) => {
+          api.tags.getAllSuffixes().then(rules => {
+            const ruleList = Array.isArray(rules) ? rules : (rules?.data ?? []);
+            for (const r of ruleList) {
+              const suff = String(r.suffix).toUpperCase();
+              if (cleanTag.endsWith(suff)) {
+                const matchedType = r.animalType;
+                const animalTypeField = fields.find(f => f.name === 'cattleType' || f.name === 'animalType');
+                if (animalTypeField && animalTypeField.options) {
+                  const resolved = animalTypeField.options.find(opt => 
+                    opt.toLowerCase() === matchedType.toLowerCase() || 
+                    opt.toLowerCase().includes(matchedType.toLowerCase())
+                  );
+                  if (resolved) {
+                    setFormData(prev => ({
+                      ...prev,
+                      [animalTypeField.name]: resolved
+                    }));
+                  }
+                }
+              }
+            }
+          }).catch(console.error);
+        });
+      }
+    }
+
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+
 
       if (name === "farmId") {
         updated["shed"] = ""; // Clear selected shed when farm changes
@@ -395,6 +426,24 @@
 
       if (name === "bought" && !Number(value)) {
         updated.purchaseDate = "";
+      }
+
+      if (name === "medicineName" && value) {
+        const prevRecord = (existingRecords || []).find(r => 
+          r && 
+          String(r.medicineName || '').trim().toLowerCase() === String(value).trim().toLowerCase() && 
+          r.expiryDate
+        );
+        if (prevRecord && !updated.expiryDate) {
+          try {
+            const parsed = parseDateString(prevRecord.expiryDate);
+            if (parsed && !isNaN(parsed.getTime())) {
+              updated.expiryDate = parsed.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            console.error("Failed to parse previous expiryDate:", e);
+          }
+        }
       }
 
 

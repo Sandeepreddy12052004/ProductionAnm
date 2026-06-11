@@ -34,6 +34,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/milk/quality':                 ['MILK', 'INCHARGE', 'FARM_ADMIN'],
   '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'FARM_ADMIN'],
   '/api/feed-items':                   ['FEED_ITEMS', 'FARM_ADMIN'],
+  '/api/medicines':                    ['HEALTH', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
   '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
   '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
@@ -391,6 +392,7 @@ export const api = {
       create:            (data)     => apiRequest('/api/milk/collections', 'POST', data),
       update:            (id, data) => apiRequest(`/api/milk/collections/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/milk/collections/${id}`, 'DELETE'),
+      bulkCreate:        (data)     => apiRequest('/api/milk/collections/bulk', 'POST', data),
     },
     quality: {
       getAll:            ()         => apiRequest('/api/milk/quality'),
@@ -439,6 +441,9 @@ export const api = {
     create:              (data)     => apiRequest('/api/tags', 'POST', data),
     update:              (id, data) => apiRequest(`/api/tags/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/tags/${id}`, 'DELETE'),
+    getAllSuffixes:      ()         => apiRequest('/api/tags/suffixes'),
+    createSuffix:        (data)     => apiRequest('/api/tags/suffixes', 'POST', data),
+    deleteSuffix:        (id)       => apiRequest(`/api/tags/suffixes/${id}`, 'DELETE'),
   },
 
   // Roles
@@ -483,5 +488,13 @@ export const api = {
     create:              (data)     => apiRequest('/api/breeds', 'POST', data),
     update:              (id, data) => apiRequest(`/api/breeds/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/breeds/${id}`, 'DELETE'),
+  },
+
+  // Medicines Configuration
+  medicines: {
+    getAll:              ()         => apiRequest('/api/medicines'),
+    create:              (data)     => apiRequest('/api/medicines', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/medicines/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/medicines/${id}`, 'DELETE'),
   },
 };

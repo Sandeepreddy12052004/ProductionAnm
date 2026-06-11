@@ -1,7 +1,6 @@
 import CattleManagementPg from '@/components/CattleManagementPg';
 
 export default function CattleManagementPage() {
-
   const cattleConfig = {
     id: 'cattle-management',
     name: 'Cattle Management',
@@ -9,24 +8,19 @@ export default function CattleManagementPage() {
 
     fields: [
       { name: 'tag', label: 'Tag ID' },
-
-
       {
         name: 'breed',
         label: 'Breed',
         type: 'select',
         options: []
       },
-
       {
         name: 'gender',
         label: 'Gender',
         type: 'select',
         options: ['Male', 'Female']
       },
-
       { name: 'age', label: 'Age' },
-
       {
         name: 'status',
         label: 'Status',
@@ -37,10 +31,9 @@ export default function CattleManagementPage() {
           'DRY'
         ]
       },
-
       { name: 'milk', label: 'Milk Yield' },
-
-      { name: 'shed', label: 'Shed Number' }
+      { name: 'shed', label: 'Shed Number', type: 'select', options: [] },
+      { name: 'farmId', label: 'Farm', type: 'select', options: [] }
     ]
   };
 

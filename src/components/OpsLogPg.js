@@ -95,11 +95,13 @@ const OpsLogPg = ({ moduleConfig }) => {
     const hasShed = current.fields.some(f => ['shedId', 'shed'].includes(f.name));
     const hasAnimal = current.fields.some(f => f.name === 'animalId');
     const hasFeedType = current.fields.some(f => f.name === 'feedType');
+    const hasMedicineName = current.fields.some(f => f.name === 'medicineName');
     const isFeeding = current.id === 'feeding';
 
     let shed_opts = null;
     let animal_opts = null;
     let feed_opts = null;
+    let medicine_opts = null;
     let dynamic_feeds = null;
 
     const tryMerge = () => {
@@ -107,6 +109,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         (hasShed && !shed_opts) ||
         (hasAnimal && !animal_opts) ||
         (hasFeedType && !feed_opts) ||
+        (hasMedicineName && !medicine_opts) ||
         (isFeeding && !dynamic_feeds)
       ) return;
 
@@ -136,6 +139,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           return { ...f, options: animal_opts };
         if (f.name === 'feedType' && feed_opts)
           return { ...f, options: feed_opts };
+        if (f.name === 'medicineName' && medicine_opts)
+          return { ...f, options: medicine_opts };
         return f;
       }));
     };
@@ -174,6 +179,16 @@ const OpsLogPg = ({ moduleConfig }) => {
         .catch(console.error);
     }
 
+    if (hasMedicineName) {
+      api.medicines.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          medicine_opts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
     if (isFeeding) {
       api.feedItems.getAll()
         .then(res => {
@@ -188,7 +203,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         });
     }
 
-    if (!hasShed && !hasAnimal && !hasFeedType && !isFeeding) {
+    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !isFeeding) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);
@@ -681,6 +696,7 @@ const OpsLogPg = ({ moduleConfig }) => {
           initialData={isEditing ? selectedEntry : {}}
           onSubmit={handleSave}
           onClose={closeAllModals}
+          existingRecords={logs}
         />
       )}
 
