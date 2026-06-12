@@ -99,6 +99,30 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       })
       .catch(console.error);
 
+    // Fetch dynamic treatments (symptoms & diagnosis)
+    api.treatments.getAll()
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isMounted && list.length > 0) {
+          const syms = Array.from(new Set(list.map(t => t.symptoms).filter(Boolean)));
+          const diags = Array.from(new Set(list.map(t => t.diagnosis).filter(Boolean)));
+          setSymptomOptions(syms);
+          setDiagnosisOptions(diags);
+        }
+      })
+      .catch(console.error);
+
+    // Fetch dynamic medicines
+    api.medicines.getAll()
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isMounted && list.length > 0) {
+          const medOpts = list.map(m => m.name).filter(Boolean);
+          setMedicines(medOpts);
+        }
+      })
+      .catch(console.error);
+
     return () => { isMounted = false; };
   }, [userObj]);
   const [logs, setLogs] = useState([]);
@@ -113,6 +137,9 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const [sheds, setSheds] = useState([]);
   const [animals, setAnimals] = useState([]);
   const [feeds, setFeeds] = useState([]);
+  const [symptomOptions, setSymptomOptions] = useState([]);
+  const [diagnosisOptions, setDiagnosisOptions] = useState([]);
+  const [medicines, setMedicines] = useState([]);
 
   const [filters, setFilters] = useState([
     { field: "entryDate", value: "", from: "", to: "" }
@@ -139,9 +166,9 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         { name: 'tagId', label: 'Tag ID' },
         { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
         { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
-        { name: 'symptoms', label: 'Symptoms' },
-        { name: 'diagnosis', label: 'Diagnosis', optional: true },
-        { name: 'treatment', label: 'Treatment' },
+        { name: 'symptoms', label: 'Symptoms', type: 'select', options: symptomOptions.length > 0 ? symptomOptions : ['-'] },
+        { name: 'diagnosis', label: 'Diagnosis', type: 'select', options: diagnosisOptions.length > 0 ? diagnosisOptions : ['-'], optional: true },
+        { name: 'treatment', label: 'Treatment', type: 'select', options: medicines.length > 0 ? medicines : ['-'] },
         { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
       ]
     },
@@ -196,7 +223,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       name: 'Medicine Inventory',
       icon: '💊',
       fields: [
-        { name: 'medicineName', label: 'Medicine Name' },
+        { name: 'medicineName', label: 'Medicine Name', type: 'select', options: medicines.length > 0 ? medicines : ['-'] },
         { name: 'type', label: 'Type', type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
         { name: 'oldStock', label: 'Old Stock', type: 'number' },
         { name: 'bought', label: 'Bought', type: 'number' },

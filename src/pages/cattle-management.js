@@ -28,7 +28,10 @@ export default function CattleManagementPage() {
         options: [
           'ACTIVE',
           'PREGNANT',
-          'DRY'
+          'EMPTY',
+          'PENDING',
+          'SOLD',
+          'DECEASED'
         ]
       },
       { name: 'milk', label: 'Milk Yield' },

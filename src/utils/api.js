@@ -25,6 +25,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/cattle':                       ['CATTLE_MANAGEMENT', 'CATTLE', 'LIVESTOCK', 'FARM_ADMIN'],
   '/api/crossing':                     ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
   '/api/health/treatments':            ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/treatments':                   ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
   '/api/health/vaccinations':          ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
   '/api/inventory/medicines':          ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
   '/api/inventory/feed':               ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
@@ -496,5 +497,13 @@ export const api = {
     create:              (data)     => apiRequest('/api/medicines', 'POST', data),
     update:              (id, data) => apiRequest(`/api/medicines/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/medicines/${id}`, 'DELETE'),
+  },
+
+  // Treatment Management Configuration
+  treatments: {
+    getAll:              ()         => apiRequest('/api/treatments'),
+    create:              (data)     => apiRequest('/api/treatments', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/treatments/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/treatments/${id}`, 'DELETE'),
   },
 };

@@ -60,6 +60,7 @@ export default function FarmOverview({ farmCode }) {
     milkProduction: 0
   });
   const [farmSheds, setFarmSheds] = useState([]);
+  const [inactiveAnimals, setInactiveAnimals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -223,12 +224,28 @@ export default function FarmOverview({ farmCode }) {
           return false;
         };
 
-        const totalCattle = cattleArray.filter(isCurrentFarm).length;
+        const totalCattle = cattleArray.filter(item => 
+          isCurrentFarm(item) && 
+          item?.status !== 'SOLD' && 
+          item?.status !== 'DECEASED'
+        ).length;
         const activeSheds = shedsArray.filter(s => isCurrentFarm(s) && s?.status === 'ACTIVE').length;
         const sickAnimals = treatmentsArray.filter(t => isCurrentFarm(t) && t?.healthStatus === 'Pending').length;
         
+        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
         const farmMilk = milkArray.filter(isCurrentFarm);
-        const milkProduction = farmMilk.reduce((sum, record) => sum + (Number(record?.quantity) || 0), 0);
+        const milkProduction = farmMilk
+          .filter(record => {
+            if (!record?.date) return false;
+            const recordDateStr = new Date(record.date).toLocaleDateString('en-CA');
+            return recordDateStr === todayStr;
+          })
+          .reduce((sum, record) => sum + (Number(record?.quantity) || 0), 0);
+
+        const inactiveList = cattleArray.filter(item => 
+          isCurrentFarm(item) && 
+          (item?.status === 'SOLD' || item?.status === 'DECEASED')
+        );
 
         setMetrics({
           totalCattle,
@@ -238,6 +255,7 @@ export default function FarmOverview({ farmCode }) {
         });
         
         setFarmSheds(shedsArray.filter(isCurrentFarm));
+        setInactiveAnimals(inactiveList);
       } catch (err) {
         console.error("Failed to fetch farm overview metrics", err);
         setError(typeof err === 'string' ? err : (err.message || "Failed to load farm metrics."));
@@ -308,7 +326,7 @@ export default function FarmOverview({ farmCode }) {
             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
               🥛
             </div>
-            <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-blue-600 bg-blue-100/50 border border-blue-200/50">ALL TIME</span>
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-blue-600 bg-blue-100/50 border border-blue-200/50">TODAY</span>
           </div>
           <h3 className="text-3xl font-black text-[#16223F] tracking-tight">{metrics.milkProduction} <span className="text-lg text-gray-400 font-bold tracking-normal">Ltr</span></h3>
           <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Milk Collected</p>
@@ -381,6 +399,54 @@ export default function FarmOverview({ farmCode }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* INACTIVE ANIMALS SECTION (SOLD & DECEASED) */}
+      <div className="px-4 mt-8">
+        <h2 className="text-xl font-extrabold text-[#16223F] mb-6 tracking-tight flex items-center gap-2">
+          <span>📉</span> Inactive Animals (Sold / Deceased)
+        </h2>
+        
+        {inactiveAnimals.length === 0 ? (
+          <div className="bg-white border border-dashed border-gray-300 rounded-2xl p-10 text-center">
+            <p className="text-gray-400 font-bold">No sold or deceased animals found for this farm.</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-gray-200 text-[#16223F] font-black uppercase tracking-widest text-[10px]">
+                    <th className="p-4">Tag ID</th>
+                    <th className="p-4">Animal Type</th>
+                    <th className="p-4">Breed</th>
+                    <th className="p-4">Last Shed</th>
+                    <th className="p-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {inactiveAnimals.map((animal) => (
+                    <tr key={animal._id || animal.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 font-black text-[#16223F] font-mono">{animal.tag_id || animal.tag || '-'}</td>
+                      <td className="p-4 font-bold text-gray-700">{animal.animalType || animal.cattleType || '-'}</td>
+                      <td className="p-4 font-bold text-gray-700">{animal.breed || '-'}</td>
+                      <td className="p-4 font-semibold text-gray-500">{animal.shed || animal.shedId ? `Shed ${animal.shed || animal.shedId}` : '-'}</td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
+                          animal.status === 'SOLD' 
+                            ? 'text-amber-700 bg-amber-50 border-amber-200/50' 
+                            : 'text-red-700 bg-red-50 border-red-200/50'
+                        }`}>
+                          {animal.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

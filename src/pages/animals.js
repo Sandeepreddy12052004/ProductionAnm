@@ -61,7 +61,7 @@ export default function AnimalsPage() {
       { name: 'sireBreed', label: 'Sire Breed', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'calvings', label: 'No. of Calvings', type: 'number' },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
-      { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'SOLD', 'DECEASED'] }
+      { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED'] }
     ]
   };
 

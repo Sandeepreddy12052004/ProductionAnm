@@ -21,10 +21,10 @@ const HealthManagementPg = () => {
   });
   const [selectedMedicines, setSelectedMedicines] = useState([""]);
 
-  // Vaccination Form state (simplified: only tag_id, vaccinationName, batchNo, manufactureDate, expiryDate)
+  // Vaccination Form state (Tag ID is set to GENERAL silently)
   const [vaccineFormData, setVaccineFormData] = useState({
     id: null,
-    tag_id: "",
+    tag_id: "GENERAL",
     vaccinationName: "",
     batchNo: "",
     manufactureDate: "",
@@ -44,7 +44,7 @@ const HealthManagementPg = () => {
     setIsLoading(true);
     try {
       const [treatmentData, vaccinationData, medicineData] = await Promise.all([
-        api.health.treatments.getAll(),
+        api.treatments.getAll(),
         api.health.vaccinations.getAll(),
         api.medicines.getAll(),
       ]);
@@ -101,21 +101,16 @@ const HealthManagementPg = () => {
     setIsLoadingForm(true);
     try {
       const payload = {
-        tag_id: "GENERAL",
         symptoms: treatmentFormData.symptoms.trim(),
         diagnosis: treatmentFormData.diagnosis.trim(),
         treatment: treatmentString,
-        healthStatus: "Pending",
-        cost: 0,
-        startDate: new Date().toISOString().split("T")[0],
-        remarks: "",
       };
 
       if (treatmentFormData.id) {
-        await api.health.treatments.update(treatmentFormData.id, payload);
+        await api.treatments.update(treatmentFormData.id, payload);
         swalSuccess("Success", "Treatment record updated successfully");
       } else {
-        await api.health.treatments.create(payload);
+        await api.treatments.create(payload);
         swalSuccess("Success", "Treatment record added successfully");
       }
       setShowForm(false);
@@ -130,10 +125,6 @@ const HealthManagementPg = () => {
 
   const handleSaveVaccine = async (e) => {
     e.preventDefault();
-    if (!vaccineFormData.tag_id.trim()) {
-      swalError("Error", "Tag ID is required");
-      return;
-    }
     if (!vaccineFormData.vaccinationName.trim()) {
       swalError("Error", "Vaccine name is required");
       return;
@@ -142,7 +133,8 @@ const HealthManagementPg = () => {
     setIsLoadingForm(true);
     try {
       const payload = {
-        tag_id: vaccineFormData.tag_id.trim().toUpperCase(),
+        tag_id: "GENERAL",
+        tagId: "GENERAL",
         vaccinationName: vaccineFormData.vaccinationName.trim(),
         batchNo: vaccineFormData.batchNo.trim(),
         manufactureDate: vaccineFormData.manufactureDate || null,
@@ -153,16 +145,16 @@ const HealthManagementPg = () => {
 
       if (vaccineFormData.id) {
         await api.health.vaccinations.update(vaccineFormData.id, payload);
-        swalSuccess("Success", "Vaccination log updated successfully");
+        swalSuccess("Success", "Vaccine updated successfully");
       } else {
         await api.health.vaccinations.create(payload);
-        swalSuccess("Success", "Vaccination log added successfully");
+        swalSuccess("Success", "Vaccine added successfully");
       }
       setShowForm(false);
       fetchData();
     } catch (err) {
       console.error(err);
-      swalError("Error", typeof err === "string" ? err : "Failed to save vaccination entry. Make sure the Tag ID exists in the active Live Stock registry.");
+      swalError("Error", typeof err === "string" ? err : "Failed to save vaccine.");
     } finally {
       setIsLoadingForm(false);
     }
@@ -218,7 +210,7 @@ const HealthManagementPg = () => {
     const expDate = log.expiryDate ? new Date(log.expiryDate).toISOString().split("T")[0] : "";
     setVaccineFormData({
       id: log.id || log._id,
-      tag_id: log.tag_id || log.tagId || "",
+      tag_id: "GENERAL",
       vaccinationName: log.vaccinationName || "",
       batchNo: log.batchNo || "",
       manufactureDate: mfgDate,
@@ -245,7 +237,7 @@ const HealthManagementPg = () => {
     if (!confirmed) return;
 
     try {
-      await api.health.treatments.delete(id);
+      await api.treatments.delete(id);
       swalSuccess("Deleted", "Treatment record removed successfully");
       fetchData();
     } catch (err) {
@@ -255,16 +247,16 @@ const HealthManagementPg = () => {
   };
 
   const handleDeleteVaccine = async (id) => {
-    const confirmed = await swalConfirm("Delete Vaccination Record?", "Are you sure you want to delete this vaccination log? This action cannot be undone.");
+    const confirmed = await swalConfirm("Delete Vaccine?", "Are you sure you want to delete this vaccine? This action cannot be undone.");
     if (!confirmed) return;
 
     try {
       await api.health.vaccinations.delete(id);
-      swalSuccess("Deleted", "Vaccination log removed successfully");
+      swalSuccess("Deleted", "Vaccine removed successfully");
       fetchData();
     } catch (err) {
       console.error(err);
-      swalError("Error", "Failed to delete vaccination record");
+      swalError("Error", "Failed to delete vaccine");
     }
   };
 
@@ -294,7 +286,6 @@ const HealthManagementPg = () => {
   const filteredVaccinations = vaccinations.filter((v) => {
     const query = searchQuery.toLowerCase();
     return (
-      (v.tag_id || "").toLowerCase().includes(query) ||
       (v.vaccinationName || "").toLowerCase().includes(query) ||
       (v.batchNo || "").toLowerCase().includes(query)
     );
@@ -333,7 +324,7 @@ const HealthManagementPg = () => {
             } else if (activeTab === "vaccinations") {
               setVaccineFormData({
                 id: null,
-                tag_id: "",
+                tag_id: "GENERAL",
                 vaccinationName: "",
                 batchNo: "",
                 manufactureDate: "",
@@ -357,7 +348,7 @@ const HealthManagementPg = () => {
             {activeTab === "treatments"
               ? "Treatment Record"
               : activeTab === "vaccinations"
-              ? "Vaccination Log"
+              ? "Vaccine"
               : "Medicine"}
           </span>
         </button>
@@ -370,7 +361,7 @@ const HealthManagementPg = () => {
           <p className="text-2xl font-black text-[#16223F] mt-1">{treatments.length}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
-          <h4 className="text-xs font-black text-gray-400 uppercase">Vaccinations Done</h4>
+          <h4 className="text-xs font-black text-gray-400 uppercase">Registered Vaccines</h4>
           <p className="text-2xl font-black text-[#16223F] mt-1">{vaccinations.length}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm">
@@ -430,7 +421,7 @@ const HealthManagementPg = () => {
             activeTab === "treatments"
               ? "Search treatments by symptoms, diagnosis, medicines..."
               : activeTab === "vaccinations"
-              ? "Search vaccinations by tag, name, batch..."
+              ? "Search vaccines by name, batch..."
               : "Search medicines by name, description..."
           }
           value={searchQuery}
@@ -495,15 +486,14 @@ const HealthManagementPg = () => {
           <>
             {!isLoading && filteredVaccinations.length === 0 && (
               <div className="p-16 text-center">
-                <h3 className="text-lg font-bold text-gray-700">No Vaccinations Logged</h3>
-                <p className="text-gray-500 mt-2 text-sm">Create a new vaccination record above.</p>
+                <h3 className="text-lg font-bold text-gray-700">No Vaccines Registered</h3>
+                <p className="text-gray-500 mt-2 text-sm">Create a new vaccine record above.</p>
               </div>
             )}
             {(isLoading || filteredVaccinations.length > 0) && (
               <table className="w-full text-left min-w-[700px] relative">
                 <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
                   <tr>
-                    <th className="p-4 border-b">Animal Tag ID</th>
                     <th className="p-4 border-b">Vaccine Name</th>
                     <th className="p-4 border-b">Batch No</th>
                     <th className="p-4 border-b">Mfg Date</th>
@@ -513,11 +503,10 @@ const HealthManagementPg = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading ? (
-                    <SkeletonLoader type="table" columns={6} />
+                    <SkeletonLoader type="table" columns={5} />
                   ) : (
                     filteredVaccinations.map((log) => (
                       <tr key={log.id || log._id} className="hover:bg-[#D1867D]/5 transition-colors">
-                        <td className="p-4 text-sm font-black text-black">🐄 {log.tag_id}</td>
                         <td className="p-4 text-sm font-bold text-gray-600">{log.vaccinationName}</td>
                         <td className="p-4 text-sm font-bold text-gray-500">{log.batchNo || "-"}</td>
                         <td className="p-4 text-sm text-gray-500">
@@ -629,7 +618,7 @@ const HealthManagementPg = () => {
               {activeTab === "treatments"
                 ? treatmentFormData.id ? "Edit Treatment Record" : "Add Treatment Record"
                 : activeTab === "vaccinations"
-                ? vaccineFormData.id ? "Edit Vaccination Log" : "Log Immunization Event"
+                ? vaccineFormData.id ? "Edit Vaccine" : "Add Vaccine"
                 : medicineFormData.id ? "Edit Medicine" : "Add New Medicine"}
             </h2>
 
@@ -726,19 +715,6 @@ const HealthManagementPg = () => {
               </form>
             ) : activeTab === "vaccinations" ? (
               <form onSubmit={handleSaveVaccine} className="space-y-4">
-                {/* tag_id */}
-                <div>
-                  <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Animal Tag ID *</label>
-                  <input
-                    type="text"
-                    name="tag_id"
-                    value={vaccineFormData.tag_id}
-                    onChange={handleVaccineChange}
-                    placeholder="e.g. CO-892"
-                    className="w-full border border-[#dbe4f0] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                  />
-                </div>
-
                 {/* Vaccine Name */}
                 <div>
                   <label className="block mb-1.5 text-xs font-bold text-[#53698c] uppercase tracking-wider">Vaccine Name *</label>
@@ -795,7 +771,7 @@ const HealthManagementPg = () => {
                     disabled={isLoadingForm}
                     className="flex-1 bg-[#071437] hover:bg-[#0d1f4d] text-white py-3.5 rounded-xl font-black text-sm shadow-md transition-all disabled:opacity-50"
                   >
-                    {isLoadingForm ? "Saving..." : "Save Immunization Log"}
+                    {isLoadingForm ? "Saving..." : "Save Vaccine"}
                   </button>
                   <button
                     type="button"

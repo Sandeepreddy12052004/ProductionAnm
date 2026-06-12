@@ -21,6 +21,9 @@
 
   const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
     const [checkedRows, setCheckedRows] = useState({});
+    const [medicinesList, setMedicinesList] = useState([]);
+    const [vaccinesList, setVaccinesList] = useState([]);
+    const [feedItemsList, setFeedItemsList] = useState([]);
     const [selectedRow, setSelectedRow] = useState(() => {
       if (initialData?.animalId && String(initialData.animalId).startsWith("Row ")) {
         return String(initialData.animalId).replace("Row ", "");
@@ -28,6 +31,62 @@
       return "";
     });
     const [livestockList, setLivestockList] = useState([]);
+
+    const isFieldRequired = (field) => {
+      if (field.optional) return false;
+      if (field.name === "breedType") {
+        return !!formData["actualCalvingDate"];
+      }
+      if (["pregnancyConfirmedDate", "estimatedCalvingDate"].includes(field.name)) {
+        return formData["pregnancyStatus"] === "Positive";
+      }
+      if (["calfTag", "heatMonitoring1stNotification"].includes(field.name)) {
+        return !!formData["actualCalvingDate"];
+      }
+      if (field.name === "purchaseDate") {
+        return title?.toLowerCase().includes("feed") ? !!Number(formData.bought) : formData.farmBorn === "No";
+      }
+      if (["sireId", "dameId", "sireBreed", "dameBreed", "calvings"].includes(field.name)) {
+        return formData.farmBorn === "Yes";
+      }
+      if (field.name === "password" && (initialData?.id || initialData?._id || title?.toLowerCase().includes("update") || title?.toLowerCase().includes("edit"))) {
+        return false;
+      }
+      if (field.name === "age") return false;
+      if (["actualCalvingDate", "remarks", "heatMonitoring2ndNotification", "sireId", "dameId", "sireBreed", "dameBreed", "calvings"].includes(field.name)) {
+        return false;
+      }
+      return true;
+    };
+
+    const autofetchParentsForCalf = (tagValue, currentBornVal) => {
+      const cleanTag = String(tagValue).trim().toUpperCase();
+      const isFarmBorn = currentBornVal === "Yes";
+      if (cleanTag && isFarmBorn) {
+        import('../utils/api').then(({ api }) => {
+          api.crossing.getAll().then(res => {
+            const list = Array.isArray(res) ? res : (res?.data ?? []);
+            const matchingLog = list.find(log => String(log.calfTag || '').trim().toUpperCase() === cleanTag);
+            if (matchingLog) {
+              const motherTag = String(matchingLog.tag_id || matchingLog.tag || '').trim().toUpperCase();
+              const fatherTag = String(matchingLog.maleTag || '').trim().toUpperCase();
+              
+              const motherAnimal = livestockList.find(a => String(a.tag_id || a.tag || '').trim().toUpperCase() === motherTag);
+              const fatherAnimal = livestockList.find(a => String(a.tag_id || a.tag || '').trim().toUpperCase() === fatherTag);
+              
+              setFormData(prev => ({
+                ...prev,
+                dameId: motherTag,
+                sireId: fatherTag,
+                dameBreed: motherAnimal ? (motherAnimal.breed || '') : '',
+                sireBreed: fatherAnimal ? (fatherAnimal.breed || '') : '',
+                calvings: 0
+              }));
+            }
+          }).catch(console.error);
+        });
+      }
+    };
 
     const getShedObject = (shedValue) => {
       if (!shedValue) return null;
@@ -179,6 +238,44 @@
       }
     }, [fields, title]);
 
+    React.useEffect(() => {
+      const needsMedicines = (fields || []).some(f => f.name === 'medicineName' || f.name === 'treatment');
+      if (needsMedicines) {
+        import('../utils/api').then(({ api }) => {
+          api.medicines.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            setMedicinesList(raw);
+          }).catch(err => console.error("Failed to load medicines in LogForm:", err));
+        });
+      }
+    }, [fields]);
+
+    React.useEffect(() => {
+      const needsVaccines = (fields || []).some(f => f.name === 'vaccinationName');
+      if (needsVaccines) {
+        import('../utils/api').then(({ api }) => {
+          api.health.vaccinations.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            const templates = raw.filter(v => String(v.tag_id || v.tagId || '').toUpperCase() === 'GENERAL');
+            setVaccinesList(templates);
+          }).catch(err => console.error("Failed to load vaccine templates in LogForm:", err));
+        });
+      }
+    }, [fields]);
+
+    React.useEffect(() => {
+      const needsFeeds = (fields || []).some(f => f.name === 'feedType');
+      if (needsFeeds) {
+        import('../utils/api').then(({ api }) => {
+          api.feedItems.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            const names = raw.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+            setFeedItemsList(names);
+          }).catch(err => console.error("Failed to load feed items in LogForm:", err));
+        });
+      }
+    }, [fields]);
+
 
   const getShedFromLivestock = (tagValue) => {
     try {
@@ -255,7 +352,14 @@
             }
           }).catch(console.error);
         });
+        if (formData.farmBorn === "Yes") {
+          autofetchParentsForCalf(value, "Yes");
+        }
       }
+    }
+
+    if (name === "farmBorn" && value === "Yes") {
+      autofetchParentsForCalf(formData.tag || formData.tagId || formData.tag_id || "", "Yes");
     }
 
     setFormData(prev => {
@@ -428,7 +532,36 @@
         updated.purchaseDate = "";
       }
 
+      if (name === "feedType" && value) {
+        const prev = (existingRecords || []).find(r => 
+          r && 
+          String(r.feedType || '').trim().toLowerCase() === String(value).trim().toLowerCase()
+        );
+        updated["oldStock"] = prev ? (prev.remainingStock ?? 0) : 0;
+        
+        const oldVal = Number(updated.oldStock || 0);
+        const boughtVal = Number(updated.bought || 0);
+        const usageVal = Number(updated.usage || 0);
+        updated["remainingStock"] = oldVal + boughtVal - usageVal;
+      }
+
       if (name === "medicineName" && value) {
+        const prev = (existingRecords || []).find(r => 
+          r && 
+          String(r.medicineName || '').trim().toLowerCase() === String(value).trim().toLowerCase()
+        );
+        updated["oldStock"] = prev ? (prev.presentStock ?? prev.remainingStock ?? 0) : 0;
+
+        const medObj = medicinesList.find(m => String(m.name).toLowerCase() === String(value).toLowerCase());
+        if (medObj && medObj.type) {
+          updated["type"] = medObj.type;
+        }
+
+        const oldVal = Number(updated.oldStock || 0);
+        const boughtVal = Number(updated.bought || 0);
+        const usedVal = Number(updated.used || 0);
+        updated["presentStock"] = oldVal + boughtVal - usedVal;
+
         const prevRecord = (existingRecords || []).find(r => 
           r && 
           String(r.medicineName || '').trim().toLowerCase() === String(value).trim().toLowerCase() && 
@@ -443,6 +576,24 @@
           } catch (e) {
             console.error("Failed to parse previous expiryDate:", e);
           }
+        }
+      }
+
+      if (name === "vaccinationName" && value) {
+        const matches = vaccinesList.filter(v => v.vaccinationName === value);
+        if (matches.length === 1) {
+          const match = matches[0];
+          updated["batchNo"] = match.batchNo || "";
+          if (match.manufactureDate) {
+            updated["manufactureDate"] = new Date(match.manufactureDate).toISOString().split('T')[0];
+          }
+          if (match.expiryDate) {
+            updated["expiryDate"] = new Date(match.expiryDate).toISOString().split('T')[0];
+          }
+        } else {
+          updated["batchNo"] = "";
+          updated["manufactureDate"] = "";
+          updated["expiryDate"] = "";
         }
       }
 
@@ -597,7 +748,45 @@
             }} 
             className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
           >
-            {fields.map((field) => {
+            {fields.map((originalField) => {
+              const field = { ...originalField };
+              if (field.name === 'medicineName') {
+                field.type = 'select';
+                field.options = medicinesList.map(m => m.name);
+              }
+              if (field.name === 'treatment' && (title?.toLowerCase().includes('treatment') || title?.toLowerCase().includes('health'))) {
+                field.type = 'select';
+                field.options = medicinesList.map(m => m.name);
+              }
+              if (field.name === 'feedType') {
+                field.type = 'select';
+                field.options = feedItemsList;
+              }
+              if (field.name === 'vaccinationName') {
+                field.type = 'select';
+                field.options = Array.from(new Set(vaccinesList.map(v => v.vaccinationName).filter(Boolean)));
+              }
+              if (field.name === 'batchNo') {
+                field.type = 'select';
+                const filtered = formData.vaccinationName 
+                  ? vaccinesList.filter(v => v.vaccinationName === formData.vaccinationName) 
+                  : vaccinesList;
+                field.options = Array.from(new Set(filtered.map(v => v.batchNo).filter(Boolean)));
+              }
+              if (field.name === 'manufactureDate') {
+                field.type = 'select';
+                const filtered = formData.vaccinationName 
+                  ? vaccinesList.filter(v => v.vaccinationName === formData.vaccinationName) 
+                  : vaccinesList;
+                field.options = Array.from(new Set(filtered.map(v => v.manufactureDate ? new Date(v.manufactureDate).toISOString().split('T')[0] : '').filter(Boolean)));
+              }
+              if (field.name === 'expiryDate') {
+                field.type = 'select';
+                const filtered = formData.vaccinationName 
+                  ? vaccinesList.filter(v => v.vaccinationName === formData.vaccinationName) 
+                  : vaccinesList;
+                field.options = Array.from(new Set(filtered.map(v => v.expiryDate ? new Date(v.expiryDate).toISOString().split('T')[0] : '').filter(Boolean)));
+              }
               // Dynamic conditional fields for Crossing Log (Natural vs Artificial)
               const cType = formData.crossingType || 'Natural';
               if (field.name === 'maleTag' && cType === 'Artificial') return null;
@@ -663,7 +852,100 @@
                   {(field.name === 'animalId' && field.label?.includes("Animal") && !initialData?.id && !initialData?._id) ? "Rows" : field.label}
                 </label>
                 {field.type === "select" ? (
-                  field.name === "role" && title?.includes("User") ? (
+                  ["symptoms", "diagnosis", "treatment"].includes(field.name) && (title?.toLowerCase().includes("treatment") || title?.toLowerCase().includes("health") || title?.toLowerCase().includes("symptom")) ? (
+                    (() => {
+                      const currentVal = formData[field.name] || "";
+                      const selectedItems = currentVal ? currentVal.split(", ").map(s => s.trim()).filter(Boolean) : [];
+                      
+                      const handleAddItem = (itemToAdd) => {
+                        const trimmed = String(itemToAdd).trim();
+                        if (trimmed && !selectedItems.includes(trimmed)) {
+                          const newItems = [...selectedItems, trimmed];
+                          setFormData(prev => ({
+                            ...prev,
+                            [field.name]: newItems.join(", ")
+                          }));
+                        }
+                      };
+
+                      const handleRemoveItem = (itemToRemove) => {
+                        const newItems = selectedItems.filter(item => item !== itemToRemove);
+                        setFormData(prev => ({
+                          ...prev,
+                          [field.name]: newItems.join(", ")
+                        }));
+                      };
+
+                      let optionsToRender = [...(field.options || [])];
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-slate-50 border border-slate-200/60 rounded-xl">
+                            {selectedItems.length === 0 ? (
+                              <span className="text-xs text-slate-400 font-medium p-1">No {field.label.toLowerCase()} added yet.</span>
+                            ) : (
+                              selectedItems.map(item => (
+                                <span key={item} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#16223F] text-white animate-fadeIn">
+                                  {item}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(item)}
+                                    className="hover:text-red-400 font-bold focus:outline-none ml-1 text-[10px]"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              ))
+                            )}
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <select
+                              className="flex-1 h-11 border border-slate-200 rounded-xl px-3 bg-white text-black text-xs font-semibold outline-none focus:border-[#D1867D]"
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddItem(e.target.value);
+                                  e.target.value = "";
+                                }
+                              }}
+                            >
+                              <option value="">Select {field.label}...</option>
+                              {optionsToRender.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+
+                            <input
+                              type="text"
+                              placeholder="Or type new..."
+                              id={`custom-input-${field.name}`}
+                              className="w-1/3 h-11 border border-slate-200 rounded-xl px-3 text-xs bg-white text-black outline-none focus:border-[#D1867D]"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddItem(e.target.value);
+                                  e.target.value = "";
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.getElementById(`custom-input-${field.name}`);
+                                if (input && input.value) {
+                                  handleAddItem(input.value);
+                                  input.value = "";
+                                }
+                              }}
+                              className="px-3 bg-[#D1867D] hover:bg-[#c0756c] text-white text-xs font-bold rounded-xl h-11 transition-colors"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : field.name === "role" && title?.includes("User") ? (
                     <div className="flex flex-col gap-2">
                       <div className="relative">
                         <div
@@ -904,7 +1186,7 @@
                               ? ""
                               : (formData[field.name] || "")
                           }
-                          required={!field.optional && field.name !== "age" && field.name !== "oldShed"}
+                          required={isFieldRequired(field)}
                           disabled={field.name === "oldShed" || field.disabled}
                           className={`mt-1 block w-full border rounded-xl p-2.5 outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 ${
                             field.name === 'oldShed' || field.disabled
@@ -1009,24 +1291,7 @@
     /*  Required Logic */
   
 
-     required={
-  !field.optional && (
-    field.name === "breedType"
-      ? !!formData["actualCalvingDate"]
-    : ["pregnancyConfirmedDate", "estimatedCalvingDate"].includes(field.name) 
-      ? formData["pregnancyStatus"] === "Positive"
-    : ["calfTag", "heatMonitoring1stNotification"].includes(field.name)
-      ? !!formData["actualCalvingDate"] 
-    : field.name === "purchaseDate" 
-      ? (title?.toLowerCase().includes("feed") ? !!Number(formData.bought) : formData.farmBorn === "No")
-    : ["sireId", "dameId"].includes(field.name)
-      ? formData.farmBorn === "Yes"
-    : field.name === "password" && (initialData?.id || initialData?._id || title?.toLowerCase().includes("update") || title?.toLowerCase().includes("edit"))
-      ? false
-    : field.name !== "age" && 
-      !["actualCalvingDate", "remarks", "heatMonitoring2ndNotification", "sireId", "dameId"].includes(field.name)
-  )
-}
+     required={isFieldRequired(field)}
 
 
     /*  Updated Disabled Logic: 1st Notification remains enabled if status is Negative */

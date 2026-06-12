@@ -48,6 +48,8 @@ const [filters, setFilters] = useState([
 ]);
 const [showFilters, setShowFilters] = useState(false);
 const [currentPage, setCurrentPage] = useState(1);
+const [livestockSubTab, setLivestockSubTab] = useState('ACTIVE');
+const [crossingSubTab, setCrossingSubTab] = useState('PENDING');
 const itemsPerPage = 10;
 
 // MODULE ROUTING (PILL TABS)
@@ -247,8 +249,51 @@ if (!moduleConfig) {
 }
 
  
+  const activeCount = logs.filter(log => {
+    const statusUpper = String(log.status || '').toUpperCase();
+    return statusUpper !== 'SOLD' && statusUpper !== 'DECEASED' && statusUpper !== 'DEAD';
+  }).length;
+  const soldCount = logs.filter(log => String(log.status || '').toUpperCase() === 'SOLD').length;
+  const deceasedCount = logs.filter(log => {
+    const statusUpper = String(log.status || '').toUpperCase();
+    return statusUpper === 'DECEASED' || statusUpper === 'DEAD';
+  }).length;
+
+  const crossingPendingCount = logs.filter(log => {
+    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+    return pregStatus === 'PENDING' || pregStatus === '' || !pregStatus;
+  }).length;
+  const crossingPositiveCount = logs.filter(log => {
+    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+    return pregStatus === 'POSITIVE';
+  }).length;
+  const crossingNegativeCount = logs.filter(log => {
+    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+    return pregStatus === 'NEGATIVE';
+  }).length;
+
   const filteredLogs = logs.filter(log => {
-  return filters.every(f => {
+    if (current.id === 'livestock') {
+      const statusUpper = String(log.status || '').toUpperCase();
+      if (livestockSubTab === 'ACTIVE') {
+        if (statusUpper === 'SOLD' || statusUpper === 'DECEASED' || statusUpper === 'DEAD') return false;
+      } else if (livestockSubTab === 'SOLD') {
+        if (statusUpper !== 'SOLD') return false;
+      } else if (livestockSubTab === 'DECEASED') {
+        if (statusUpper !== 'DECEASED' && statusUpper !== 'DEAD') return false;
+      }
+    }
+    if (current.id === 'crossing') {
+      const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+      if (crossingSubTab === 'PENDING') {
+        if (pregStatus !== 'PENDING' && pregStatus !== '') return false;
+      } else if (crossingSubTab === 'POSITIVE') {
+        if (pregStatus !== 'POSITIVE') return false;
+      } else if (crossingSubTab === 'NEGATIVE') {
+        if (pregStatus !== 'NEGATIVE') return false;
+      }
+    }
+    return filters.every(f => {
 
     // 📅 DATE RANGE FILTER
     if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
@@ -1234,7 +1279,7 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           </div>
           <p className="text-xs text-black opacity-60 mb-4 leading-relaxed">
-            These animals have been recently recorded under **Purchase Logs** and have entered the farm. Click **Complete Profile** on any card below to input their breed, age, gender, and parenting details to officially register them into the active herd registry.
+            These animals have been recently recorded under **Purchase Logs** and have entered the farm. Click **Complete Profile** on any card below to input their breed, age, gender, and parenting details to officially register them into the active registry.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingPurchases.map(animal => (
@@ -1336,7 +1381,7 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           </div>
           <p className="text-xs text-black opacity-60 mb-4 leading-relaxed">
-            These calves have been recently recorded via **Crossing Log Calving Events**. Click **Register Calf** on any card below to input their gender, breed, current shed assignment, and officially register them into the active herd.
+            These calves have been recently recorded via **Crossing Log Calving Events**. Click **Register Calf** on any card below to input their gender, breed, current shed assignment, and officially register them into the active .
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingCalves.map(animal => (
@@ -1424,6 +1469,100 @@ const getShedFromLivestock = (tagValue) => {
         </div>
       )}
 
+      {/* Sub-tabs for Livestock */}
+      {current.id === 'livestock' && (
+        <div className="flex flex-wrap gap-2 mb-4 p-1.5 bg-gray-50 border border-gray-200/80 rounded-2xl max-w-xl shadow-sm">
+          <button
+            onClick={() => {
+              setLivestockSubTab('ACTIVE');
+              setCurrentPage(1);
+            }}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              livestockSubTab === 'ACTIVE'
+                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            Active  <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'ACTIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{activeCount}</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setLivestockSubTab('SOLD');
+              setCurrentPage(1);
+            }}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              livestockSubTab === 'SOLD'
+                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            Sold <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'SOLD' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{soldCount}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setLivestockSubTab('DECEASED');
+              setCurrentPage(1);
+            }}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              livestockSubTab === 'DECEASED'
+                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            Deceased <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'DECEASED' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{deceasedCount}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Sub-tabs for Crossing Log */}
+      {current.id === 'crossing' && (
+        <div className="flex flex-wrap gap-2 mb-4 p-1.5 bg-gray-50 border border-gray-200/80 rounded-2xl max-w-xl shadow-sm">
+          <button
+            onClick={() => {
+              setCrossingSubTab('PENDING');
+              setCurrentPage(1);
+            }}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              crossingSubTab === 'PENDING'
+                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            ⏳ Pending <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'PENDING' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingPendingCount}</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setCrossingSubTab('POSITIVE');
+              setCurrentPage(1);
+            }}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              crossingSubTab === 'POSITIVE'
+                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            ✅ Positive <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'POSITIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingPositiveCount}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCrossingSubTab('NEGATIVE');
+              setCurrentPage(1);
+            }}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              crossingSubTab === 'NEGATIVE'
+                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+            }`}
+          >
+            ❌ Negative <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'NEGATIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingNegativeCount}</span>
+          </button>
+        </div>
+      )}
+
       {/* Table Section */}
       <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
         <table className="w-full text-left min-w-[600px] relative">
@@ -1499,23 +1638,23 @@ const getShedFromLivestock = (tagValue) => {
             );
           }
 
-          // STATUS
           if (f.name === "status") {
-            const isSold = String(log.status).toUpperCase() === "SOLD";
-            const isDead = ["DEAD", "DECEASED"].includes(String(log.status).toUpperCase());
+            const statusUpper = String(log.status).toUpperCase();
+            let badgeStyle = "bg-emerald-50 text-emerald-700 border border-emerald-100/50";
+            if (statusUpper === "SOLD") {
+              badgeStyle = "bg-[#FFC145]/10 text-[#16223F] border border-[#FFC145]/20";
+            } else if (["DEAD", "DECEASED"].includes(statusUpper)) {
+              badgeStyle = "bg-red-50 text-red-700 border border-red-100/50";
+            } else if (statusUpper === "PREGNANT") {
+              badgeStyle = "bg-violet-50 text-violet-700 border border-violet-100/50";
+            } else if (statusUpper === "EMPTY") {
+              badgeStyle = "bg-slate-100 text-slate-700 border border-slate-200/50";
+            } else if (statusUpper === "PENDING") {
+              badgeStyle = "bg-amber-50 text-amber-700 border border-amber-100/50";
+            }
             return (
               <td key={f.name} className="p-4 font-semibold whitespace-nowrap">
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold
-                    ${
-                      isSold
-                        ? "bg-[#FFC145]/10 text-[#16223F] border border-[#FFC145]/20"
-                        : isDead
-                        ? "bg-red-50 text-red-700 border border-red-100/50"
-                        : "bg-emerald-50 text-emerald-700 border border-emerald-100/50"
-                    }
-                  `}
-                >
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${badgeStyle}`}>
                   {log.status}
                 </span>
               </td>

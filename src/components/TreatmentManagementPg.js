@@ -23,7 +23,7 @@ const TreatmentManagementPg = () => {
     setIsLoading(true);
     try {
       const [treatmentData, medicineData] = await Promise.all([
-        api.health.treatments.getAll(),
+        api.treatments.getAll(),
         api.medicines.getAll(),
       ]);
       setTreatments(treatmentData || []);
@@ -63,21 +63,16 @@ const TreatmentManagementPg = () => {
     setIsLoadingForm(true);
     try {
       const payload = {
-        tag_id: "GENERAL",
         symptoms: formData.symptoms.trim(),
         diagnosis: formData.diagnosis.trim(),
         treatment: treatmentString,
-        healthStatus: "Pending",
-        cost: 0,
-        startDate: new Date().toISOString().split("T")[0],
-        remarks: "",
       };
 
       if (formData.id) {
-        await api.health.treatments.update(formData.id, payload);
+        await api.treatments.update(formData.id, payload);
         swalSuccess("Success", "Treatment record updated successfully");
       } else {
-        await api.health.treatments.create(payload);
+        await api.treatments.create(payload);
         swalSuccess("Success", "Treatment record added successfully");
       }
       setShowForm(false);
@@ -106,7 +101,7 @@ const TreatmentManagementPg = () => {
     if (!confirmed) return;
 
     try {
-      await api.health.treatments.delete(id);
+      await api.treatments.delete(id);
       swalSuccess("Deleted", "Treatment record removed successfully");
       fetchData();
     } catch (err) {
