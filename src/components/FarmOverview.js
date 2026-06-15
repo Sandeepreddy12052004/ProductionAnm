@@ -247,6 +247,30 @@ export default function FarmOverview({ farmCode }) {
           (item?.status === 'SOLD' || item?.status === 'DECEASED')
         );
 
+        const activeCattle = cattleArray.filter(item => 
+          isCurrentFarm(item) && 
+          item?.status !== 'SOLD' && 
+          item?.status !== 'DECEASED'
+        );
+
+        const enrichedSheds = shedsArray.filter(isCurrentFarm).map(shed => {
+          const occupancy = activeCattle.filter(c => {
+            const cShed = String(c.shed || c.shedId || '').trim().toLowerCase();
+            const sCode = String(shed.code || '').trim().toLowerCase();
+            const sName = String(shed.name || '').trim().toLowerCase();
+            const sId = String(shed._id || shed.id || '').trim().toLowerCase();
+            return cShed === sCode || cShed === sName || cShed === sId;
+          }).length;
+          
+          const remainingCapacity = Math.max(0, (Number(shed.capacity) || 0) - occupancy);
+          
+          return {
+            ...shed,
+            occupancy,
+            remainingCapacity
+          };
+        });
+
         setMetrics({
           totalCattle,
           activeSheds,
@@ -254,7 +278,7 @@ export default function FarmOverview({ farmCode }) {
           milkProduction
         });
         
-        setFarmSheds(shedsArray.filter(isCurrentFarm));
+        setFarmSheds(enrichedSheds);
         setInactiveAnimals(inactiveList);
       } catch (err) {
         console.error("Failed to fetch farm overview metrics", err);
@@ -397,6 +421,36 @@ export default function FarmOverview({ farmCode }) {
                     <span className="text-[#16223F] font-black">{shed.capacity || 0} <span className="text-gray-400 font-normal text-xs">head</span></span>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-50">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Occupancy</span>
+                    <span className="text-[#16223F] font-extrabold text-sm">{shed.occupancy || 0} <span className="text-slate-400 font-normal text-xs">head</span></span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Remaining</span>
+                    <span className="text-[#16223F] font-extrabold text-sm">{shed.remainingCapacity || 0} <span className="text-slate-400 font-normal text-xs">head</span></span>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-1">
+                    <span>USAGE</span>
+                    <span>{Math.round(((shed.occupancy || 0) / (shed.capacity || 1)) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        ((shed.occupancy || 0) / (shed.capacity || 1)) > 0.9 
+                          ? 'bg-rose-500' 
+                          : ((shed.occupancy || 0) / (shed.capacity || 1)) > 0.75 
+                            ? 'bg-amber-500' 
+                            : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.round(((shed.occupancy || 0) / (shed.capacity || 1)) * 100))}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -414,39 +468,47 @@ export default function FarmOverview({ farmCode }) {
             <p className="text-gray-400 font-bold">No sold or deceased animals found for this farm.</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-gray-200 text-[#16223F] font-black uppercase tracking-widest text-[10px]">
-                    <th className="p-4">Tag ID</th>
-                    <th className="p-4">Animal Type</th>
-                    <th className="p-4">Breed</th>
-                    <th className="p-4">Last Shed</th>
-                    <th className="p-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {inactiveAnimals.map((animal) => (
-                    <tr key={animal._id || animal.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 font-black text-[#16223F] font-mono">{animal.tag_id || animal.tag || '-'}</td>
-                      <td className="p-4 font-bold text-gray-700">{animal.animalType || animal.cattleType || '-'}</td>
-                      <td className="p-4 font-bold text-gray-700">{animal.breed || '-'}</td>
-                      <td className="p-4 font-semibold text-gray-500">{animal.shed || animal.shedId ? `Shed ${animal.shed || animal.shedId}` : '-'}</td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
-                          animal.status === 'SOLD' 
-                            ? 'text-amber-700 bg-amber-50 border-amber-200/50' 
-                            : 'text-red-700 bg-red-50 border-red-200/50'
-                        }`}>
-                          {animal.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {inactiveAnimals.map((animal) => (
+              <div 
+                key={animal._id || animal.id} 
+                className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-3.5 relative overflow-hidden"
+              >
+                {/* Decorative status accent bar */}
+                <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                  animal.status === 'SOLD' ? 'bg-amber-400' : 'bg-red-400'
+                }`} />
+
+                <div className="flex justify-between items-start mt-1.5">
+                  <span className="font-mono font-black text-lg text-[#16223F]">
+                    {animal.tag_id || animal.tag || '-'}
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black border uppercase tracking-widest leading-none ${
+                    animal.status === 'SOLD' 
+                      ? 'text-amber-700 bg-amber-50 border-amber-200/50' 
+                      : 'text-red-700 bg-red-50 border-red-200/50'
+                  }`}>
+                    {animal.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-slate-50">
+                  <div>
+                    <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Animal Type</p>
+                    <p className="font-extrabold text-[#16223F]">{animal.animalType || animal.cattleType || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Breed</p>
+                    <p className="font-extrabold text-[#16223F]">{animal.breed || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50/70 p-3 rounded-xl flex items-center justify-between text-xs mt-1">
+                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Last Known Location</span>
+                  <span className="font-black text-[#16223F]">{animal.shed || animal.shedId ? `Shed ${animal.shed || animal.shedId}` : '-'}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

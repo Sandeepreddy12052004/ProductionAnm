@@ -282,10 +282,10 @@ export default function CattleManagementPg({
             </div>
             <div>
               <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                Total Cattle
+                Live Count
               </p>
               <h2 className="text-3xl font-black text-[#16223F] mt-1">
-                {cattleData.length}
+                {cattleData.filter((a) => { const s = String(a.status || '').toUpperCase(); return s !== 'SOLD' && s !== 'DECEASED' && s !== 'DEAD'; }).length}
               </h2>
             </div>
           </div>

@@ -780,7 +780,7 @@
                   : vaccinesList;
                 field.options = Array.from(new Set(filtered.map(v => v.manufactureDate ? new Date(v.manufactureDate).toISOString().split('T')[0] : '').filter(Boolean)));
               }
-              if (field.name === 'expiryDate') {
+              if (field.name === 'expiryDate' && fields.some(f => f.name === 'vaccinationName')) {
                 field.type = 'select';
                 const filtered = formData.vaccinationName 
                   ? vaccinesList.filter(v => v.vaccinationName === formData.vaccinationName) 

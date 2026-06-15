@@ -199,6 +199,8 @@ async function verifyTokenSession(token) {
   }
 }
 
+const inflightRequests = new Map();
+
 // ---------------------------------------------------------------------------
 // CENTRAL API REQUEST FUNCTION
 // This is the only function that touches the network. All firewall, 401, 403,
@@ -214,13 +216,15 @@ async function verifyTokenSession(token) {
 async function apiRequest(endpoint, method = 'GET', body = null) {
   if (typeof window === 'undefined') return null;
 
-  // ── 1. CLIENT-SIDE FIREWALL ──────────────────────────────────────────────
-  // Only gate GET requests (read visibility checks).
-  // Mutations (POST/PUT/DELETE) bypass the firewall so form saves still work
-  // even in edge permission states — the backend enforces those separately.
+  // ── 1. CLIENT-SIDE FIREWALL & DEDUPLICATION ──────────────────────────────
   if (method === 'GET') {
     const blocked = evaluateFirewall(endpoint);
-    if (blocked) return blocked; // ← silent return, zero network traffic
+    if (blocked) return blocked;
+
+    // Return the active in-flight promise if a request to this endpoint is already running
+    if (inflightRequests.has(endpoint)) {
+      return inflightRequests.get(endpoint);
+    }
   }
 
   // ── 2. PREPARE HEADERS ───────────────────────────────────────────────────
@@ -251,71 +255,83 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
   }
 
   // ── 3. NETWORK CALL ───────────────────────────────────────────────────────
-  try {
-    const response = await fetch(`${cleanBaseUrl}${finalEndpoint}`, config);
+  const promise = (async () => {
+    try {
+      const response = await fetch(`${cleanBaseUrl}${finalEndpoint}`, config);
 
-    // ── 401 Unauthorized: token dead/missing → force re-login ──────────────
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      swalError('Session Expired', 'Please login again.');
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      // ── 401 Unauthorized: token dead/missing → force re-login ──────────────
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        swalError('Session Expired', 'Please login again.');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        return { success: false, error: 'Session expired.' };
       }
-      return { success: false, error: 'Session expired.' };
+
+      // ── 403 Forbidden: silently absorb — the firewall should have caught it,
+      //    but if a 403 slips through (e.g. server-side policy change), we swallow
+      //    it cleanly without triggering any popup or throwing to the caller. ──
+      if (response.status === 403) {
+        console.warn(
+          `[API] Silent 403 on ${method} ${endpoint} — ` +
+          'firewall did not pre-block; absorbing without modal.'
+        );
+        return { success: false, forbidden: true, data: [] };
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message =
+          errorData.error ||
+          errorData.message ||
+          `Server error (${response.status})`;
+        return Promise.reject(message);
+      }
+
+      // Auto-unwrap { success: true, data: [...] } envelope
+      const data = await response.json();
+      if (
+        data &&
+        typeof data === 'object' &&
+        data.success === true &&
+        data.data !== undefined
+      ) {
+        return data.data;
+      }
+
+      return data;
+    } catch (error) {
+      const errMsg =
+        error instanceof Error ? error.message : String(error);
+
+      console.error(`API Call failed [${method} ${endpoint}]:`, errMsg);
+
+      // Do NOT show a popup for firewall-originated or forbidden responses that
+      // were already returned as structured objects above.
+      if (
+        !errMsg.includes('Access Forbidden') &&
+        !errMsg.includes('Module Restricted') &&
+        !errMsg.includes('firewallBlocked') &&
+        !errMsg.includes('forbidden')
+      ) {
+        swalError('Error', errMsg || 'Network connection failed.');
+      }
+
+      throw error;
+    } finally {
+      if (method === 'GET') {
+        inflightRequests.delete(endpoint);
+      }
     }
+  })();
 
-    // ── 403 Forbidden: silently absorb — the firewall should have caught it,
-    //    but if a 403 slips through (e.g. server-side policy change), we swallow
-    //    it cleanly without triggering any popup or throwing to the caller. ──
-    if (response.status === 403) {
-      console.warn(
-        `[API] Silent 403 on ${method} ${endpoint} — ` +
-        'firewall did not pre-block; absorbing without modal.'
-      );
-      return { success: false, forbidden: true, data: [] };
-    }
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const message =
-        errorData.error ||
-        errorData.message ||
-        `Server error (${response.status})`;
-      return Promise.reject(message);
-    }
-
-    // Auto-unwrap { success: true, data: [...] } envelope
-    const data = await response.json();
-    if (
-      data &&
-      typeof data === 'object' &&
-      data.success === true &&
-      data.data !== undefined
-    ) {
-      return data.data;
-    }
-
-    return data;
-  } catch (error) {
-    const errMsg =
-      error instanceof Error ? error.message : String(error);
-
-    console.error(`API Call failed [${method} ${endpoint}]:`, errMsg);
-
-    // Do NOT show a popup for firewall-originated or forbidden responses that
-    // were already returned as structured objects above.
-    if (
-      !errMsg.includes('Access Forbidden') &&
-      !errMsg.includes('Module Restricted') &&
-      !errMsg.includes('firewallBlocked') &&
-      !errMsg.includes('forbidden')
-    ) {
-      swalError('Error', errMsg || 'Network connection failed.');
-    }
-
-    throw error;
+  if (method === 'GET') {
+    inflightRequests.set(endpoint, promise);
   }
+
+  return promise;
 }
 
 // ---------------------------------------------------------------------------

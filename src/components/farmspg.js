@@ -70,13 +70,13 @@ function CapacityBar({ occupied, maxCapacity, usagePercent }) {
       <div className="flex items-center justify-between mb-2.5 text-xs font-bold text-[#5d7399]">
         <span>
           <span className={`font-black ${capacityTextColor(pct)}`}>{occupied}</span>
-          {' '}Occupied
+          {' '}Live Cattle
           {maxCapacity > 0 && (
             <> &nbsp;|&nbsp; <span className="text-[#071437] font-black">{Math.max(0, maxCapacity - occupied)}</span> Remaining</>
           )}
         </span>
         <span className="font-bold text-[#a0aec0]">
-          / {maxCapacity} total
+          / {maxCapacity} capacity
         </span>
       </div>
 

@@ -1,7 +1,22 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import { 
+  Calendar as CalendarIcon, 
+  Clock, 
+  Home as HomeIcon, 
+  Settings, 
+  Search, 
+  Save, 
+  RefreshCw, 
+  ChevronDown, 
+  ChevronUp, 
+  ArrowUpDown,
+  TrendingUp,
+  FileSpreadsheet,
+  AlertCircle
+} from "lucide-react";
 
 export default function DailyMilkCollection() {
   const [farms, setFarms] = useState([]);
@@ -20,15 +35,17 @@ export default function DailyMilkCollection() {
   const [isSaving, setIsSaving] = useState(false);
 
   // User input states
-  const [quantities, setQuantities] = useState({}); // tag -> quantity (string/number)
+  const [quantities, setQuantities] = useState({}); // tag -> quantity
   const [selfConsumptions, setSelfConsumptions] = useState({}); // shedId -> selfConsumption
-  const [notes, setNotes] = useState("");
 
   // Settings / Reordering Modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempFarmsOrder, setTempFarmsOrder] = useState([]);
 
-  const itemsPerPage = 20;
+  const itemsPerPage = 10; // Redesigned layout uses compact paginated slots
+
+  const initializedRef = useRef(false);
+  const collectionsInitKey = useRef("");
 
   // Apply farm ordering helper
   const sortFarms = (farmsList) => {
@@ -56,7 +73,9 @@ export default function DailyMilkCollection() {
 
   // 1. Initial Data Fetch
   useEffect(() => {
-    let isMounted = true;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
@@ -66,32 +85,33 @@ export default function DailyMilkCollection() {
           api.cattle.getAll(),
         ]);
 
-        if (isMounted) {
-          const sorted = sortFarms(farmsData || []);
-          setFarms(sorted);
-          setSheds(shedsData || []);
-          
-          const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
-          setAnimals(rawAnimals);
+        const sorted = sortFarms(farmsData || []);
+        setFarms(sorted);
+        setSheds(shedsData || []);
+        
+        const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
+        setAnimals(rawAnimals);
 
-          if (sorted && sorted.length > 0) {
-            setSelectedFarmId(sorted[0]._id || sorted[0].id);
-          }
+        if (sorted && sorted.length > 0) {
+          setSelectedFarmId(sorted[0]._id || sorted[0].id);
         }
       } catch (err) {
         console.error(err);
         swalError("Error", "Failed to initialize milk collection dashboard.");
       } finally {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       }
     };
 
     loadInitialData();
-    return () => { isMounted = false; };
   }, []);
 
   // 2. Fetch existing collections for selected date
   const fetchCollections = async () => {
+    const key = `${selectedDate}_${session}`;
+    if (collectionsInitKey.current === key) return;
+    collectionsInitKey.current = key;
+
     try {
       const records = await api.milk.collections.getAll();
       const rawRecords = Array.isArray(records) ? records : (records?.data ?? []);
@@ -116,48 +136,43 @@ export default function DailyMilkCollection() {
   // Set default active shed when farmSheds list changes
   useEffect(() => {
     if (farmSheds.length > 0) {
-      setActiveShedId(farmSheds[0].name || farmSheds[0].code || String(farmSheds[0]._id));
+      const firstShedWithAnimals = farmSheds.find((s) => {
+        const shedKey = s.name || s.code || String(s._id);
+        const count = animals.filter(
+          (a) =>
+            String(a.shed || a.shedId).trim().toUpperCase() ===
+            String(shedKey).trim().toUpperCase() &&
+            String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
+            !["SOLD", "DECEASED", "DEAD"].includes(a.status)
+        ).length;
+        return count > 0;
+      });
+
+      if (firstShedWithAnimals) {
+        setActiveShedId(firstShedWithAnimals.name || firstShedWithAnimals.code || String(firstShedWithAnimals._id));
+      } else {
+        setActiveShedId(farmSheds[0].name || farmSheds[0].code || String(farmSheds[0]._id));
+      }
     } else {
       setActiveShedId("");
     }
-  }, [farmSheds]);
-
-  // Filter animals in active shed
-  const activeShedAnimals = useMemo(() => {
-    if (!activeShedId) return [];
-    return animals.filter(
-      (a) =>
-        String(a.shed || a.shedId).trim().toUpperCase() ===
-        String(activeShedId).trim().toUpperCase() &&
-        String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-        a.status === "ACTIVE"
-    );
-  }, [activeShedId, animals, selectedFarmId]);
-
-  // Filter animals based on search query
-  const searchedAnimals = useMemo(() => {
-    const query = searchQuery.trim().toUpperCase();
-    if (!query) return activeShedAnimals;
-    return activeShedAnimals.filter((a) => String(a.tag || a.tag_id).toUpperCase().includes(query));
-  }, [activeShedAnimals, searchQuery]);
+  }, [farmSheds, animals, selectedFarmId]);
 
   // Reset page when active shed or search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [activeShedId, searchQuery]);
 
-  // 3. Populate existing quantities when collections or active shed changes
+  // 3. Populate existing quantities when collections change
   useEffect(() => {
     const newQuantities = {};
     const newSelfConsumptions = {};
 
-    // Get active collections for this farm and date
     const targetDateStr = new Date(selectedDate).toDateString();
     const activeDayCollections = collections.filter(
       (c) => new Date(c.date).toDateString() === targetDateStr
     );
 
-    // Map quantities and self consumptions
     activeDayCollections.forEach((c) => {
       if (c.session === session) {
         const tag = String(c.tag_id || c.tagId).toUpperCase();
@@ -192,15 +207,6 @@ export default function DailyMilkCollection() {
 
     const dayTotal = morningTotal + eveningTotal;
 
-    // Active session stats for CURRENT active shed
-    const shedTotal = activeShedAnimals.reduce((sum, a) => {
-      const tag = String(a.tag || a.tag_id).toUpperCase();
-      return sum + (Number(quantities[tag]) || 0);
-    }, 0);
-
-    const shedSelfConsumption = Number(selfConsumptions[activeShedId]) || 0;
-    const shedNet = Math.max(0, shedTotal - shedSelfConsumption);
-
     // Table summary of all sheds for active session
     const shedsSummary = farmSheds.map((s) => {
       const shedKey = s.name || s.code || String(s._id);
@@ -210,7 +216,7 @@ export default function DailyMilkCollection() {
           String(a.shed || a.shedId).trim().toUpperCase() ===
           String(shedKey).trim().toUpperCase() &&
           String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-          a.status === "ACTIVE"
+          !["SOLD", "DECEASED", "DEAD"].includes(a.status)
       );
 
       const totalQty = shedAnimals.reduce((sum, a) => {
@@ -226,6 +232,7 @@ export default function DailyMilkCollection() {
         totalQty,
         selfCons,
         net,
+        animalCount: shedAnimals.length
       };
     });
 
@@ -237,23 +244,50 @@ export default function DailyMilkCollection() {
       morningTotal,
       eveningTotal,
       dayTotal,
-      shedTotal,
-      shedSelfConsumption,
-      shedNet,
       shedsSummary,
       summaryTotalQty,
       summaryTotalSelf,
       summaryTotalNet,
     };
-  }, [collections, selectedDate, session, activeShedId, activeShedAnimals, quantities, selfConsumptions, farmSheds, animals, selectedFarmId]);
+  }, [collections, selectedDate, session, quantities, selfConsumptions, farmSheds, animals, selectedFarmId]);
 
-  // Paginated animals slice
+  // Active Animals list inside currently selected active shed
+  const activeShedAnimals = useMemo(() => {
+    if (!activeShedId) return [];
+    return animals.filter(
+      (a) =>
+        String(a.shed || a.shedId).trim().toUpperCase() ===
+        String(activeShedId).trim().toUpperCase() &&
+        String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
+        !["SOLD", "DECEASED", "DEAD"].includes(a.status)
+    );
+  }, [activeShedId, animals, selectedFarmId]);
+
+  // Filtered animals inside active shed based on inline search query
+  const searchedAnimals = useMemo(() => {
+    const query = searchQuery.trim().toUpperCase();
+    if (!query) return activeShedAnimals;
+    return activeShedAnimals.filter((a) => String(a.tag || a.tag_id).toUpperCase().includes(query));
+  }, [activeShedAnimals, searchQuery]);
+
+  // Paginated animals slice for active shed
   const paginatedAnimals = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return searchedAnimals.slice(start, start + itemsPerPage);
   }, [searchedAnimals, currentPage]);
 
   const totalPages = Math.ceil(searchedAnimals.length / itemsPerPage) || 1;
+
+  // Active shed calculations
+  const activeShedTotals = useMemo(() => {
+    const totalQty = activeShedAnimals.reduce((sum, a) => {
+      const tag = String(a.tag || a.tag_id).toUpperCase();
+      return sum + (Number(quantities[tag]) || 0);
+    }, 0);
+    const selfCons = Number(selfConsumptions[activeShedId]) || 0;
+    const net = Math.max(0, totalQty - selfCons);
+    return { totalQty, selfCons, net };
+  }, [activeShedAnimals, quantities, selfConsumptions, activeShedId]);
 
   // Handle quantity inputs
   const handleQuantityChange = (tag, val) => {
@@ -271,16 +305,19 @@ export default function DailyMilkCollection() {
     }));
   };
 
-  // Submit / Save
-  const handleSave = async () => {
+  // Submit / Save active shed
+  const handleSaveActiveShed = async () => {
     if (!selectedFarmId) {
       swalError("Error", "Please select a farm first.");
+      return;
+    }
+    if (!activeShedId) {
+      swalError("Error", "Please select an active shed first.");
       return;
     }
     setIsSaving(true);
 
     try {
-      // Build collections payload array for active shed animals
       const collectionsPayload = activeShedAnimals.map((a) => {
         const tag = String(a.tag || a.tag_id).toUpperCase();
         return {
@@ -340,335 +377,408 @@ export default function DailyMilkCollection() {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-slate-50/20 text-slate-800 font-sans min-h-screen">
-      {/* 1. Header Section */}
-      <div className="flex-none flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-[#071437] tracking-tight flex items-center gap-2">
-            🥛 Daily Milk Collection
+    <div className="p-6 md:p-10 w-full h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans min-h-screen">
+      
+      {/* A. Header & Sub-Header Section */}
+      <div className="flex-none flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-6">
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-[0.2em]">
+            EXECUTIVE CONTROL CENTER
+          </span>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            Daily Milk Collection
           </h1>
-          <p className="text-sm text-slate-500 font-bold mt-1">
-            Log and review yield outputs by session and shed.
+          <p className="text-sm text-slate-500 font-medium">
+            Welcome back, Josh. Log, verify, and monitor session yield outputs across sheds.
           </p>
         </div>
         <button
           onClick={openSettings}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 hover:border-[#D1867D] hover:text-[#D1867D] text-[#16223F] font-bold rounded-2xl shadow-sm hover:shadow-md active:scale-95 transition-all text-sm self-start sm:self-center"
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 text-slate-700 font-bold rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] active:scale-[0.98] transition-all duration-300 text-xs self-start sm:self-center"
         >
-          ⚙️ Set Farm Order
+          <Settings className="w-4 h-4 text-slate-400 hover:text-emerald-600 transition-colors" />
+          Set Farm Order
         </button>
       </div>
 
       {isLoading ? (
         <SkeletonLoader type="table" columns={4} />
       ) : (
-        <div className="flex flex-col xl:flex-row gap-8">
-          {/* Main Panel */}
-          <div className="flex-1 flex flex-col gap-8">
-            {/* Top Filter and Overall Totals Card */}
-            <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-100 shadow-xl p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-              {/* Date Input */}
-              <div className="lg:col-span-3">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full h-12 border border-slate-200 rounded-xl px-4 text-sm font-bold text-[#071437] outline-none focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all"
-                />
-              </div>
-
-              {/* Session Input */}
-              <div className="lg:col-span-3">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Session
-                </label>
-                <select
-                  value={session}
-                  onChange={(e) => setSession(e.target.value)}
-                  className="w-full h-12 border border-slate-200 rounded-xl px-4 text-sm font-bold text-[#071437] outline-none focus:border-[#D1867D] transition-all bg-white"
-                >
-                  <option value="MORNING">☀️ MORNING</option>
-                  <option value="EVENING">🌙 EVENING</option>
-                </select>
-              </div>
-
-              {/* Farm Input */}
-              <div className="lg:col-span-3">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Farm
-                </label>
-                <select
-                  value={selectedFarmId}
-                  onChange={(e) => setSelectedFarmId(e.target.value)}
-                  className="w-full h-12 border border-slate-200 rounded-xl px-4 text-sm font-bold text-[#071437] outline-none focus:border-[#D1867D] transition-all bg-white"
-                >
-                  {farms.map((f) => (
-                    <option key={f._id || f.id} value={f._id || f.id}>
-                      🏡 {f.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Day Overall stats */}
-              <div className="lg:col-span-3 flex flex-col md:flex-row lg:flex-col gap-3 justify-between">
-                <div className="flex justify-between items-center bg-slate-50/50 rounded-xl p-2.5 border border-slate-100 flex-1 hover:border-blue-100 transition-colors">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Morning Total</span>
-                  <span className="text-sm font-black text-blue-600">{calculations.morningTotal} L</span>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT COLUMN: Configuration Panel, Overall Stats, & Workspace */}
+          <div className="xl:col-span-8 flex flex-col gap-8">
+            
+            {/* 1. Session & Parameters Selection Grid (Horizontal Selection) */}
+            <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                {/* Date */}
+                <div className="relative">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">
+                    Collection Date
+                  </label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="w-full h-12 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-4 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all duration-300"
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between items-center bg-slate-50/50 rounded-xl p-2.5 border border-slate-100 flex-1 hover:border-emerald-100 transition-colors">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Evening Total</span>
-                  <span className="text-sm font-black text-emerald-600">{calculations.eveningTotal} L</span>
+
+                {/* Session */}
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">
+                    Session Period
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={session}
+                      onChange={(e) => setSession(e.target.value)}
+                      className="w-full h-12 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-10 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 appearance-none transition-all duration-300"
+                    >
+                      <option value="MORNING">☀️ Morning Session</option>
+                      <option value="EVENING">🌙 Evening Session</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-                <div className="flex justify-between items-center bg-[#16223F]/5 rounded-xl p-2.5 border border-[#16223F]/10 flex-1 hover:border-[#16223F]/20 transition-colors">
-                  <span className="text-[10px] font-black text-[#071437] uppercase tracking-widest">Day Total</span>
-                  <span className="text-sm font-black text-[#16223F]">{calculations.dayTotal} L</span>
+
+                {/* Farm Selector */}
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">
+                    Active Farm
+                  </label>
+                  <div className="relative">
+                    <HomeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={selectedFarmId}
+                      onChange={(e) => setSelectedFarmId(e.target.value)}
+                      className="w-full h-12 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-10 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 appearance-none transition-all duration-300"
+                    >
+                      {farms.map((f) => (
+                        <option key={f._id || f.id} value={f._id || f.id}>
+                          🏡 {f.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Minimalist shared stat counter strip (Side-by-Side) */}
+              <div className="mt-8 grid grid-cols-3 bg-slate-50/60 rounded-2xl border border-slate-100 overflow-hidden divide-x divide-slate-100">
+                <div className="p-4 flex flex-col gap-1 text-center hover:bg-slate-50 transition-colors">
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Morning Session</span>
+                  <span className="text-base md:text-lg font-black text-blue-600 tracking-tight">
+                    {calculations.morningTotal.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">L</span>
+                  </span>
+                </div>
+                <div className="p-4 flex flex-col gap-1 text-center hover:bg-slate-50 transition-colors">
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Evening Session</span>
+                  <span className="text-base md:text-lg font-black text-indigo-600 tracking-tight">
+                    {calculations.eveningTotal.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">L</span>
+                  </span>
+                </div>
+                <div className="p-4 flex flex-col gap-1 text-center hover:bg-slate-50/80 transition-colors">
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider font-mono">Total Yield</span>
+                  <span className="text-base md:text-lg font-black text-emerald-600 tracking-tight">
+                    {calculations.dayTotal.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">L</span>
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Shed Tabs and Search row */}
-            <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-100 shadow-xl overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                {/* Shed Tabs */}
-                <div className="flex flex-wrap gap-2">
-                  {farmSheds.map((s) => {
-                    const shedKey = s.name || s.code || String(s._id);
-                    const animalCount = animals.filter(
-                      (a) =>
-                        String(a.shed || a.shedId).trim().toUpperCase() ===
-                        String(shedKey).trim().toUpperCase() &&
-                        String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-                        a.status === "ACTIVE"
-                    ).length;
+            {/* 2. Interactive Shed Workspace Section */}
+            <div className="flex flex-col gap-5">
+              
+              {/* Shed Navigation Tabs */}
+              <div className="flex flex-wrap gap-2.5">
+                {farmSheds.map((s) => {
+                  const shedKey = s.name || s.code || String(s._id);
+                  const matchedSummary = calculations.shedsSummary.find(item => item.name === shedKey);
+                  const animalCount = matchedSummary?.animalCount || 0;
+                  const netYield = matchedSummary?.net || 0;
 
-                    return (
-                      <button
-                        key={shedKey}
-                        onClick={() => {
-                          setActiveShedId(shedKey);
-                          setSearchQuery("");
-                        }}
-                        className={`h-11 px-5 rounded-xl text-sm font-black transition-all flex items-center gap-2 border ${
-                          activeShedId === shedKey
-                            ? "bg-[#16223F] border-[#16223F] text-white shadow-md shadow-[#16223F]/15"
-                            : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200/60"
-                        }`}
-                      >
-                        🏡 {shedKey} ({animalCount})
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Search box */}
-                <div className="w-full md:max-w-xs relative">
-                  <input
-                    type="text"
-                    placeholder="Search Tag ID / Animal No..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-xs font-bold text-[#071437] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
-                  />
-                </div>
-              </div>
-
-              {/* Active Shed Title and Details */}
-              <div className="p-6 bg-slate-50/30 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h3 className="text-lg font-black text-[#071437]">
-                    {activeShedId ? `${activeShedId} - ${session} SESSION` : "NO ACTIVE SHED"}
-                  </h3>
-                  <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">
-                    Enter milk quantity for all active animals
-                  </p>
-                </div>
-
-                {/* Total indicators for session/shed */}
-                <div className="flex flex-wrap gap-3">
-                  <div className="bg-blue-50 border border-blue-100/50 rounded-2xl px-5 py-3 flex flex-col items-center shadow-inner hover:-translate-y-0.5 transition-all">
-                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Session Total</span>
-                    <span className="text-lg font-black text-blue-700 mt-1">{calculations.shedTotal} L</span>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-100/50 rounded-2xl px-5 py-3 flex flex-col items-center shadow-inner hover:-translate-y-0.5 transition-all">
-                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Self Consumption</span>
-                    <span className="text-lg font-black text-amber-700 mt-1">{calculations.shedSelfConsumption} L</span>
-                  </div>
-                  <div className="bg-emerald-50 border border-emerald-100/50 rounded-2xl px-5 py-3 flex flex-col items-center shadow-inner hover:-translate-y-0.5 transition-all">
-                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Net Milk</span>
-                    <span className="text-lg font-black text-emerald-700 mt-1">{calculations.shedNet} L</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid of Animals */}
-              <div className="p-6 bg-slate-50/10">
-                {searchedAnimals.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 font-bold text-sm">
-                    No active animals found in {activeShedId || "this farm"}.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {paginatedAnimals.map((animal, idx) => {
-                      const tag = String(animal.tag || animal.tag_id).toUpperCase();
-                      const animalIndex = (currentPage - 1) * itemsPerPage + idx + 1;
-
-                      return (
-                        <div
-                          key={tag}
-                          className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#D1867D]/30 transition-all duration-300"
-                        >
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black text-slate-300">#{animalIndex}</span>
-                            <span className="text-xs font-black text-[#071437] font-mono bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">{tag}</span>
-                          </div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                            Quantity (L)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={quantities[tag] !== undefined ? quantities[tag] : ""}
-                            onChange={(e) => handleQuantityChange(tag, e.target.value)}
-                            placeholder="0"
-                            className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm font-black text-[#071437] focus:border-[#D1867D] focus:ring-1 focus:ring-[#D1867D]/10 outline-none text-center transition-all"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Pagination controls & Self consumption field at bottom */}
-              <div className="p-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/20">
-                {/* Self consumption field */}
-                {activeShedId && (
-                  <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl p-3 max-w-sm w-full shadow-inner">
-                    <div className="flex-1">
-                      <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        Self Consumption (Session)
+                  return (
+                    <button
+                      key={shedKey}
+                      onClick={() => {
+                        setActiveShedId(shedKey);
+                        setSearchQuery("");
+                      }}
+                      className={`h-12 px-5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2.5 border active:scale-[0.98] ${
+                        activeShedId === shedKey
+                          ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/10"
+                          : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200/60 shadow-[0_4px_12px_rgba(0,0,0,0.01)]"
+                      }`}
+                    >
+                      <HomeIcon className="w-3.5 h-3.5" />
+                      <span>{shedKey}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+                        activeShedId === shedKey ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {animalCount} head · {netYield} L
                       </span>
-                      <p className="text-[9px] text-slate-400 mt-0.5 leading-none font-bold">
-                        Deducted from session total.
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selected Shed Data Entry Card */}
+              {activeShedId ? (
+                <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden">
+                  
+                  {/* Card Section Header */}
+                  <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-50/30">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+                          {activeShedId} Workspace
+                        </h3>
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-extrabold uppercase border border-emerald-100">
+                          {session}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 font-medium mt-1">
+                        Please record the exact milk quantity collected per individual livestock asset.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    {/* Inline Tag Search field */}
+                    <div className="w-full md:max-w-[240px] relative">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input
-                        type="number"
-                        min="0"
-                        value={selfConsumptions[activeShedId] !== undefined ? selfConsumptions[activeShedId] : ""}
-                        onChange={(e) => handleSelfConsumptionChange(e.target.value)}
-                        placeholder="0"
-                        className="w-16 h-10 border border-slate-200 rounded-xl text-center font-black text-[#071437] focus:border-[#D1867D] outline-none transition-all"
+                        type="text"
+                        placeholder="Filter Tag ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full h-10 rounded-xl border border-slate-200 pl-10 pr-4 text-xs font-bold text-slate-800 bg-white/50 focus:bg-white focus:border-emerald-500 outline-none transition-all duration-200"
                       />
-                      <span className="text-xs font-black text-[#071437]">L</span>
                     </div>
                   </div>
-                )}
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-2">
+                  {/* Active Shed Stat Ribbon */}
+                  <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/10 grid grid-cols-3 gap-4 text-center">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Yield</span>
+                      <span className="text-base font-black text-blue-600 mt-1">{activeShedTotals.totalQty} L</span>
+                    </div>
+                    <div className="flex flex-col border-x border-slate-100">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Self Consumption</span>
+                      <span className="text-base font-black text-amber-600 mt-1">{activeShedTotals.selfCons} L</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Net Yield</span>
+                      <span className="text-base font-black text-emerald-600 mt-1">{activeShedTotals.net} L</span>
+                    </div>
+                  </div>
+
+                  {/* Livestock Grid */}
+                  <div className="p-8">
+                    {searchedAnimals.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <AlertCircle className="w-8 h-8 text-slate-300 mb-2" />
+                        <p className="text-xs text-slate-400 font-bold">No active animals matching tag filters in {activeShedId}.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {paginatedAnimals.map((animal, idx) => {
+                          const tag = String(animal.tag || animal.tag_id).toUpperCase();
+                          const animalIndex = (currentPage - 1) * itemsPerPage + idx + 1;
+                          const quantity = quantities[tag] !== undefined ? quantities[tag] : "";
+
+                          return (
+                            <div
+                              key={tag}
+                              className="group bg-slate-50/50 hover:bg-white border border-slate-200/50 hover:border-emerald-500/30 rounded-2xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md transition-all duration-300"
+                            >
+                              <div className="flex justify-between items-center mb-3">
+                                <span className="text-[9px] font-extrabold text-slate-300">#{animalIndex}</span>
+                                <span className="text-[10px] font-black text-slate-700 font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm">
+                                  {tag}
+                                </span>
+                              </div>
+                              <label className="block text-[8px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
+                                Volume (Liters)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={quantity}
+                                onChange={(e) => handleQuantityChange(tag, e.target.value)}
+                                placeholder="0.0"
+                                className="w-full h-10 bg-white border border-slate-200/80 rounded-xl px-3 text-xs font-black text-slate-800 text-center outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all duration-300"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Form Footer: Pagination, Self Consumption, & Inline Shed Action */}
+                  <div className="p-8 border-t border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-6 bg-slate-50/20">
+                    
+                    {/* Self consumption parameter input */}
+                    <div className="flex items-center gap-4 bg-white border border-slate-200/80 rounded-2xl p-4 max-w-sm w-full shadow-[0_4px_12px_rgba(0,0,0,0.01)]">
+                      <div className="flex-1">
+                        <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                          Self Consumption
+                        </span>
+                        <p className="text-[9px] text-slate-400 mt-0.5 font-medium leading-normal">
+                          Deducted directly from current shed yield total.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={selfConsumptions[activeShedId] !== undefined ? selfConsumptions[activeShedId] : ""}
+                          onChange={(e) => handleSelfConsumptionChange(e.target.value)}
+                          placeholder="0"
+                          className="w-16 h-10 border border-slate-200 rounded-xl text-center text-xs font-black text-slate-800 focus:border-emerald-500 outline-none transition-all duration-300 bg-slate-50/50 focus:bg-white"
+                        />
+                        <span className="text-xs font-black text-slate-700">L</span>
+                      </div>
+                    </div>
+
+                    {/* Pagination control */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          className="h-9 px-3 rounded-xl border border-slate-200 text-[10px] font-bold bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-all duration-300"
+                        >
+                          Prev
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setCurrentPage(p)}
+                            className={`w-9 h-9 rounded-xl text-[10px] font-bold border transition-all duration-300 ${
+                              currentPage === p
+                                ? "bg-slate-800 border-slate-800 text-white"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                        <button
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                          className="h-9 px-3 rounded-xl border border-slate-200 text-[10px] font-bold bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 transition-all duration-300"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Save this specific shed */}
                     <button
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="h-10 px-4 rounded-xl border border-slate-200 text-xs font-bold bg-white hover:bg-slate-50 disabled:opacity-40 transition-all"
+                      onClick={handleSaveActiveShed}
+                      disabled={isSaving}
+                      className="px-6 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 ml-auto lg:ml-0"
                     >
-                      Prev
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setCurrentPage(p)}
-                        className={`w-10 h-10 rounded-xl text-xs font-bold border ${
-                          currentPage === p
-                            ? "bg-[#16223F] border-[#16223F] text-white"
-                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                        } transition-all`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                    <button
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="h-10 px-4 rounded-xl border border-slate-200 text-xs font-bold bg-white hover:bg-slate-50 disabled:opacity-40 transition-all"
-                    >
-                      Next
+                      <Save className="w-4 h-4" />
+                      <span>{isSaving ? "Saving..." : `Save ${activeShedId}`}</span>
                     </button>
                   </div>
-                )}
-              </div>
+
+                </div>
+              ) : (
+                <div className="bg-white/90 rounded-3xl border border-slate-100/80 p-12 text-center shadow-[0_12px_40px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center">
+                  <HomeIcon className="w-10 h-10 text-slate-300 mb-3" />
+                  <h4 className="text-sm font-black text-slate-800">No active shed selected</h4>
+                  <p className="text-xs text-slate-400 mt-1">Please select one of the sheds above to record values.</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Sidebar Summary & Save Panel */}
-          <div className="w-full xl:w-80 flex flex-col gap-6 flex-shrink-0">
-            {/* Shed Summary Table */}
-            <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-100 shadow-xl p-6">
-              <h3 className="text-md font-black text-[#071437] mb-4">
-                Sheds Summary ({session === "MORNING" ? "Morning" : "Evening"})
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+          {/* RIGHT COLUMN: Real-Time Sheds Summary & Global Operations */}
+          <div className="xl:col-span-4 flex flex-col gap-6">
+            
+            {/* Sheds Summary Board */}
+            <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
+              <div className="flex flex-col gap-1 mb-6">
+                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-[0.15em]">
+                  REAL-TIME OVERVIEW
+                </span>
+                <h3 className="text-sm font-black text-slate-900">
+                  Sheds Summary ({session === "MORNING" ? "Morning" : "Evening"})
+                </h3>
+              </div>
+
+              <div className="overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 uppercase font-black tracking-widest text-[9px]">
-                      <th className="pb-3">Shed</th>
-                      <th className="pb-3 text-right">Qty</th>
-                      <th className="pb-3 text-right">Self Cons.</th>
-                      <th className="pb-3 text-right">Net Milk</th>
+                      <th className="pb-3.5 font-bold">Shed</th>
+                      <th className="pb-3.5 font-bold text-right">Gross Qty</th>
+                      <th className="pb-3.5 font-bold text-right">Self Cons.</th>
+                      <th className="pb-3.5 font-bold text-right">Net Milk</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50 font-bold">
+                  <tbody className="divide-y divide-slate-100 font-bold">
                     {calculations.shedsSummary.map((s) => (
-                      <tr key={s.name} className="text-[#071437] hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 font-black">🏡 {s.name}</td>
-                        <td className="py-3 text-right text-blue-600">{s.totalQty} L</td>
-                        <td className="py-3 text-right text-amber-600">{s.selfCons} L</td>
-                        <td className="py-3 text-right text-emerald-600">{s.net} L</td>
+                      <tr key={s.name} className="text-slate-700 hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 font-extrabold flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span>{s.name}</span>
+                        </td>
+                        <td className="py-3.5 text-right text-blue-600 font-bold">{s.totalQty.toLocaleString()} L</td>
+                        <td className="py-3.5 text-right text-amber-500 font-medium">{s.selfCons.toLocaleString()} L</td>
+                        <td className="py-3.5 text-right text-emerald-600 font-extrabold">{s.net.toLocaleString()} L</td>
                       </tr>
                     ))}
-                    <tr className="border-t-2 border-slate-100 text-[#071437] font-black bg-slate-50/50">
-                      <td className="py-3 pl-2">TOTAL</td>
-                      <td className="py-3 text-right text-blue-700">{calculations.summaryTotalQty} L</td>
-                      <td className="py-3 text-right text-amber-700">{calculations.summaryTotalSelf} L</td>
-                      <td className="py-3 text-right text-emerald-700">{calculations.summaryTotalNet} L</td>
+                    <tr className="border-t-2 border-slate-150 text-slate-800 font-black bg-slate-50/50">
+                      <td className="py-4 pl-3.5 text-[10px] tracking-wider font-extrabold uppercase">Total Yield</td>
+                      <td className="py-4 text-right text-blue-700 font-black">{calculations.summaryTotalQty.toLocaleString()} L</td>
+                      <td className="py-4 text-right text-amber-700 font-bold">{calculations.summaryTotalSelf.toLocaleString()} L</td>
+                      <td className="py-4 text-right text-emerald-700 font-black">{calculations.summaryTotalNet.toLocaleString()} L</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* Actions Panel */}
+            {/* Global Session Actions & Utilities */}
             <div className="flex flex-col gap-3">
               <button
-                onClick={handleSave}
+                onClick={handleSaveActiveShed}
                 disabled={isSaving || !activeShedId}
-                className="w-full py-4 bg-[#16223F] hover:bg-[#2a3f75] text-white font-black rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 disabled:opacity-40"
               >
-                💾 {isSaving ? "Saving..." : `Save ${session === "MORNING" ? "Morning" : "Evening"} Data`}
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? "Saving..." : `Save ${session === "MORNING" ? "Morning" : "Evening"} Data`}</span>
               </button>
 
               <button
                 onClick={() => setSession((s) => (s === "MORNING" ? "EVENING" : "MORNING"))}
-                className="w-full py-4 bg-white border border-slate-200 hover:bg-slate-50 hover:border-[#D1867D]/30 text-[#16223F] font-black rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+                className="w-full py-4 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-extrabold rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.01)] active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2"
               >
-                🔄 Switch to {session === "MORNING" ? "Evening" : "Morning"} Session
+                <RefreshCw className="w-4 h-4 text-slate-400" />
+                <span>Switch to {session === "MORNING" ? "Evening" : "Morning"} Session</span>
               </button>
             </div>
+
           </div>
+
         </div>
       )}
 
-      {/* 2. Brand Settings Modal (reordering) */}
+      {/* Brand Settings Modal (reordering) */}
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-[#071437]/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-fadeIn">
-          <div className="bg-white p-7 rounded-3xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto border border-slate-100 relative">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-fadeIn">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto border border-slate-100/60 relative">
             <button
               onClick={() => setShowSettingsModal(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold z-10"
@@ -677,8 +787,8 @@ export default function DailyMilkCollection() {
               ✕
             </button>
 
-            <h2 className="text-xl font-black mb-1 text-[#071437] tracking-tight">Set Farm Display Order</h2>
-            <p className="text-xs text-slate-400 font-bold mb-6 uppercase tracking-wider">
+            <h2 className="text-base font-black mb-1 text-slate-900 tracking-tight">Set Farm Display Order</h2>
+            <p className="text-[10px] text-slate-400 font-extrabold mb-6 uppercase tracking-wider">
               Sort how farms appear in your lists
             </p>
 
@@ -686,17 +796,17 @@ export default function DailyMilkCollection() {
               {tempFarmsOrder.map((farm, index) => (
                 <div
                   key={farm._id || farm.id}
-                  className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-slate-200 transition-all"
+                  className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl hover:border-slate-300 transition-all duration-200"
                 >
-                  <span className="font-bold text-sm text-[#071437] flex items-center gap-2">
+                  <span className="font-bold text-xs text-slate-800 flex items-center gap-2">
                     🏡 {farm.name}
                   </span>
                   
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1">
                     <button
                       onClick={() => moveFarm(index, -1)}
                       disabled={index === 0}
-                      className="w-8 h-8 flex items-center justify-center border border-slate-200 hover:border-[#D1867D] hover:text-[#D1867D] rounded-xl bg-white text-slate-500 disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-500 font-black transition-all"
+                      className="w-8 h-8 flex items-center justify-center border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 rounded-xl bg-white text-slate-500 disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-500 font-black transition-all text-xs"
                       title="Move Up"
                     >
                       ▲
@@ -704,7 +814,7 @@ export default function DailyMilkCollection() {
                     <button
                       onClick={() => moveFarm(index, 1)}
                       disabled={index === tempFarmsOrder.length - 1}
-                      className="w-8 h-8 flex items-center justify-center border border-slate-200 hover:border-[#D1867D] hover:text-[#D1867D] rounded-xl bg-white text-slate-500 disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-500 font-black transition-all"
+                      className="w-8 h-8 flex items-center justify-center border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 rounded-xl bg-white text-slate-500 disabled:opacity-30 disabled:hover:border-slate-200 disabled:hover:text-slate-500 font-black transition-all text-xs"
                       title="Move Down"
                     >
                       ▼
@@ -717,13 +827,13 @@ export default function DailyMilkCollection() {
             <div className="flex gap-3">
               <button
                 onClick={saveFarmsOrder}
-                className="flex-1 py-3 bg-[#16223F] hover:bg-[#2a3f75] text-white font-bold rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all text-xs"
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-300 text-xs"
               >
                 Save Display Order
               </button>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="flex-1 bg-slate-100 text-slate-600 hover:bg-slate-200 py-3 rounded-2xl font-bold shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all border border-slate-200 text-xs"
+                className="flex-1 bg-slate-100 text-slate-600 hover:bg-slate-200 py-3 rounded-xl font-bold shadow-sm active:scale-[0.98] transition-all duration-300 border border-slate-200 text-xs"
               >
                 Cancel
               </button>

@@ -194,8 +194,8 @@ const LivestockTagInput = ({
       setValidationState('invalid');
       setValidationMsg(msg);
       onValidation?.(false, msg);
-    } else if (match.status !== 'ACTIVE') {
-      const msg = `Animal status is "${match.status}" — only ACTIVE animals are permitted.`;
+    } else if (['SOLD', 'DECEASED', 'DEAD'].includes(match.status)) {
+      const msg = `Animal status is "${match.status}" — inactive animals are not permitted.`;
       setValidationState('invalid');
       setValidationMsg(msg);
       onValidation?.(false, msg);
@@ -306,7 +306,7 @@ const LivestockTagInput = ({
               key={animal.tag_id}
               onMouseDown={(e) => { e.preventDefault(); handleSelect(animal); }}
               className={`px-4 py-2.5 cursor-pointer flex items-center justify-between gap-3 hover:bg-[#f0f4f8] transition-colors border-b border-slate-50 last:border-b-0 ${
-                animal.status !== 'ACTIVE' ? 'opacity-50' : ''
+                ['SOLD', 'DECEASED', 'DEAD'].includes(animal.status) ? 'opacity-50 pointer-events-none' : ''
               }`}
             >
               <div className="flex flex-col min-w-0">
@@ -318,7 +318,7 @@ const LivestockTagInput = ({
                 </span>
               </div>
               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border flex-shrink-0 ${
-                animal.status === 'ACTIVE'
+                !['SOLD', 'DECEASED', 'DEAD'].includes(animal.status)
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-slate-100 text-slate-500 border-slate-200'
               }`}>
