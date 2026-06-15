@@ -45,7 +45,7 @@ const HealthManagementPg = () => {
     try {
       const [treatmentData, vaccinationData, medicineData] = await Promise.all([
         api.treatments.getAll(),
-        api.health.vaccinations.getAll(),
+        api.health.vaccines.getAll(),
         api.medicines.getAll(),
       ]);
       setTreatments(treatmentData || []);
@@ -133,21 +133,17 @@ const HealthManagementPg = () => {
     setIsLoadingForm(true);
     try {
       const payload = {
-        tag_id: "GENERAL",
-        tagId: "GENERAL",
         vaccinationName: vaccineFormData.vaccinationName.trim(),
         batchNo: vaccineFormData.batchNo.trim(),
         manufactureDate: vaccineFormData.manufactureDate || null,
         expiryDate: vaccineFormData.expiryDate || null,
-        treatmentOrStatus: "Completed",
-        remarks: "",
       };
 
       if (vaccineFormData.id) {
-        await api.health.vaccinations.update(vaccineFormData.id, payload);
+        await api.health.vaccines.update(vaccineFormData.id, payload);
         swalSuccess("Success", "Vaccine updated successfully");
       } else {
-        await api.health.vaccinations.create(payload);
+        await api.health.vaccines.create(payload);
         swalSuccess("Success", "Vaccine added successfully");
       }
       setShowForm(false);
@@ -251,7 +247,7 @@ const HealthManagementPg = () => {
     if (!confirmed) return;
 
     try {
-      await api.health.vaccinations.delete(id);
+      await api.health.vaccines.delete(id);
       swalSuccess("Deleted", "Vaccine removed successfully");
       fetchData();
     } catch (err) {

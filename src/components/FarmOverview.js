@@ -468,47 +468,34 @@ export default function FarmOverview({ farmCode }) {
             <p className="text-gray-400 font-bold">No sold or deceased animals found for this farm.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {inactiveAnimals.map((animal) => (
-              <div 
-                key={animal._id || animal.id} 
-                className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-3.5 relative overflow-hidden"
-              >
-                {/* Decorative status accent bar */}
-                <div className={`absolute top-0 left-0 right-0 h-1.5 ${
-                  animal.status === 'SOLD' ? 'bg-amber-400' : 'bg-red-400'
-                }`} />
-
-                <div className="flex justify-between items-start mt-1.5">
-                  <span className="font-mono font-black text-lg text-[#16223F]">
-                    {animal.tag_id || animal.tag || '-'}
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black border uppercase tracking-widest leading-none ${
-                    animal.status === 'SOLD' 
-                      ? 'text-amber-700 bg-amber-50 border-amber-200/50' 
-                      : 'text-red-700 bg-red-50 border-red-200/50'
-                  }`}>
-                    {animal.status}
-                  </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {/* SOLD CARD */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                  💰
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-slate-50">
-                  <div>
-                    <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Animal Type</p>
-                    <p className="font-extrabold text-[#16223F]">{animal.animalType || animal.cattleType || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-0.5">Breed</p>
-                    <p className="font-extrabold text-[#16223F]">{animal.breed || '-'}</p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50/70 p-3 rounded-xl flex items-center justify-between text-xs mt-1">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Last Known Location</span>
-                  <span className="font-black text-[#16223F]">{animal.shed || animal.shedId ? `Shed ${animal.shed || animal.shedId}` : '-'}</span>
-                </div>
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-amber-600 bg-amber-100/50 border border-amber-200/50">SOLD</span>
               </div>
-            ))}
+              <h3 className="text-3xl font-black text-[#16223F] tracking-tight">
+                {inactiveAnimals.filter(a => a.status === 'SOLD').length}
+              </h3>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Sold Animals</p>
+            </div>
+
+            {/* DECEASED CARD */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                  🪦
+                </div>
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-rose-600 bg-rose-100/50 border border-rose-200/50">DECEASED</span>
+              </div>
+              <h3 className="text-3xl font-black text-[#16223F] tracking-tight">
+                {inactiveAnimals.filter(a => a.status === 'DECEASED' || a.status === 'DEAD').length}
+              </h3>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Deceased / Dead</p>
+            </div>
           </div>
         )}
       </div>

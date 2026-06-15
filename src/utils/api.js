@@ -27,6 +27,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/health/treatments':            ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
   '/api/treatments':                   ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
   '/api/health/vaccinations':          ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/health/vaccines':              ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
   '/api/inventory/medicines':          ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
   '/api/inventory/feed':               ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
   '/api/operations/grass-collection':  ['GRASS', 'INCHARGE', 'FARM_ADMIN'],
@@ -367,6 +368,12 @@ export const api = {
       create:            (data)     => apiRequest('/api/health/vaccinations', 'POST', data),
       update:            (id, data) => apiRequest(`/api/health/vaccinations/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/health/vaccinations/${id}`, 'DELETE'),
+    },
+    vaccines: {
+      getAll:            ()         => apiRequest('/api/health/vaccines'),
+      create:            (data)     => apiRequest('/api/health/vaccines', 'POST', data),
+      update:            (id, data) => apiRequest(`/api/health/vaccines/${id}`, 'PUT', data),
+      delete:            (id)       => apiRequest(`/api/health/vaccines/${id}`, 'DELETE'),
     },
   },
 

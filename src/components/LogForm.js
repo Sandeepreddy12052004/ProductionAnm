@@ -254,11 +254,10 @@
       const needsVaccines = (fields || []).some(f => f.name === 'vaccinationName');
       if (needsVaccines) {
         import('../utils/api').then(({ api }) => {
-          api.health.vaccinations.getAll().then(res => {
+          api.health.vaccines.getAll().then(res => {
             const raw = Array.isArray(res) ? res : (res?.data ?? []);
-            const templates = raw.filter(v => String(v.tag_id || v.tagId || '').toUpperCase() === 'GENERAL');
-            setVaccinesList(templates);
-          }).catch(err => console.error("Failed to load vaccine templates in LogForm:", err));
+            setVaccinesList(raw);
+          }).catch(err => console.error("Failed to load vaccines in LogForm:", err));
         });
       }
     }, [fields]);
@@ -581,7 +580,7 @@
 
       if (name === "vaccinationName" && value) {
         const matches = vaccinesList.filter(v => v.vaccinationName === value);
-        if (matches.length === 1) {
+        if (matches.length >= 1) {
           const match = matches[0];
           updated["batchNo"] = match.batchNo || "";
           if (match.manufactureDate) {
@@ -594,6 +593,25 @@
           updated["batchNo"] = "";
           updated["manufactureDate"] = "";
           updated["expiryDate"] = "";
+        }
+      }
+
+      if (name === "batchNo" && value) {
+        const matches = vaccinesList.filter(v => 
+          (!formData.vaccinationName || v.vaccinationName === formData.vaccinationName) &&
+          v.batchNo === value
+        );
+        if (matches.length >= 1) {
+          const match = matches[0];
+          if (!formData.vaccinationName) {
+            updated["vaccinationName"] = match.vaccinationName || "";
+          }
+          if (match.manufactureDate) {
+            updated["manufactureDate"] = new Date(match.manufactureDate).toISOString().split('T')[0];
+          }
+          if (match.expiryDate) {
+            updated["expiryDate"] = new Date(match.expiryDate).toISOString().split('T')[0];
+          }
         }
       }
 
