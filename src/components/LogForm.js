@@ -33,6 +33,9 @@
     const [livestockList, setLivestockList] = useState([]);
 
     const isFieldRequired = (field) => {
+      if (field.name === "calvingStatus") {
+        return formData["pregnancyStatus"] === "Positive";
+      }
       if (field.optional) return false;
       if (field.name === "breedType") {
         return !!formData["actualCalvingDate"];

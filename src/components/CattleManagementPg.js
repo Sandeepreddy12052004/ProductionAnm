@@ -332,7 +332,7 @@ export default function CattleManagementPg({
                 Milking
               </p>
               <h2 className="text-3xl font-black text-[#16223F] mt-1">
-                {cattleData.filter((a) => Number(a.milk) > 0).length}
+                {cattleData.filter((a) => { const s = String(a.status || '').toUpperCase(); return Number(a.milk) > 0 && s !== 'SOLD' && s !== 'DECEASED' && s !== 'DEAD'; }).length}
               </h2>
             </div>
           </div>

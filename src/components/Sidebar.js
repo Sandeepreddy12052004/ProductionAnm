@@ -509,7 +509,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
       className={`block p-2 rounded border-l-4 ${
         isLinkActive("/feed-inventory") ? activeStyle : normalStyle
       }`}>
-      🌾 Feed Inventory
+      📦 Feed Inventory
     </Link>
   </li>
 )}
