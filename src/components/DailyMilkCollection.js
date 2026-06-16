@@ -172,7 +172,7 @@ export default function DailyMilkCollection() {
   // Reset page when active shed or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeShedId, searchQuery]);
+  }, [activeShedId, filters]);
 
   // 3. Populate existing quantities when collections change
   useEffect(() => {
@@ -577,7 +577,7 @@ export default function DailyMilkCollection() {
                       key={shedKey}
                       onClick={() => {
                         setActiveShedId(shedKey);
-                        setSearchQuery("");
+                        setFilters([{ field: "tag", value: "" }]);
                       }}
                       className={`h-12 px-5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2.5 border active:scale-[0.98] ${
                         activeShedId === shedKey
