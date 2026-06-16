@@ -12,6 +12,36 @@ const HealthManagementPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState([{ field: "symptoms", value: "" }]);
+
+  const treatmentFields = [
+    { name: "symptoms", label: "Symptoms", type: "text" },
+    { name: "diagnosis", label: "Diagnosis", type: "text" },
+    { name: "treatment", label: "Treatment (Medicines)", type: "text" },
+    { name: "startDate", label: "Start Date", type: "date" },
+    { name: "endDate", label: "End Date", type: "date" }
+  ];
+
+  const vaccinationFields = [
+    { name: "vaccinationName", label: "Vaccine Name", type: "text" },
+    { name: "batchNo", label: "Batch Number", type: "text" },
+    { name: "manufactureDate", label: "Manufacture Date", type: "date" },
+    { name: "expiryDate", label: "Expiry Date", type: "date" }
+  ];
+
+  const medicineFields = [
+    { name: "name", label: "Medicine Name", type: "text" },
+    { name: "type", label: "Type", type: "select", options: ['Injection', 'Tablet', 'Liquid', 'Powder', 'Ointment', 'Other'] },
+    { name: "description", label: "Description", type: "text" },
+    { name: "status", label: "Status", type: "select", options: [{ label: 'Active', value: 'true' }, { label: 'Inactive', value: 'false' }] }
+  ];
+
+  const activeFields = activeTab === "treatments"
+    ? treatmentFields
+    : activeTab === "vaccinations"
+    ? vaccinationFields
+    : medicineFields;
 
   // Treatment Form state
   const [treatmentFormData, setTreatmentFormData] = useState({
@@ -270,29 +300,141 @@ const HealthManagementPg = () => {
     }
   };
 
+  const evaluateCompoundFilters = (item, fieldsConfig) => {
+    const grouped = {};
+    for (const f of filters) {
+      const fieldConfig = fieldsConfig.find(field => field.name === f.field);
+      if (!fieldConfig) continue;
+
+      const isDate = fieldConfig.type === "date";
+      const isRange = fieldConfig.type === "number";
+      const hasValue = isDate || isRange 
+        ? (f.from || f.to) 
+        : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
+      if (!hasValue) continue;
+
+      if (!grouped[f.field]) grouped[f.field] = [];
+      grouped[f.field].push(f);
+    }
+
+    for (const fieldName in grouped) {
+      const fieldFilters = grouped[fieldName];
+      let matchAnyForField = false;
+
+      for (const f of fieldFilters) {
+        let currentMatch = true;
+        const fieldConfig = fieldsConfig.find(field => field.name === f.field);
+
+        if (fieldConfig.type === "date") {
+          const val = item[f.field];
+          if (!val) {
+            currentMatch = false;
+          } else {
+            const currentVal = new Date(val);
+            if (isNaN(currentVal.getTime())) {
+              currentMatch = false;
+            } else {
+              currentVal.setHours(0, 0, 0, 0);
+
+              if (f.from) {
+                const fromDate = new Date(f.from);
+                if (!isNaN(fromDate.getTime())) {
+                  fromDate.setHours(0, 0, 0, 0);
+                  if (currentVal < fromDate) currentMatch = false;
+                }
+              }
+
+              if (f.to) {
+                const toDate = new Date(f.to);
+                if (!isNaN(toDate.getTime())) {
+                  toDate.setHours(0, 0, 0, 0);
+                  if (currentVal > toDate) currentMatch = false;
+                }
+              }
+            }
+          }
+        }
+        else if (fieldConfig.type === "number") {
+          const valStr = String(item[f.field] || "").trim();
+          const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+          if (isNaN(valNum)) {
+            currentMatch = false;
+          } else {
+            if (f.from) {
+              const fromNum = parseFloat(f.from);
+              if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+            }
+            if (f.to) {
+              const toNum = parseFloat(f.to);
+              if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+            }
+          }
+        }
+        else if (fieldConfig.type === "select") {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const recordVal = String(item[f.field] !== undefined && item[f.field] !== null ? item[f.field] : "").toLowerCase();
+            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            if (!optionMatched) currentMatch = false;
+          }
+        }
+        else {
+          if (f.value) {
+            const textMatched = String(item[f.field] || "")
+              .toLowerCase()
+              .includes(String(f.value).toLowerCase());
+            if (!textMatched) currentMatch = false;
+          }
+        }
+
+        if (currentMatch) {
+          matchAnyForField = true;
+          break;
+        }
+      }
+
+      if (!matchAnyForField) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const filteredTreatments = treatments.filter((t) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (t.symptoms || "").toLowerCase().includes(query) ||
-      (t.diagnosis || "").toLowerCase().includes(query) ||
-      (t.treatment || "").toLowerCase().includes(query)
-    );
+    // Apply search query (global text check)
+    const q = searchQuery.toLowerCase();
+    const matchesQuery = !q ||
+      (t.symptoms || "").toLowerCase().includes(q) ||
+      (t.diagnosis || "").toLowerCase().includes(q) ||
+      (t.treatment || "").toLowerCase().includes(q);
+
+    if (!matchesQuery) return false;
+
+    // Apply dynamic fields compound filter
+    return evaluateCompoundFilters(t, treatmentFields);
   });
 
   const filteredVaccinations = vaccinations.filter((v) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (v.vaccinationName || "").toLowerCase().includes(query) ||
-      (v.batchNo || "").toLowerCase().includes(query)
-    );
+    const q = searchQuery.toLowerCase();
+    const matchesQuery = !q ||
+      (v.vaccinationName || "").toLowerCase().includes(q) ||
+      (v.batchNo || "").toLowerCase().includes(q);
+
+    if (!matchesQuery) return false;
+
+    return evaluateCompoundFilters(v, vaccinationFields);
   });
 
   const filteredMedicines = medicines.filter((m) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (m.name || "").toLowerCase().includes(query) ||
-      (m.description || "").toLowerCase().includes(query)
-    );
+    const q = searchQuery.toLowerCase();
+    const matchesQuery = !q ||
+      (m.name || "").toLowerCase().includes(q) ||
+      (m.description || "").toLowerCase().includes(q);
+
+    if (!matchesQuery) return false;
+
+    return evaluateCompoundFilters(m, medicineFields);
   });
 
   return (
@@ -372,6 +514,7 @@ const HealthManagementPg = () => {
           onClick={() => {
             setActiveTab("treatments");
             setSearchQuery("");
+            setFilters([{ field: "symptoms", value: "" }]);
           }}
           className={`pb-3 text-sm font-black transition-all ${
             activeTab === "treatments"
@@ -385,6 +528,7 @@ const HealthManagementPg = () => {
           onClick={() => {
             setActiveTab("vaccinations");
             setSearchQuery("");
+            setFilters([{ field: "vaccinationName", value: "" }]);
           }}
           className={`pb-3 text-sm font-black transition-all ${
             activeTab === "vaccinations"
@@ -398,6 +542,7 @@ const HealthManagementPg = () => {
           onClick={() => {
             setActiveTab("medicines");
             setSearchQuery("");
+            setFilters([{ field: "name", value: "" }]);
           }}
           className={`pb-3 text-sm font-black transition-all ${
             activeTab === "medicines"
@@ -410,7 +555,7 @@ const HealthManagementPg = () => {
       </div>
 
       {/* SEARCH AND FILTERS */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-col sm:flex-row gap-4 items-center">
         <input
           type="text"
           placeholder={
@@ -422,8 +567,23 @@ const HealthManagementPg = () => {
           }
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+          className="flex-1 h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
         />
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`px-4 h-11 rounded-xl font-bold border transition-all flex items-center justify-center gap-2 text-xs
+            ${showFilters 
+              ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' 
+              : 'bg-white border-slate-200 text-[#16223F] hover:bg-gray-50'}
+          `}
+        >
+          🔍 Filters
+          {filters.filter(f => f.value || f.from || f.to).length > 0 && (
+            <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              {filters.filter(f => f.value || f.from || f.to).length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* CONTENT TABLE */}
@@ -855,6 +1015,199 @@ const HealthManagementPg = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+      {/* FILTER MODAL OVERLAY */}
+      {showFilters && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto p-5 text-black">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="text-gray-400 hover:text-gray-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {filters.map((f, index) => (
+                <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <select
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm font-semibold text-[#16223F] bg-white outline-none"
+                    value={f.field}
+                    onChange={(e) => {
+                      const updated = [...filters];
+                      updated[index].field = e.target.value;
+                      updated[index].value = "";
+                      updated[index].from = "";
+                      updated[index].to = "";
+                      setFilters(updated);
+                    }}
+                  >
+                    {activeFields.map(field => (
+                      <option key={field.name} value={field.name}>
+                        {field.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {(() => {
+                    const fieldConfig = activeFields.find(field => field.name === f.field);
+                    if (!fieldConfig) return null;
+
+                    if (fieldConfig.type === "date") {
+                      return (
+                        <div className="flex gap-2">
+                          <input
+                            type="date"
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-full bg-white text-[#16223F] font-semibold"
+                            value={f.from || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].from = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <input
+                            type="date"
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-full bg-white text-[#16223F] font-semibold"
+                            value={f.to || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].to = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+
+                    if (fieldConfig.type === "number") {
+                      return (
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min..."
+                            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold w-full"
+                            value={f.from || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].from = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max..."
+                            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold w-full"
+                            value={f.to || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].to = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+
+                    if (fieldConfig.type === "select") {
+                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                      const options = fieldConfig.options || [];
+
+                      return (
+                        <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                          {options.map((opt) => {
+                            const valStr = typeof opt === 'object' ? opt.value : opt;
+                            const labelStr = typeof opt === 'object' ? opt.label : opt;
+                            const isChecked = currentSelected.includes(valStr);
+
+                            return (
+                              <label key={String(valStr)} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    let nextVal;
+                                    if (e.target.checked) {
+                                      nextVal = [...currentSelected, valStr];
+                                    } else {
+                                      nextVal = currentSelected.filter((v) => v !== valStr);
+                                    }
+                                    updated[index].value = nextVal;
+                                    setFilters(updated);
+                                  }}
+                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                />
+                                {labelStr}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <input
+                        type="text"
+                        placeholder="Enter value..."
+                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none"
+                        value={f.value || ""}
+                        onChange={(e) => {
+                          const updated = [...filters];
+                          updated[index].value = e.target.value;
+                          setFilters(updated);
+                        }}
+                      />
+                    );
+                  })()}
+
+                  <button
+                    onClick={() => {
+                      const updated = filters.filter((_, i) => i !== index);
+                      const defaultField = activeFields[0]?.name || "";
+                      setFilters(updated.length ? updated : [{ field: defaultField, value: "" }]);
+                    }}
+                    className="text-red-500 hover:text-red-700 text-xs font-bold self-end mt-1 cursor-pointer transition-colors"
+                  >
+                    Remove Filter
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between mt-6 gap-3">
+              <button
+                onClick={() => {
+                  const defaultField = activeFields[0]?.name || "";
+                  setFilters([...filters, { field: defaultField, value: "" }]);
+                }}
+                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2.5 rounded-xl font-bold text-sm hover:bg-[#D1867D]/20 transition-colors"
+              >
+                + Add Filter
+              </button>
+
+              <button
+                onClick={() => {
+                  const defaultField = activeFields[0]?.name || "";
+                  setFilters([{ field: defaultField, value: "" }]);
+                }}
+                className="flex-1 bg-red-50 text-red-600 py-2.5 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowFilters(false)}
+              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-3 rounded-xl font-bold text-sm transition-colors shadow-md"
+            >
+              Apply Filters
+            </button>
           </div>
         </div>
       )}

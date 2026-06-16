@@ -29,7 +29,18 @@ export default function DailyMilkCollection() {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [session, setSession] = useState("MORNING");
   const [activeShedId, setActiveShedId] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
+
+  const filterFields = [
+    { name: "tag", label: "Tag ID", type: "text" },
+    { name: "cattleType", label: "Cattle Type", type: "select", options: ["COW", "BUFFALO"] },
+    { name: "breed", label: "Breed", type: "text" }
+  ];
+
+  const activeFilterCount = filters.filter(
+    f => Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== ''
+  ).length;
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -263,12 +274,69 @@ export default function DailyMilkCollection() {
     );
   }, [activeShedId, animals, selectedFarmId]);
 
-  // Filtered animals inside active shed based on inline search query
+  // Filtered animals inside active shed based on overlay filters
   const searchedAnimals = useMemo(() => {
-    const query = searchQuery.trim().toUpperCase();
-    if (!query) return activeShedAnimals;
-    return activeShedAnimals.filter((a) => String(a.tag || a.tag_id).toUpperCase().includes(query));
-  }, [activeShedAnimals, searchQuery]);
+    // Group active filters by field name
+    const groupedFilters = {};
+    for (const f of filters) {
+      const fieldConfig = filterFields.find(field => field.name === f.field);
+      const hasValue = fieldConfig?.type === "select"
+        ? (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""))
+        : (f.value && String(f.value).trim() !== "");
+      if (!hasValue) continue;
+
+      if (!groupedFilters[f.field]) {
+        groupedFilters[f.field] = [];
+      }
+      groupedFilters[f.field].push(f);
+    }
+
+    if (Object.keys(groupedFilters).length === 0) return activeShedAnimals;
+
+    return activeShedAnimals.filter((a) => {
+      let isMatched = true;
+
+      for (const fieldName in groupedFilters) {
+        const fieldFilters = groupedFilters[fieldName];
+        let matchAnyForField = false;
+
+        for (const f of fieldFilters) {
+          let currentMatch = true;
+
+          if (f.field === "tag") {
+            const tagStr = String(a.tag || a.tag_id || "");
+            currentMatch = tagStr.toUpperCase().includes(String(f.value).toUpperCase());
+          }
+          else if (f.field === "cattleType") {
+            const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+            if (selectedValues.length > 0) {
+              const recVal = String(a.cattleType || a.animalType || "").toUpperCase();
+              const matched = selectedValues.some(v => String(v).toUpperCase() === recVal);
+              if (!matched) currentMatch = false;
+            }
+          }
+          else {
+            if (f.value) {
+              currentMatch = String(a[f.field] || "")
+                .toLowerCase()
+                .includes(String(f.value).toLowerCase());
+            }
+          }
+
+          if (currentMatch) {
+            matchAnyForField = true;
+            break;
+          }
+        }
+
+        if (!matchAnyForField) {
+          isMatched = false;
+          break;
+        }
+      }
+      return isMatched;
+    });
+  }, [activeShedAnimals, filters]);
 
   // Paginated animals slice for active shed
   const paginatedAnimals = useMemo(() => {
@@ -549,17 +617,138 @@ export default function DailyMilkCollection() {
                       </p>
                     </div>
 
-                    {/* Inline Tag Search field */}
-                    <div className="w-full md:max-w-[240px] relative">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Filter Tag ID..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-10 rounded-xl border border-slate-200 pl-10 pr-4 text-xs font-bold text-slate-800 bg-white/50 focus:bg-white focus:border-emerald-500 outline-none transition-all duration-200"
-                      />
+                    {/* Dynamic Filters Overlay button */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`relative px-4 py-2 rounded-xl font-bold border text-xs transition-all duration-200 hover:-translate-y-px hover:shadow-md cursor-pointer flex items-center gap-2 h-10 ${
+                          showFilters ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-white border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        🔍 Filters
+                        {activeFilterCount > 0 && (
+                          <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                            {activeFilterCount}
+                          </span>
+                        )}
+                      </button>
                     </div>
+
+                    {/* FILTER OVERLAY MODAL */}
+                    {showFilters && (
+                      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+                        <div className="bg-white w-full max-w-md rounded-[30px] shadow-2xl max-h-[85vh] overflow-y-auto p-6 text-left">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
+                            <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-black text-xl font-bold cursor-pointer">✕</button>
+                          </div>
+                          <div className="space-y-4">
+                            {filters.map((f, index) => (
+                              <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <select
+                                  className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
+                                  value={f.field}
+                                  onChange={e => {
+                                    const updated = [...filters];
+                                    updated[index] = { field: e.target.value, value: '' };
+                                    setFilters(updated);
+                                  }}
+                                >
+                                  {filterFields.map(field => (
+                                    <option key={field.name} value={field.name}>{field.label}</option>
+                                  ))}
+                                </select>
+
+                                {(() => {
+                                  const fieldConfig = filterFields.find(field => field.name === f.field);
+
+                                  // 📋 SELECT FIELD (MULTI-SELECT CHECKBOXES)
+                                  if (fieldConfig?.type === "select") {
+                                    const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                                    const options = fieldConfig.options || [];
+
+                                    return (
+                                      <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                                        {options.map((opt) => {
+                                          const valStr = typeof opt === 'object' ? opt.value : opt;
+                                          const labelStr = typeof opt === 'object' ? opt.label : opt;
+                                          const isChecked = currentSelected.includes(valStr);
+
+                                          return (
+                                            <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                              <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => {
+                                                  const updated = [...filters];
+                                                  let nextVal;
+                                                  if (e.target.checked) {
+                                                    nextVal = [...currentSelected, valStr];
+                                                  } else {
+                                                    nextVal = currentSelected.filter((v) => v !== valStr);
+                                                  }
+                                                  updated[index].value = nextVal;
+                                                  setFilters(updated);
+                                                }}
+                                                className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                              />
+                                              {labelStr}
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  }
+
+                                  // ✏️ DEFAULT TEXT
+                                  return (
+                                    <input
+                                      type="text"
+                                      placeholder="Enter value..."
+                                      className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
+                                      value={f.value || ""}
+                                      onChange={(e) => {
+                                        const updated = [...filters];
+                                        updated[index].value = e.target.value;
+                                        setFilters(updated);
+                                      }}
+                                    />
+                                  );
+                                })()}
+
+                                <button
+                                  onClick={() => {
+                                    const updated = filters.filter((_, i) => i !== index);
+                                    setFilters(updated.length ? updated : [{ field: 'tag', value: '' }]);
+                                  }}
+                                  className="text-red-500 hover:text-red-700 text-xs font-bold self-end mt-1 cursor-pointer transition-colors"
+                                >
+                                  Remove Filter
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between mt-6 gap-3">
+                            <button
+                              onClick={() => setFilters([...filters, { field: 'tag', value: '' }])}
+                              className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20 cursor-pointer"
+                            >
+                              + Add Filter
+                            </button>
+                            <button
+                              onClick={() => { setFilters([{ field: 'tag', value: '' }]); }}
+                              className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <button onClick={() => setShowFilters(false)}
+                            className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2.5 rounded-lg font-bold cursor-pointer">
+                            Apply Filters
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Active Shed Stat Ribbon */}

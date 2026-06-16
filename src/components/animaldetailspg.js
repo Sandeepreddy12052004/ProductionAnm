@@ -293,46 +293,108 @@ if (!moduleConfig) {
         if (pregStatus !== 'NEGATIVE') return false;
       }
     }
-    return filters.every(f => {
+    // Group active filters by field name
+    const groupedFilters = {};
+    for (const f of filters) {
+      const fieldConfig = currentFields.find(field => field.name === f.field);
+      const isDate = fieldConfig?.type === "date" || f.field === "entryDate" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob";
+      const isRange = fieldConfig?.type === "number";
+      const hasValue = isDate || isRange ? (f.from || f.to) : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
+      if (!hasValue) continue;
 
-    // 📅 DATE RANGE FILTER
-    if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
-      if (!f.from && !f.to) return true;
-
-      const logDate = log[f.field] || (f.field === 'entryDate' ? log.date : null);
-      if (!logDate) return false;
-
-      const current = parseDateString(logDate);
-      if (!current || isNaN(current.getTime())) return false;
-      current.setHours(0, 0, 0, 0);
-
-      if (f.from) {
-        const fromDate = parseDateString(f.from);
-        if (fromDate) {
-          fromDate.setHours(0, 0, 0, 0);
-          if (current < fromDate) return false;
-        }
+      if (!groupedFilters[f.field]) {
+        groupedFilters[f.field] = [];
       }
-
-      if (f.to) {
-        const toDate = parseDateString(f.to);
-        if (toDate) {
-          toDate.setHours(0, 0, 0, 0);
-          if (current > toDate) return false;
-        }
-      }
-
-      return true;
+      groupedFilters[f.field].push(f);
     }
 
-    // 🔁 NORMAL FILTER
-    if (!f.value) return true;
+    let isMatched = true;
+    for (const fieldName in groupedFilters) {
+      const fieldFilters = groupedFilters[fieldName];
+      let matchAnyForField = false;
 
-    return String(log[f.field] || "")
-      .toLowerCase()
-      .includes(f.value.toLowerCase());
+      for (const f of fieldFilters) {
+        let currentMatch = true;
+        const fieldConfig = currentFields.find(field => field.name === f.field);
+
+        // 📅 DATE RANGE FILTER
+        if (fieldConfig?.type === "date" || f.field === "entryDate" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
+          const logDate = log[f.field] || (f.field === 'entryDate' ? log.date : null);
+          if (!logDate) {
+            currentMatch = false;
+          } else {
+            const current = parseDateString(logDate);
+            if (!current || isNaN(current.getTime())) {
+              currentMatch = false;
+            } else {
+              current.setHours(0, 0, 0, 0);
+
+              if (f.from) {
+                const fromDate = parseDateString(f.from);
+                if (fromDate) {
+                  fromDate.setHours(0, 0, 0, 0);
+                  if (current < fromDate) currentMatch = false;
+                }
+              }
+
+              if (f.to) {
+                const toDate = parseDateString(f.to);
+                if (toDate) {
+                  toDate.setHours(0, 0, 0, 0);
+                  if (current > toDate) currentMatch = false;
+                }
+              }
+            }
+          }
+        }
+        // 🔢 RANGE FILTER FOR NUMBER FIELDS
+        else if (fieldConfig?.type === "number") {
+          const valStr = String(log[f.field] || "").trim();
+          const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+          if (isNaN(valNum)) {
+            currentMatch = false;
+          } else {
+            if (f.from) {
+              const fromNum = parseFloat(f.from);
+              if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+            }
+            if (f.to) {
+              const toNum = parseFloat(f.to);
+              if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+            }
+          }
+        }
+        // 🔁 MULTI-SELECT CHECKBOX MATCH
+        else if (fieldConfig?.type === "select") {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const recordVal = String(log[f.field] || "").toLowerCase();
+            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            if (!optionMatched) currentMatch = false;
+          }
+        }
+        else {
+          // 🔁 NORMAL FILTER
+          if (f.value) {
+            currentMatch = String(log[f.field] || "")
+              .toLowerCase()
+              .includes(f.value.toLowerCase());
+          }
+        }
+
+        if (currentMatch) {
+          matchAnyForField = true;
+          break; // Matches at least one filter for this field
+        }
+      }
+
+      if (!matchAnyForField) {
+        isMatched = false;
+        break; // Fails this field, so fail the whole check
+      }
+    }
+    return isMatched;
   });
-});
 
   const totalItems = filteredLogs.length;
 
@@ -1194,9 +1256,13 @@ const getShedFromLivestock = (tagValue) => {
                     }}
                   >
                     <option value="">Select...</option>
-                    {fieldConfig.options.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
+                    {fieldConfig.options.map(opt => {
+                      const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
+                      const label = typeof opt === 'object' && opt !== null ? opt.label : opt;
+                      return (
+                        <option key={String(val)} value={val}>{label}</option>
+                      );
+                    })}
                   </select>
                 );
               }

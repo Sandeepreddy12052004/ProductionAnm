@@ -244,13 +244,39 @@ const UserManagementPg = ({ moduleConfig }) => {
   const [viewMode, setViewMode] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
 
-  const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({
-    farm: '',
-    department: '',
-    role: '',
-    status: ''
-  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState([{ field: "name", value: "" }]);
+
+  const filterFields = [
+    { name: 'name', label: 'Name', type: 'text' },
+    { name: 'userId', label: 'User ID', type: 'text' },
+    { name: 'email', label: 'Email', type: 'text' },
+    { name: 'mobile', label: 'Mobile', type: 'text' },
+    { 
+      name: 'farmId', 
+      label: 'Farm', 
+      type: 'select', 
+      options: farmsData ? farmsData.filter(f => f.name !== 'ALL' && f.code !== 'ALL').map(f => ({ label: f.name || f.code, value: f._id || f.id })) : []
+    },
+    { 
+      name: 'department', 
+      label: 'Department', 
+      type: 'select', 
+      options: moduleConfig?.fields?.find(f => f.name === 'department')?.options || ['OFFICE', 'FARM', 'DAIRY', 'VET', 'ADMIN', 'SECURITY']
+    },
+    { 
+      name: 'role', 
+      label: 'Role', 
+      type: 'select', 
+      options: rolesList ? rolesList.map(r => ({ label: r.name, value: r.name })) : []
+    },
+    { 
+      name: 'status', 
+      label: 'Status', 
+      type: 'select', 
+      options: [{ label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }]
+    }
+  ];
 
   // Dynamically capture redirection query params to trigger auto-filled user creation
   useEffect(() => {
@@ -300,52 +326,107 @@ const UserManagementPg = ({ moduleConfig }) => {
     return user.farm || "-";
   };
 
+  // Group active filters by field name
+  const groupedFilters = {};
+  for (const f of filters) {
+    const fieldConfig = filterFields.find(field => field.name === f.field);
+    const hasValue = fieldConfig?.type === "select"
+      ? (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""))
+      : (f.value && String(f.value).trim() !== "");
+    if (!hasValue) continue;
+
+    if (!groupedFilters[f.field]) {
+      groupedFilters[f.field] = [];
+    }
+    groupedFilters[f.field].push(f);
+  }
+
   // FILTER LOGIC
   const safeUsers = Array.isArray(users) ? users : [];
   const filteredUsers = safeUsers.filter(user => {
+    let isMatched = true;
 
-    const searchLower = search.toLowerCase();
-    const matchSearch = !searchLower ||
-      (user.name?.toLowerCase() || '').includes(searchLower) ||
-      (user.userId?.toLowerCase() || '').includes(searchLower);
+    for (const fieldName in groupedFilters) {
+      const fieldFilters = groupedFilters[fieldName];
+      let matchAnyForField = false;
 
-    const matchFarm = (() => {
-      if (!filters.farm) return true;
-      
-      const userFarmId = user.farmId && typeof user.farmId === 'object'
-        ? (user.farmId._id || user.farmId.id)
-        : user.farmId;
+      for (const f of fieldFilters) {
+        let currentMatch = true;
+        const fieldConfig = filterFields.find(field => field.name === f.field);
 
-      if (userFarmId && String(userFarmId) === String(filters.farm)) return true;
-
-      // Fallback matching by name/code
-      if (farmsData) {
-        const selectedFarmObj = farmsData.find(f => f._id === filters.farm || f.id === filters.farm);
-        if (selectedFarmObj) {
-          const selectedName = selectedFarmObj.name || selectedFarmObj.code;
-          const userFarmName = getFarmName(user);
-          if (selectedName && userFarmName && selectedName.toLowerCase() === userFarmName.toLowerCase()) {
-            return true;
+        if (f.field === 'farmId') {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const userFarmId = user.farmId && typeof user.farmId === 'object'
+              ? (user.farmId._id || user.farmId.id)
+              : user.farmId;
+            
+            const matched = selectedValues.some(val => {
+              if (userFarmId && String(userFarmId) === String(val)) return true;
+              if (farmsData) {
+                const selectedFarmObj = farmsData.find(f => f._id === val || f.id === val);
+                if (selectedFarmObj) {
+                  const selectedName = selectedFarmObj.name || selectedFarmObj.code;
+                  const userFarmName = getFarmName(user);
+                  if (selectedName && userFarmName && selectedName.toLowerCase() === userFarmName.toLowerCase()) {
+                    return true;
+                  }
+                }
+              }
+              return false;
+            });
+            if (!matched) currentMatch = false;
           }
         }
+        else if (f.field === 'department') {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const userDeptName = user.department && typeof user.department === 'object'
+              ? user.department.name
+              : user.department;
+            const matched = selectedValues.some(val => String(userDeptName).toLowerCase() === String(val).toLowerCase());
+            if (!matched) currentMatch = false;
+          }
+        }
+        else if (f.field === 'role') {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const userRoleName = user.role && typeof user.role === 'object'
+              ? user.role.name
+              : user.role;
+            const matched = selectedValues.some(val => String(userRoleName).toLowerCase() === String(val).toLowerCase());
+            if (!matched) currentMatch = false;
+          }
+        }
+        else if (f.field === 'status') {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const userStatusStr = (user.status === false || user.status === 'Inactive' || user.status === 'INACTIVE') ? 'Inactive' : 'Active';
+            const matched = selectedValues.some(val => String(userStatusStr).toLowerCase() === String(val).toLowerCase());
+            if (!matched) currentMatch = false;
+          }
+        }
+        else {
+          // Normal text matching
+          if (f.value) {
+            currentMatch = String(user[f.field] || "")
+              .toLowerCase()
+              .includes(String(f.value).toLowerCase());
+          }
+        }
+
+        if (currentMatch) {
+          matchAnyForField = true;
+          break;
+        }
       }
-      return false;
-    })();
 
-    const userDeptName = user.department && typeof user.department === 'object'
-      ? user.department.name
-      : user.department;
-    const matchDept = !filters.department || String(userDeptName).toLowerCase() === String(filters.department).toLowerCase();
-
-    const userRoleName = user.role && typeof user.role === 'object'
-      ? user.role.name
-      : user.role;
-    const matchRole = !filters.role || String(userRoleName).toLowerCase() === String(filters.role).toLowerCase();
-    
-    const userStatusStr = (user.status === false || user.status === 'Inactive' || user.status === 'INACTIVE') ? 'Inactive' : 'Active';
-    const matchStatus = !filters.status || userStatusStr === filters.status;
-
-    return matchSearch && matchFarm && matchDept && matchRole && matchStatus;
+      if (!matchAnyForField) {
+        isMatched = false;
+        break;
+      }
+    }
+    return isMatched;
   });
 
   /**
@@ -554,71 +635,143 @@ const UserManagementPg = ({ moduleConfig }) => {
         </button>
       </div>
 
-      {/* FILTERS */}
-      <div className="flex flex-wrap gap-3 mb-6">
-
-        <input
-          placeholder="Search User ID / Name"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 w-60"
-        />
-
-        <select
-          value={filters.farm}
-          onChange={(e) => setFilters({ ...filters, farm: e.target.value })}
-          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
-        >
-          <option value="">All Farms</option>
-          {moduleConfig.fields.find(f => f.name === 'farmId')?.options?.filter(opt => {
-            if (typeof opt === 'object' && opt !== null) {
-              return opt.value !== 'ALL' && opt.label !== 'All Farms';
-            }
-            return opt !== 'All Farms';
-          }).map(opt => (
-            typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-
-        <select
-          value={filters.department}
-          onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
-        >
-          <option value="">All Departments</option>
-          {moduleConfig.fields.find(f => f.name === 'department')?.options?.map(opt => (
-            typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-
-        <select
-          value={filters.role}
-          onChange={(e) => setFilters({ ...filters, role: e.target.value })}
-          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] font-semibold focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 cursor-pointer"
-        >
-          <option value="">All Roles</option>
-          {rolesList && rolesList.length > 0 ? (
-            rolesList.map(r => (
-              <option key={r._id || r.id} value={r.name}>{r.name}</option>
-            ))
-          ) : (
-            moduleConfig.fields.find(f => f.name === 'role')?.options?.map(opt => (
-              typeof opt === 'object' ? <option key={opt.value} value={opt.value}>{opt.label}</option> : <option key={opt} value={opt}>{opt}</option>
-            ))
-          )}
-        </select>
-
-        <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-[#16223F] focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200"
-        >
-          <option value="">All Statuses</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-        </select>
-
+      {/* SEARCH AND FILTERS */}
+      <div className="flex-none flex flex-wrap gap-3 items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative px-4 py-2.5 rounded-xl font-bold border text-xs transition-all duration-200 hover:-translate-y-px hover:shadow-md cursor-pointer flex items-center gap-2 ${
+              showFilters ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' : 'bg-white border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            🔍 Filters
+            {filters.filter(f => Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '').length > 0 && (
+              <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {filters.filter(f => Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '').length}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          Registered Users: {filteredUsers.length}
+        </div>
       </div>
+
+      {/* FILTER OVERLAY MODAL */}
+      {showFilters && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="bg-white w-full max-w-md rounded-[30px] shadow-2xl max-h-[85vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
+              <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-black text-xl font-bold cursor-pointer">✕</button>
+            </div>
+            <div className="space-y-4">
+              {filters.map((f, index) => (
+                <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <select
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
+                    value={f.field}
+                    onChange={e => {
+                      const updated = [...filters];
+                      updated[index] = { field: e.target.value, value: '' };
+                      setFilters(updated);
+                    }}
+                  >
+                    {filterFields.map(field => (
+                      <option key={field.name} value={field.name}>{field.label}</option>
+                    ))}
+                  </select>
+
+                  {(() => {
+                    const fieldConfig = filterFields.find(field => field.name === f.field);
+
+                    // 📋 SELECT FIELD (MULTI-SELECT CHECKBOXES)
+                    if (fieldConfig?.type === "select") {
+                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                      const options = fieldConfig.options || [];
+
+                      return (
+                        <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                          {options.map((opt) => {
+                            const valStr = typeof opt === 'object' ? opt.value : opt;
+                            const labelStr = typeof opt === 'object' ? opt.label : opt;
+                            const isChecked = currentSelected.includes(valStr);
+
+                            return (
+                              <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    let nextVal;
+                                    if (e.target.checked) {
+                                      nextVal = [...currentSelected, valStr];
+                                    } else {
+                                      nextVal = currentSelected.filter((v) => v !== valStr);
+                                    }
+                                    updated[index].value = nextVal;
+                                    setFilters(updated);
+                                  }}
+                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                />
+                                {labelStr}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+
+                    // ✏️ DEFAULT TEXT
+                    return (
+                      <input
+                        type="text"
+                        placeholder="Enter value..."
+                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
+                        value={f.value || ""}
+                        onChange={(e) => {
+                          const updated = [...filters];
+                          updated[index].value = e.target.value;
+                          setFilters(updated);
+                        }}
+                      />
+                    );
+                  })()}
+
+                  <button
+                    onClick={() => {
+                      const updated = filters.filter((_, i) => i !== index);
+                      setFilters(updated.length ? updated : [{ field: 'name', value: '' }]);
+                    }}
+                    className="text-red-500 hover:text-red-700 text-xs font-bold self-end mt-1 cursor-pointer transition-colors"
+                  >
+                    Remove Filter
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-6 gap-3">
+              <button
+                onClick={() => setFilters([...filters, { field: 'name', value: '' }])}
+                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20 cursor-pointer"
+              >
+                + Add Filter
+              </button>
+              <button
+                onClick={() => { setFilters([{ field: 'name', value: '' }]); setCurrentPage(1); }}
+                className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+            <button onClick={() => setShowFilters(false)}
+              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2.5 rounded-lg font-bold cursor-pointer">
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TABLE WRAPPER */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">

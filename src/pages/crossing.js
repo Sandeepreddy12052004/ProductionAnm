@@ -84,6 +84,7 @@ export default function CrossingLogPage() {
       { name: 'estimatedCalvingDate', label: 'Estimated Calving Date', type: 'date' },
       { name: 'pregnantAge', label: 'Pregnant Age', type: 'number' },
       { name: 'actualCalvingDate', label: 'Actual Calving Date', type: 'date' },
+      { name: 'calvingStatus', label: 'Calving Status', type: 'select', options: ['normal', 'abortion', 'premature', 'calving', 'force termination', 'false pd'] },
       { name: 'calfTag', label: 'Calf Tag ID' },
       { name: 'breedType', label: 'Breed Type', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'heatMonitoring1stNotification', label: 'Heat Monitoring 1st Notification', type: 'date' },

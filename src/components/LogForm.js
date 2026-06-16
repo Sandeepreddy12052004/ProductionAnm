@@ -484,6 +484,7 @@
       updated["pregnancyConfirmedDate"] = "";
       updated["estimatedCalvingDate"] = "";
       updated["actualCalvingDate"] = "";
+      updated["calvingStatus"] = "";
       updated["calfTag"] = "";
       updated["breedType"] = "";
       updated["heatMonitoring2ndNotification"] = ""; 
@@ -503,6 +504,7 @@
     updated["pregnancyConfirmedDate"] = "";
     updated["estimatedCalvingDate"] = "";
     updated["actualCalvingDate"] = "";
+    updated["calvingStatus"] = "";
     updated["calfTag"] = "";
     updated["breedType"] = "";
     updated["heatMonitoring1stNotification"] = "";
@@ -1300,7 +1302,7 @@
       /*  Show "-" for Pregnant Age if not Positive */
       field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive"
         ? "-"
-        : (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
+        : (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
           (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
           (field.name === "purchaseDate" && formData.farmBorn === "Yes")
         ? "-" 
@@ -1317,7 +1319,7 @@
       field.disabled === true ||
       (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
       (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
-      (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
+      (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       field.name === "age" || 
@@ -1336,7 +1338,7 @@
       field.name === "pregnantAge" || 
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
-      (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
+      (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"]))
         ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-500 font-semibold" 
         : "bg-white text-black border-slate-200"

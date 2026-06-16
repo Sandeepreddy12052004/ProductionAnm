@@ -335,35 +335,119 @@ const OpsLogPg = ({ moduleConfig }) => {
   };
 
   // ── Filters ──────────────────────────────────────────────────────────────
-  const filteredLogs = logs.filter(log =>
-    filters.every(f => {
-      if (f.field.toLowerCase().includes('date')) {
-        if (!f.from && !f.to) return true;
-        const logDate = log[f.field] || (f.field === 'entryDate' ? log.date : null);
-        if (!logDate) return false;
-        const current = parseDateString(logDate);
-        if (!current) return false;
-        current.setHours(0, 0, 0, 0);
-        if (f.from) {
-          const from = parseDateString(f.from);
-          if (from) { from.setHours(0,0,0,0); if (current < from) return false; }
-        }
-        if (f.to) {
-          const to = parseDateString(f.to);
-          if (to) { to.setHours(0,0,0,0); if (current > to) return false; }
-        }
-        return true;
+  const filteredLogs = logs.filter(log => {
+    // Group active filters by field name
+    const groupedFilters = {};
+    for (const f of filters) {
+      const fieldConfig = dynamicFields.find(field => field.name === f.field);
+      const isDate = f.field === 'entryDate' || fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob";
+      const isRange = fieldConfig?.type === "number";
+      const hasValue = isDate || isRange ? (f.from || f.to) : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
+      if (!hasValue) continue;
+
+      if (!groupedFilters[f.field]) {
+        groupedFilters[f.field] = [];
       }
-      if (!f.value) return true;
-      return String(log[f.field] || '').toLowerCase().includes(f.value.toLowerCase());
-    })
-  );
+      groupedFilters[f.field].push(f);
+    }
+
+    let isMatched = true;
+    for (const fieldName in groupedFilters) {
+      const fieldFilters = groupedFilters[fieldName];
+      let matchAnyForField = false;
+
+      for (const f of fieldFilters) {
+        let currentMatch = true;
+        const fieldConfig = dynamicFields.find(field => field.name === f.field);
+
+        // 📅 DATE RANGE FILTER
+        if (f.field === 'entryDate' || fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
+          const logDate = log[f.field] || (f.field === 'entryDate' ? log.date : null);
+          if (!logDate) {
+            currentMatch = false;
+          } else {
+            const current = parseDateString(logDate);
+            if (!current || isNaN(current.getTime())) {
+              currentMatch = false;
+            } else {
+              current.setHours(0, 0, 0, 0);
+
+              if (f.from) {
+                const fromDate = parseDateString(f.from);
+                if (fromDate) {
+                  fromDate.setHours(0, 0, 0, 0);
+                  if (current < fromDate) currentMatch = false;
+                }
+              }
+
+              if (f.to) {
+                const toDate = parseDateString(f.to);
+                if (toDate) {
+                  toDate.setHours(0, 0, 0, 0);
+                  if (current > toDate) currentMatch = false;
+                }
+              }
+            }
+          }
+        }
+        // 🔢 RANGE FILTER FOR NUMBER FIELDS
+        else if (fieldConfig?.type === "number") {
+          const valStr = String(log[f.field] || "").trim();
+          const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+          if (isNaN(valNum)) {
+            currentMatch = false;
+          } else {
+            if (f.from) {
+              const fromNum = parseFloat(f.from);
+              if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+            }
+            if (f.to) {
+              const toNum = parseFloat(f.to);
+              if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+            }
+          }
+        }
+        // 🔁 MULTI-SELECT CHECKBOX MATCH
+        else if (fieldConfig?.type === "select") {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const recordVal = String(log[f.field] || "").toLowerCase();
+            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            if (!optionMatched) currentMatch = false;
+          }
+        }
+        else {
+          // 🔁 NORMAL FILTER
+          if (f.value) {
+            currentMatch = String(log[f.field] || "")
+              .toLowerCase()
+              .includes(f.value.toLowerCase());
+          }
+        }
+
+        if (currentMatch) {
+          matchAnyForField = true;
+          break; // Matches at least one filter for this field
+        }
+      }
+
+      if (!matchAnyForField) {
+        isMatched = false;
+        break; // Fails this field, so fail the whole check
+      }
+    }
+    return isMatched;
+  });
 
   const totalItems = filteredLogs.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
-  const activeFilterCount = filters.filter(f => (f.value && f.value.trim()) || f.from || f.to).length;
+  const activeFilterCount = filters.filter(
+    f => (f.field === 'entryDate' || dynamicFields.find(fd => fd.name === f.field)?.type === 'date')
+      ? (f.from || f.to)
+      : (Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '')
+  ).length;
 
   // ── Excel Export ─────────────────────────────────────────────────────────
   const exportExcel = async () => {
@@ -495,16 +579,16 @@ const OpsLogPg = ({ moduleConfig }) => {
       {/* ── Filter Modal ── */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-black">Filters</h3>
-              <button onClick={() => setShowFilters(false)} className="text-gray-500 text-xl font-bold">✕</button>
+              <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
+              <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-black text-xl font-bold cursor-pointer">✕</button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filters.map((f, index) => (
-                <div key={index} className="flex flex-col gap-2">
+                <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <select
-                    className="px-2 py-1.5 border rounded-lg text-sm"
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
                     value={f.field}
                     onChange={e => {
                       const updated = [...filters];
@@ -518,42 +602,151 @@ const OpsLogPg = ({ moduleConfig }) => {
                     ))}
                   </select>
 
-                  {f.field.toLowerCase().includes('date') ? (
-                    <div className="flex gap-2">
-                      <input type="date" className="px-2 py-1.5 border rounded-lg text-sm w-full"
-                        value={f.from ? f.from.split('/').reverse().join('-') : ''}
-                        onChange={e => { const u=[...filters]; u[index].from=e.target.value?e.target.value.split('-').reverse().join('/'):''; setFilters(u); }}
-                      />
-                      <input type="date" className="px-2 py-1.5 border rounded-lg text-sm w-full"
-                        value={f.to ? f.to.split('/').reverse().join('-') : ''}
-                        onChange={e => { const u=[...filters]; u[index].to=e.target.value?e.target.value.split('-').reverse().join('/'):''; setFilters(u); }}
-                      />
-                    </div>
-                  ) : (
-                    <input type="text" placeholder="Search..."
-                      className="px-2 py-1.5 border rounded-lg text-sm"
-                      value={f.value}
-                      onChange={e => { const u=[...filters]; u[index].value=e.target.value; setFilters(u); }}
-                    />
-                  )}
+                  {(() => {
+                    const fieldConfig = dynamicFields.find(field => field.name === f.field);
 
-                  <button onClick={() => setFilters([{ field: 'entryDate', value: '', from: '', to: '' }])}
-                    className="text-red-600 text-xs font-bold self-end">Remove</button>
+                    // 📅 DATE RANGE FIELD
+                    if (f.field === 'entryDate' || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob") {
+                      return (
+                        <div className="flex gap-2">
+                          <input
+                            type="date"
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-full bg-white text-[#16223F] font-semibold"
+                            value={f.from ? f.from.split('/').reverse().join('-') : ''}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].from = e.target.value ? e.target.value.split('-').reverse().join('/') : '';
+                              setFilters(updated);
+                            }}
+                          />
+                          <input
+                            type="date"
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-full bg-white text-[#16223F] font-semibold"
+                            value={f.to ? f.to.split('/').reverse().join('-') : ''}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].to = e.target.value ? e.target.value.split('-').reverse().join('/') : '';
+                              setFilters(updated);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+
+                    // 🔢 RANGE FIELD FOR NUMBER FIELDS
+                    if (fieldConfig?.type === "number") {
+                      return (
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            placeholder="Min..."
+                            step="any"
+                            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D] w-full"
+                            value={f.from || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].from = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Max..."
+                            step="any"
+                            className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D] w-full"
+                            value={f.to || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].to = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+
+                    // 📋 SELECT FIELD (MULTI-SELECT CHECKBOXES)
+                    if (fieldConfig?.type === "select") {
+                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                      const options = fieldConfig.options || [];
+
+                      return (
+                        <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                          {options.map((opt) => {
+                            const valStr = typeof opt === 'object' ? opt.value : opt;
+                            const labelStr = typeof opt === 'object' ? opt.label : opt;
+                            const isChecked = currentSelected.includes(valStr);
+
+                            return (
+                              <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    let nextVal;
+                                    if (e.target.checked) {
+                                      nextVal = [...currentSelected, valStr];
+                                    } else {
+                                      nextVal = currentSelected.filter((v) => v !== valStr);
+                                    }
+                                    updated[index].value = nextVal;
+                                    setFilters(updated);
+                                  }}
+                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                />
+                                {labelStr}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+
+                    // ✏️ DEFAULT TEXT
+                    return (
+                      <input
+                        type="text"
+                        placeholder="Enter value..."
+                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
+                        value={f.value || ""}
+                        onChange={(e) => {
+                          const updated = [...filters];
+                          updated[index].value = e.target.value;
+                          setFilters(updated);
+                        }}
+                      />
+                    );
+                  })()}
+
+                  <button
+                    onClick={() => {
+                      const updated = filters.filter((_, i) => i !== index);
+                      setFilters(updated.length ? updated : [{ field: 'entryDate', value: '', from: '', to: '' }]);
+                    }}
+                    className="text-red-500 hover:text-red-700 text-xs font-bold self-end mt-1 cursor-pointer transition-colors"
+                  >
+                    Remove Filter
+                  </button>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between mt-6 gap-2">
+            <div className="flex justify-between mt-6 gap-3">
               <button
                 onClick={() => setFilters([...filters, { field: 'entryDate', value: '', from: '', to: '' }])}
-                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
-              >+ Add Filter</button>
+                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20 cursor-pointer"
+              >
+                + Add Filter
+              </button>
               <button
                 onClick={() => { setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]); setCurrentPage(1); }}
-                className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm"
-              >Clear</button>
+                className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm cursor-pointer"
+              >
+                Clear
+              </button>
             </div>
             <button onClick={() => setShowFilters(false)}
-              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold">
+              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2.5 rounded-lg font-bold cursor-pointer">
               Apply Filters
             </button>
           </div>

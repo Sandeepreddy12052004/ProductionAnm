@@ -183,75 +183,106 @@ export default function CattleManagementPg({
 
     if (!matchesSearch) return false;
 
-    // Filter array condition matches
-    return filters.every((f) => {
-      // 📅 DATE RANGE FILTER (if any date field exists in config)
-      if (f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth") {
-        if (!f.from && !f.to) return true;
-
-        const val = item[f.field];
-        if (!val) return false;
-
-        const currentVal = new Date(val);
-        if (isNaN(currentVal.getTime())) return false;
-        currentVal.setHours(0, 0, 0, 0);
-
-        if (f.from) {
-          const fromDate = new Date(f.from);
-          if (!isNaN(fromDate.getTime())) {
-            fromDate.setHours(0, 0, 0, 0);
-            if (currentVal < fromDate) return false;
-          }
-        }
-
-        if (f.to) {
-          const toDate = new Date(f.to);
-          if (!isNaN(toDate.getTime())) {
-            toDate.setHours(0, 0, 0, 0);
-            if (currentVal > toDate) return false;
-          }
-        }
-
-        return true;
-      }
-
-      // 🔢 RANGE FILTER FOR AGE AND MILK YIELD
-      if (f.field === "age" || f.field === "milk") {
-        if (!f.from && !f.to) return true;
-
-        const valStr = String(item[f.field] || "").trim();
-        const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
-        if (isNaN(valNum)) return false;
-
-        if (f.from) {
-          const fromNum = parseFloat(f.from);
-          if (!isNaN(fromNum) && valNum < fromNum) return false;
-        }
-
-        if (f.to) {
-          const toNum = parseFloat(f.to);
-          if (!isNaN(toNum) && valNum > toNum) return false;
-        }
-
-        return true;
-      }
-
-      // 🔁 MULTI-SELECT CHECKBOX MATCH
+    // Group active filters by field name
+    const groupedFilters = {};
+    for (const f of filters) {
       const fieldConfig = dynamicFields.find(field => field.name === f.field);
-      if (fieldConfig?.type === "select") {
-        const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
-        if (selectedValues.length === 0) return true;
+      const isDate = fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth";
+      const isRange = fieldConfig?.type === "number";
+      const hasValue = isDate || isRange ? (f.from || f.to) : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
+      if (!hasValue) continue;
 
-        const recordVal = String(item[f.field] || "").toLowerCase();
-        return selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+      if (!groupedFilters[f.field]) {
+        groupedFilters[f.field] = [];
+      }
+      groupedFilters[f.field].push(f);
+    }
+
+    let isMatched = true;
+    for (const fieldName in groupedFilters) {
+      const fieldFilters = groupedFilters[fieldName];
+      let matchAnyForField = false;
+
+      for (const f of fieldFilters) {
+        let currentMatch = true;
+        const fieldConfig = dynamicFields.find(field => field.name === f.field);
+
+        // 📅 DATE RANGE FILTER (if any date field exists in config)
+        if (fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth") {
+          const val = item[f.field];
+          if (!val) {
+            currentMatch = false;
+          } else {
+            const currentVal = new Date(val);
+            if (isNaN(currentVal.getTime())) {
+              currentMatch = false;
+            } else {
+              currentVal.setHours(0, 0, 0, 0);
+
+              if (f.from) {
+                const fromDate = new Date(f.from);
+                if (!isNaN(fromDate.getTime())) {
+                  fromDate.setHours(0, 0, 0, 0);
+                  if (currentVal < fromDate) currentMatch = false;
+                }
+              }
+
+              if (f.to) {
+                const toDate = new Date(f.to);
+                if (!isNaN(toDate.getTime())) {
+                  toDate.setHours(0, 0, 0, 0);
+                  if (currentVal > toDate) currentMatch = false;
+                }
+              }
+            }
+          }
+        }
+        // 🔢 RANGE FILTER FOR NUMBER FIELDS
+        else if (fieldConfig?.type === "number") {
+          const valStr = String(item[f.field] || "").trim();
+          const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+          if (isNaN(valNum)) {
+            currentMatch = false;
+          } else {
+            if (f.from) {
+              const fromNum = parseFloat(f.from);
+              if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+            }
+            if (f.to) {
+              const toNum = parseFloat(f.to);
+              if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+            }
+          }
+        }
+        // 🔁 MULTI-SELECT CHECKBOX MATCH
+        else if (fieldConfig?.type === "select") {
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          if (selectedValues.length > 0) {
+            const recordVal = String(item[f.field] || "").toLowerCase();
+            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            if (!optionMatched) currentMatch = false;
+          }
+        }
+        // ✏️ DEFAULT TEXT
+        else if (f.value) {
+          const textMatched = String(item[f.field] || "")
+            .toLowerCase()
+            .includes(String(f.value).toLowerCase());
+          if (!textMatched) currentMatch = false;
+        }
+
+        if (currentMatch) {
+          matchAnyForField = true;
+          break; // Matches at least one filter for this field
+        }
       }
 
-      // ✏️ DEFAULT TEXT
-      if (!f.value) return true;
-      return String(item[f.field] || "")
-        .toLowerCase()
-        .includes(f.value.toLowerCase());
-    });
+      if (!matchAnyForField) {
+        isMatched = false;
+        break; // Fails this field, so fail the whole check
+      }
+    }
+    return isMatched;
   });
 
   const totalPages = Math.ceil(filteredData.length / recordsPerPage) || 1;
