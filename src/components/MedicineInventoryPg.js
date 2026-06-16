@@ -14,6 +14,7 @@ import {
 export default function MedicineInventoryPg() {
   const [activeTab, setActiveTab] = useState("summary"); // "summary" | "log"
   const [logs, setLogs] = useState([]);
+  const [medicineItems, setMedicineItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -36,10 +37,14 @@ export default function MedicineInventoryPg() {
   const fetchInventoryLogs = async () => {
     setIsLoading(true);
     try {
-      const data = await api.inventory.medicines.getAll();
-      setLogs(data || []);
+      const [itemsData, logsData] = await Promise.all([
+        api.medicines.getAll(),
+        api.inventory.medicines.getAll()
+      ]);
+      setMedicineItems(itemsData || []);
+      setLogs(logsData || []);
     } catch (err) {
-      console.error("Failed to load medicine inventory logs:", err);
+      console.error("Failed to load medicine inventory logs or medicines:", err);
     } finally {
       setIsLoading(false);
     }
@@ -51,29 +56,38 @@ export default function MedicineInventoryPg() {
     }
   }, [activeTab]);
 
-  // Compute latest remaining stock for each medicine item
+  // Compute latest remaining stock for each medicine item registered in Medicine Management
   const currentStockItems = useMemo(() => {
-    const stockMap = new Map();
-    // logs are returned sorted by date descending, so the first record we find for a medicineName is the latest transaction
-    for (const log of logs) {
-      const medicineName = String(log.medicineName || "").trim();
-      if (!medicineName) continue;
+    const stockItems = [];
+    
+    for (const item of medicineItems) {
+      const itemName = String(item.name || "").trim();
+      if (!itemName) continue;
       
-      const key = medicineName.toUpperCase();
-      if (!stockMap.has(key)) {
-        stockMap.set(key, {
-          name: medicineName,
-          type: log.type || "-",
-          remainingStock: Number(log.presentStock) || 0,
-          lastUpdated: log.purchaseDate || log.createdAt || log.date,
-          lastBought: Number(log.bought) || 0,
-          lastUsage: Number(log.used) || 0,
-          expiryDate: log.expiryDate
-        });
-      }
+      // Find logs for this medicineName
+      const itemLogs = logs.filter(log => String(log.medicineName || "").trim().toUpperCase() === itemName.toUpperCase());
+      
+      // Since logs are sorted by date descending, the first record is the latest transaction
+      const latestLog = itemLogs[0];
+      const remainingStock = latestLog ? (Number(latestLog.presentStock) || 0) : 0;
+      const lastUpdated = latestLog ? (latestLog.purchaseDate || latestLog.createdAt || latestLog.date) : null;
+      
+      const lastBoughtLog = itemLogs.find(log => Number(log.bought) > 0);
+      const lastUsageLog = itemLogs.find(log => Number(log.used) > 0);
+      
+      stockItems.push({
+        name: itemName,
+        type: item.type || (latestLog ? latestLog.type : "-"),
+        remainingStock: remainingStock,
+        lastUpdated: lastUpdated,
+        lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
+        lastUsage: lastUsageLog ? (Number(lastUsageLog.used) || 0) : 0,
+        expiryDate: latestLog ? latestLog.expiryDate : null
+      });
     }
-    return Array.from(stockMap.values());
-  }, [logs]);
+    
+    return stockItems;
+  }, [medicineItems, logs]);
 
   // Filter items based on search query
   const filteredStockItems = useMemo(() => {

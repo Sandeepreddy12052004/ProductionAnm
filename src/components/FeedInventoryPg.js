@@ -14,6 +14,7 @@ import {
 export default function FeedInventoryPg() {
   const [activeTab, setActiveTab] = useState("summary"); // "summary" | "log"
   const [logs, setLogs] = useState([]);
+  const [feedItems, setFeedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -34,10 +35,14 @@ export default function FeedInventoryPg() {
   const fetchInventoryLogs = async () => {
     setIsLoading(true);
     try {
-      const data = await api.inventory.feed.getAll();
-      setLogs(data || []);
+      const [itemsData, logsData] = await Promise.all([
+        api.feedItems.getAll(),
+        api.inventory.feed.getAll()
+      ]);
+      setFeedItems(itemsData || []);
+      setLogs(logsData || []);
     } catch (err) {
-      console.error("Failed to load inventory logs:", err);
+      console.error("Failed to load inventory logs or feed items:", err);
     } finally {
       setIsLoading(false);
     }
@@ -51,25 +56,35 @@ export default function FeedInventoryPg() {
 
   // Compute latest remaining stock for each feed item
   const currentStockItems = useMemo(() => {
-    const stockMap = new Map();
-    // logs are returned sorted by date descending, so the first record we find for a feedType is the latest transaction
-    for (const log of logs) {
-      const feedType = String(log.feedType || "").trim();
-      if (!feedType) continue;
+    const stockItems = [];
+    
+    for (const item of feedItems) {
+      const itemName = String(item.name || "").trim();
+      if (!itemName) continue;
       
-      const key = feedType.toUpperCase();
-      if (!stockMap.has(key)) {
-        stockMap.set(key, {
-          name: feedType,
-          remainingStock: Number(log.remainingStock) || 0,
-          lastUpdated: log.purchaseDate || log.createdAt || log.date,
-          lastBought: Number(log.bought) || 0,
-          lastUsage: Number(log.usage) || 0
-        });
-      }
+      // Find logs for this feedType
+      const itemLogs = logs.filter(log => String(log.feedType || "").trim().toUpperCase() === itemName.toUpperCase());
+      
+      // Since logs are sorted by date descending, the first record in the filter is the latest transaction
+      const latestLog = itemLogs[0];
+      const remainingStock = latestLog ? (Number(latestLog.remainingStock) || 0) : 0;
+      const lastUpdated = latestLog ? (latestLog.purchaseDate || latestLog.createdAt || latestLog.date) : null;
+      
+      // Calculate latest bought / usage values from latest log that has them
+      const lastBoughtLog = itemLogs.find(log => Number(log.bought) > 0);
+      const lastUsageLog = itemLogs.find(log => Number(log.usage) > 0);
+      
+      stockItems.push({
+        name: itemName,
+        remainingStock: remainingStock,
+        lastUpdated: lastUpdated,
+        lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
+        lastUsage: lastUsageLog ? (Number(lastUsageLog.usage) || 0) : 0
+      });
     }
-    return Array.from(stockMap.values());
-  }, [logs]);
+    
+    return stockItems;
+  }, [feedItems, logs]);
 
   // Filter items based on search query
   const filteredStockItems = useMemo(() => {
