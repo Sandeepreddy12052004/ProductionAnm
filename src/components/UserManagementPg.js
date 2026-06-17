@@ -247,6 +247,32 @@ const UserManagementPg = ({ moduleConfig }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState([{ field: "name", value: "" }]);
 
+// SWR Caching Logic
+const fetcher = async () => {
+    const data = await api.users.getAll();
+    return data || [];
+  };
+
+
+
+const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000
+  });
+
+  const { data: farmsData } = useSWR('farms_cache', async () => {
+    const data = await api.farms.getAll();
+    return data || [];
+  }, { revalidateOnFocus: false });
+
+  const { data: rolesList } = useSWR('roles_cache', async () => {
+    const data = await api.roles.getAll();
+    return data || [];
+  }, { revalidateOnFocus: false });
+
+
+
+
   const filterFields = [
     { name: 'name', label: 'Name', type: 'text' },
     { name: 'userId', label: 'User ID', type: 'text' },
@@ -295,25 +321,7 @@ const UserManagementPg = ({ moduleConfig }) => {
   const [statusEditId, setStatusEditId] = useState(null);
 
   // SWR Caching Logic
-  const fetcher = async () => {
-    const data = await api.users.getAll();
-    return data || [];
-  };
-
-  const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 5000
-  });
-
-  const { data: farmsData } = useSWR('farms_cache', async () => {
-    const data = await api.farms.getAll();
-    return data || [];
-  }, { revalidateOnFocus: false });
-
-  const { data: rolesList } = useSWR('roles_cache', async () => {
-    const data = await api.roles.getAll();
-    return data || [];
-  }, { revalidateOnFocus: false });
+  
 
   const getFarmName = (user) => {
     if (user.role === 'SUPER_ADMIN') return "All Farms";
