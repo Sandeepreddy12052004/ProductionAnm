@@ -94,7 +94,7 @@ const [appliedFilters, setAppliedFilters] = useState([
 ]);
 
 useEffect(() => {
-  if (showFilters && current.id === 'vaccine') {
+  if (showFilters && (current.id === 'vaccine' || current.id === 'health')) {
     setFilters(appliedFilters.map(f => ({
       ...f,
       value: Array.isArray(f.value) ? [...f.value] : f.value
@@ -103,7 +103,7 @@ useEffect(() => {
 }, [showFilters, current.id, appliedFilters]);
 
 useEffect(() => {
-  if (current.id === 'vaccine') {
+  if (current.id === 'vaccine' || current.id === 'health') {
     api.cattle.getAll().then(res => {
       const list = Array.isArray(res) ? res : (res?.data ?? []);
       const tags = list.map(a => String(a.tag_id || a.tag || a.tagId || '').trim()).filter(Boolean);
@@ -346,7 +346,7 @@ if (!moduleConfig) {
       }
     }
     // Group active filters by field name
-    const filtersToUse = current.id === 'vaccine' ? appliedFilters : filters;
+    const filtersToUse = (current.id === 'vaccine' || current.id === 'health') ? appliedFilters : filters;
     const groupedFilters = {};
     for (const f of filtersToUse) {
       const fieldConfig = currentFields.find(field => field.name === f.field);
@@ -420,12 +420,18 @@ if (!moduleConfig) {
         // 🔁 MULTI-SELECT CHECKBOX MATCH
         else if (
           fieldConfig?.type === "select" ||
-          (current.id === 'vaccine' && !f.field.toLowerCase().includes("date") && f.field !== "tagId")
+          ((current.id === 'vaccine' || current.id === 'health') && !f.field.toLowerCase().includes("date") && f.field !== "tagId")
         ) {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
           if (selectedValues.length > 0) {
             const recordVal = String(log[f.field] || "").toLowerCase();
-            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            const optionMatched = selectedValues.some(v => {
+              const valLower = String(v).toLowerCase();
+              if (current.id === 'vaccine' || current.id === 'health') {
+                return valLower === recordVal;
+              }
+              return valLower === recordVal || recordVal.includes(valLower);
+            });
             if (!optionMatched) currentMatch = false;
           }
         }
@@ -458,7 +464,7 @@ const startIndex = (currentPage - 1) * itemsPerPage;
 const endIndex = startIndex + itemsPerPage;
 
 const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
-const activeFilterCount = (current.id === 'vaccine' ? appliedFilters : filters).filter(
+const activeFilterCount = ((current.id === 'vaccine' || current.id === 'health') ? appliedFilters : filters).filter(
   f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || f.from || f.to
 ).length;
 
@@ -1037,7 +1043,7 @@ const handleSave = async (data) => {
   const clearAllFilters = () => {
     const cleared = [{ field: "entryDate", value: "" }];
     setFilters(cleared);
-    if (current.id === 'vaccine') {
+    if (current.id === 'vaccine' || current.id === 'health') {
       setAppliedFilters(cleared);
     }
     setCurrentPage(1); // reset pagination too
@@ -1304,7 +1310,7 @@ const getShedFromLivestock = (tagValue) => {
               }
 
               // 📋 SELECT FIELD (for non-vaccine, or custom vaccine handling)
-              if (current.id === 'vaccine') {
+              if (current.id === 'vaccine' || current.id === 'health') {
                 if (f.field === 'tagId') {
                   const filterVal = f.value || "";
                   const suggestions = allLivestockTags.filter(tag => 
@@ -1478,7 +1484,7 @@ const getShedFromLivestock = (tagValue) => {
       {/* APPLY BUTTON */}
       <button
         onClick={() => {
-          if (current.id === 'vaccine') {
+          if (current.id === 'vaccine' || current.id === 'health') {
             setAppliedFilters(filters.map(f => ({
               ...f,
               value: Array.isArray(f.value) ? [...f.value] : f.value
