@@ -87,30 +87,33 @@ const currentFields = current.fields.map(f => {
   return f;
 });
 
+const isCustomFilterModule = ['vaccine', 'health', 'livestock', 'shed', 'crossing'].includes(current.id);
+
 const [allLivestockTags, setAllLivestockTags] = useState([]);
 const [openDropdowns, setOpenDropdowns] = useState({});
+const [filterSearchQueries, setFilterSearchQueries] = useState({});
 const [appliedFilters, setAppliedFilters] = useState([
   { field: "entryDate", value: "" }
 ]);
 
 useEffect(() => {
-  if (showFilters && (current.id === 'vaccine' || current.id === 'health')) {
+  if (showFilters && isCustomFilterModule) {
     setFilters(appliedFilters.map(f => ({
       ...f,
       value: Array.isArray(f.value) ? [...f.value] : f.value
     })));
   }
-}, [showFilters, current.id, appliedFilters]);
+}, [showFilters, current.id, appliedFilters, isCustomFilterModule]);
 
 useEffect(() => {
-  if (current.id === 'vaccine' || current.id === 'health') {
+  if (isCustomFilterModule) {
     api.cattle.getAll().then(res => {
       const list = Array.isArray(res) ? res : (res?.data ?? []);
       const tags = list.map(a => String(a.tag_id || a.tag || a.tagId || '').trim()).filter(Boolean);
       setAllLivestockTags(Array.from(new Set(tags)));
     }).catch(console.error);
   }
-}, [current.id]);
+}, [current.id, isCustomFilterModule]);
 
 const getFieldOptions = (fieldName) => {
   const fieldConfig = currentFields.find(f => f.name === fieldName);
@@ -346,7 +349,7 @@ if (!moduleConfig) {
       }
     }
     // Group active filters by field name
-    const filtersToUse = (current.id === 'vaccine' || current.id === 'health') ? appliedFilters : filters;
+    const filtersToUse = isCustomFilterModule ? appliedFilters : filters;
     const groupedFilters = {};
     for (const f of filtersToUse) {
       const fieldConfig = currentFields.find(field => field.name === f.field);
@@ -420,14 +423,14 @@ if (!moduleConfig) {
         // 🔁 MULTI-SELECT CHECKBOX MATCH
         else if (
           fieldConfig?.type === "select" ||
-          ((current.id === 'vaccine' || current.id === 'health') && !f.field.toLowerCase().includes("date") && f.field !== "tagId")
+          (isCustomFilterModule && !f.field.toLowerCase().includes("date") && f.field !== "tagId")
         ) {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
           if (selectedValues.length > 0) {
             const recordVal = String(log[f.field] || "").toLowerCase();
             const optionMatched = selectedValues.some(v => {
               const valLower = String(v).toLowerCase();
-              if (current.id === 'vaccine' || current.id === 'health') {
+              if (isCustomFilterModule) {
                 return valLower === recordVal;
               }
               return valLower === recordVal || recordVal.includes(valLower);
@@ -464,7 +467,7 @@ const startIndex = (currentPage - 1) * itemsPerPage;
 const endIndex = startIndex + itemsPerPage;
 
 const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
-const activeFilterCount = ((current.id === 'vaccine' || current.id === 'health') ? appliedFilters : filters).filter(
+const activeFilterCount = (isCustomFilterModule ? appliedFilters : filters).filter(
   f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || f.from || f.to
 ).length;
 
@@ -1043,10 +1046,13 @@ const handleSave = async (data) => {
   const clearAllFilters = () => {
     const cleared = [{ field: "entryDate", value: "" }];
     setFilters(cleared);
-    if (current.id === 'vaccine' || current.id === 'health') {
+    if (isCustomFilterModule) {
       setAppliedFilters(cleared);
     }
+    setFilterSearchQueries({});
+    setOpenDropdowns({});
     setCurrentPage(1); // reset pagination too
+    setShowFilters(false); // Close the filter overlay on clear
   };
 
   const closeAllModals = () => {
@@ -1309,8 +1315,8 @@ const getShedFromLivestock = (tagValue) => {
                 );
               }
 
-              // 📋 SELECT FIELD (for non-vaccine, or custom vaccine handling)
-              if (current.id === 'vaccine' || current.id === 'health') {
+              // 📋 SELECT FIELD (for non-custom module, or custom module handling)
+              if (isCustomFilterModule) {
                 if (f.field === 'tagId') {
                   const filterVal = f.value || "";
                   const suggestions = allLivestockTags.filter(tag => 
@@ -1374,33 +1380,58 @@ const getShedFromLivestock = (tagValue) => {
                     </div>
 
                     {isOpen && (
-                      <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto bg-white border border-slate-200 rounded-xl p-2.5 shadow-inner">
-                        {options.length === 0 ? (
-                          <div className="text-xs text-slate-400 p-2 text-center">No options available</div>
-                        ) : (
-                          options.map((opt) => {
-                            const isChecked = selectedList.includes(opt);
-                            return (
-                              <label key={opt} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    const updated = [...filters];
-                                    if (e.target.checked) {
-                                      updated[index].value = [...selectedList, opt];
-                                    } else {
-                                      updated[index].value = selectedList.filter(v => v !== opt);
-                                    }
-                                    setFilters(updated);
-                                  }}
-                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
-                                />
-                                {opt}
-                              </label>
-                            );
-                          })
+                      <div className="flex flex-col gap-1.5 bg-white border border-slate-200 rounded-xl p-2.5 shadow-inner">
+                        {((current.id === 'shed' && ['tag', 'oldShed', 'newShed', 'reason'].includes(f.field)) ||
+                          (current.id === 'vaccine' && ['animalType', 'shedId', 'vaccinationName', 'batchNo'].includes(f.field)) ||
+                          (current.id === 'health' && ['animalType', 'shedId', 'symptoms', 'diagnosis', 'treatment'].includes(f.field))) && (
+                          <input
+                            type="text"
+                            placeholder="Search options..."
+                            value={filterSearchQueries[index] || ""}
+                            onChange={(e) => setFilterSearchQueries({
+                              ...filterSearchQueries,
+                              [index]: e.target.value
+                            })}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full h-8 px-2.5 mb-2 rounded-lg border border-slate-200 text-xs bg-slate-50 outline-none focus:bg-white focus:border-[#D1867D] transition-all text-black"
+                          />
                         )}
+
+                        <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto w-full">
+                          {(() => {
+                            const query = (filterSearchQueries[index] || "").toLowerCase();
+                            const filteredOptions = options.filter(opt => 
+                              String(opt).toLowerCase().includes(query)
+                            );
+
+                            if (filteredOptions.length === 0) {
+                              return <div className="text-xs text-slate-400 p-2 text-center">No matching options</div>;
+                            }
+
+                            return filteredOptions.map((opt) => {
+                              const isChecked = selectedList.includes(opt);
+                              return (
+                                <label key={opt} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const updated = [...filters];
+                                      if (e.target.checked) {
+                                        updated[index].value = [...selectedList, opt];
+                                      } else {
+                                        updated[index].value = selectedList.filter(v => v !== opt);
+                                      }
+                                      setFilters(updated);
+                                    }}
+                                    className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                  />
+                                  {opt}
+                                </label>
+                              );
+                            });
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1484,7 +1515,7 @@ const getShedFromLivestock = (tagValue) => {
       {/* APPLY BUTTON */}
       <button
         onClick={() => {
-          if (current.id === 'vaccine' || current.id === 'health') {
+          if (isCustomFilterModule) {
             setAppliedFilters(filters.map(f => ({
               ...f,
               value: Array.isArray(f.value) ? [...f.value] : f.value
