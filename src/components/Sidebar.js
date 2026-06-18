@@ -572,14 +572,14 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   </li>
 )}
 
-{/* Milk Q and A */}
+{/* Milk QA */}
 {hasAccess('MILK') && (
   <li>
     <Link href="/milk-quality" onClick={handleCloseSidebar}
       className={`block p-2 rounded border-l-4 ${
         isLinkActive("/milk-quality") ? activeStyle : normalStyle
       }`}>
-      🔬 Milk Q and A
+      🔬 Milk QA
     </Link>
   </li>
 )}

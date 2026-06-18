@@ -41,7 +41,7 @@ const MODULE_GROUPS = {
   { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING' },
 
   { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK' },
-  { name: 'Milk Q and A', baseToken: 'MILK', prefix: 'MILK' }
+  { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK' }
     ]
   },
   // HEALTH: {

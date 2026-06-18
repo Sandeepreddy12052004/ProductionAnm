@@ -3,7 +3,7 @@ import OpsLogPg from '../components/OpsLogPg';
 export default function MilkQualityPage() {
   const config = {
     id: 'components',
-    name: 'Milk Q and A',
+    name: 'Milk QA',
     icon: '🔬',
     fields: [
       { name: 'fat',     label: 'Fat %',        type: 'number' },

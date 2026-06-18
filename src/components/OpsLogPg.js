@@ -69,6 +69,7 @@ const OpsLogPg = ({ moduleConfig }) => {
   const [dynamicFields, setDynamicFields] = useState(current.fields);
 
   const [filters, setFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
+  const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -669,36 +670,59 @@ const OpsLogPg = ({ moduleConfig }) => {
                     if (fieldConfig?.type === "select") {
                       const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
                       const options = fieldConfig.options || [];
+                      const query = (filterSearchQueries[index] || "").toLowerCase();
+                      const filteredOptions = options.filter(opt => {
+                        const labelStr = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+                        return String(labelStr || "").toLowerCase().includes(query);
+                      });
 
                       return (
-                        <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
-                          {options.map((opt) => {
-                            const valStr = typeof opt === 'object' ? opt.value : opt;
-                            const labelStr = typeof opt === 'object' ? opt.label : opt;
-                            const isChecked = currentSelected.includes(valStr);
+                        <div className="flex flex-col gap-1.5 bg-white border border-slate-200 rounded-lg p-2.5">
+                          {current.id === 'med_inv' && ['medicineName', 'type'].includes(f.field) && (
+                            <input
+                              type="text"
+                              placeholder="Search options..."
+                              value={filterSearchQueries[index] || ""}
+                              onChange={(e) => setFilterSearchQueries({
+                                ...filterSearchQueries,
+                                [index]: e.target.value
+                              })}
+                              className="w-full h-8 px-2.5 mb-2 rounded-lg border border-slate-200 text-xs bg-slate-50 outline-none focus:bg-white focus:border-[#D1867D] transition-all text-black font-semibold"
+                            />
+                          )}
+                          <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto w-full">
+                            {filteredOptions.length === 0 ? (
+                              <div className="text-xs text-slate-400 p-1 text-center font-bold">No matching options</div>
+                            ) : (
+                              filteredOptions.map((opt) => {
+                                const valStr = typeof opt === 'object' ? opt.value : opt;
+                                const labelStr = typeof opt === 'object' ? opt.label : opt;
+                                const isChecked = currentSelected.includes(valStr);
 
-                            return (
-                              <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    const updated = [...filters];
-                                    let nextVal;
-                                    if (e.target.checked) {
-                                      nextVal = [...currentSelected, valStr];
-                                    } else {
-                                      nextVal = currentSelected.filter((v) => v !== valStr);
-                                    }
-                                    updated[index].value = nextVal;
-                                    setFilters(updated);
-                                  }}
-                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
-                                />
-                                {labelStr}
-                              </label>
-                            );
-                          })}
+                                return (
+                                  <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 p-0.5 rounded">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        const updated = [...filters];
+                                        let nextVal;
+                                        if (e.target.checked) {
+                                          nextVal = [...currentSelected, valStr];
+                                        } else {
+                                          nextVal = currentSelected.filter((v) => v !== valStr);
+                                        }
+                                        updated[index].value = nextVal;
+                                        setFilters(updated);
+                                      }}
+                                      className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                    />
+                                    {labelStr}
+                                  </label>
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
                       );
                     }
@@ -739,7 +763,12 @@ const OpsLogPg = ({ moduleConfig }) => {
                 + Add Filter
               </button>
               <button
-                onClick={() => { setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]); setCurrentPage(1); }}
+                onClick={() => {
+                  setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]);
+                  setFilterSearchQueries({});
+                  setCurrentPage(1);
+                  setShowFilters(false);
+                }}
                 className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm cursor-pointer"
               >
                 Clear
