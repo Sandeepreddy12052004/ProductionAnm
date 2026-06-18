@@ -272,27 +272,7 @@ const UserManagementPg = ({ moduleConfig }) => {
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
 
-// SWR Caching Logic
-const fetcher = async () => {
-    const data = await api.users.getAll();
-    return data || [];
-  };
 
-
-
-const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 5000
-  });
-
-  const { data: farmsData } = useSWR('farms_cache', async () => {
-    const data = await api.farms.getAll();
-    return data || [];
-  }, { revalidateOnFocus: false });
-
-  const { data: rolesList } = useSWR('roles_cache', async () => {
-    const data = await api.roles.getAll();
-    return data || [];
   const filterFields = React.useMemo(() => [
     { name: 'name', label: 'Name', type: 'text' },
     { name: 'userId', label: 'User ID', type: 'text' },
