@@ -5,6 +5,7 @@ import { api } from '@/utils/api';
 export default function AnimalsPage() {
   const [shedOptions, setShedOptions] = useState([]);
   const [breedOptions, setBreedOptions] = useState([]);
+  const [animalOptions, setAnimalOptions] = useState(['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf']);
 
   useEffect(() => {
     let isMounted = true;
@@ -32,6 +33,19 @@ export default function AnimalsPage() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    api.animals.getAll()
+      .then(res => {
+        if (isMounted && res && Array.isArray(res)) {
+          const names = res.filter(a => a && a.status !== false).map(a => a.name);
+          if (names.length > 0) setAnimalOptions(names);
+        }
+      })
+      .catch(err => console.error("Failed to fetch animals:", err));
+    return () => { isMounted = false; };
+  }, []);
+
   const livestockConfig = {
     id: 'livestock',
     name: 'Live Stock',
@@ -42,7 +56,7 @@ export default function AnimalsPage() {
         name: 'cattleType',
         label: 'Animal Type',
         type: 'select',
-        options: ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf']
+        options: animalOptions
       },
       { name: 'farmBorn', label: 'Farm Born', type: 'select', options: ['Yes', 'No'] },
       {
@@ -61,6 +75,7 @@ export default function AnimalsPage() {
       { name: 'sireBreed', label: 'Sire Breed', type: 'select', options: breedOptions.length > 0 ? breedOptions : ['-'] },
       { name: 'calvings', label: 'No. of Calvings', type: 'number' },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
+      { name: 'remarks', label: 'Remarks', type: 'text' },
       { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED'] }
     ]
   };

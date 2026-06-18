@@ -19,7 +19,8 @@ const MODULE_GROUPS = {
       { name: 'Health Management', baseToken: 'HEALTH', prefix: 'HEALTH_MANAGEMENT' },
       { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS' },
       { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT' },
-      { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT' }
+      { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT' },
+      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT' }
     ]
   },
   MODULES: {

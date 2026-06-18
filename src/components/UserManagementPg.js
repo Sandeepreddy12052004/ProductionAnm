@@ -238,6 +238,27 @@ import SkeletonLoader from './SkeletonLoader';
 const UserManagementPg = ({ moduleConfig }) => {
   const router = useRouter();
 
+  // SWR Caching Logic
+  const fetcher = async () => {
+    const data = await api.users.getAll();
+    return data || [];
+  };
+
+  const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000
+  });
+
+  const { data: farmsData } = useSWR('farms_cache', async () => {
+    const data = await api.farms.getAll();
+    return data || [];
+  }, { revalidateOnFocus: false });
+
+  const { data: rolesList } = useSWR('roles_cache', async () => {
+    const data = await api.roles.getAll();
+    return data || [];
+  }, { revalidateOnFocus: false });
+
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -247,7 +268,7 @@ const UserManagementPg = ({ moduleConfig }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState([{ field: "name", value: "" }]);
 
-  const filterFields = [
+  const filterFields = React.useMemo(() => [
     { name: 'name', label: 'Name', type: 'text' },
     { name: 'userId', label: 'User ID', type: 'text' },
     { name: 'email', label: 'Email', type: 'text' },
@@ -276,7 +297,7 @@ const UserManagementPg = ({ moduleConfig }) => {
       type: 'select', 
       options: [{ label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }]
     }
-  ];
+  ], [farmsData, rolesList, moduleConfig]);
 
   // Dynamically capture redirection query params to trigger auto-filled user creation
   useEffect(() => {
@@ -293,27 +314,6 @@ const UserManagementPg = ({ moduleConfig }) => {
 
   // 👉 NEW STATE FOR STATUS EDIT
   const [statusEditId, setStatusEditId] = useState(null);
-
-  // SWR Caching Logic
-  const fetcher = async () => {
-    const data = await api.users.getAll();
-    return data || [];
-  };
-
-  const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 5000
-  });
-
-  const { data: farmsData } = useSWR('farms_cache', async () => {
-    const data = await api.farms.getAll();
-    return data || [];
-  }, { revalidateOnFocus: false });
-
-  const { data: rolesList } = useSWR('roles_cache', async () => {
-    const data = await api.roles.getAll();
-    return data || [];
-  }, { revalidateOnFocus: false });
 
   const getFarmName = (user) => {
     if (user.role === 'SUPER_ADMIN') return "All Farms";

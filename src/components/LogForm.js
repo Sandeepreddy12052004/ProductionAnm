@@ -19,6 +19,67 @@
     return null;
   };
 
+  const calculateDOBFromAge = (ageStr) => {
+    if (!ageStr) return null;
+    const cleanAge = String(ageStr).trim().toUpperCase();
+    if (!cleanAge) return null;
+
+    let years = 0;
+    let months = 0;
+    let days = 0;
+
+    // Matches patterns like "0 Y, 1 M, 5 D" or "0Y 1M 5D" or "0 Yrs 1 Mos"
+    const yearsMatch = cleanAge.match(/(\d+)\s*(?:Y|YRS|YEAR|YEARS)/);
+    const monthsMatch = cleanAge.match(/(\d+)\s*(?:M|MOS|MONTH|MONTHS)/);
+    const daysMatch = cleanAge.match(/(\d+)\s*(?:D|DAYS)/);
+
+    if (yearsMatch) {
+      years = parseInt(yearsMatch[1], 10);
+    }
+    if (monthsMatch) {
+      months = parseInt(monthsMatch[1], 10);
+    }
+    if (daysMatch) {
+      days = parseInt(daysMatch[1], 10);
+    }
+
+    // Fallback: If it's a simple decimal number (e.g., "1.5")
+    if (!yearsMatch && !monthsMatch && !daysMatch && /^\d+(?:\.\d+)?$/.test(cleanAge)) {
+      const val = parseFloat(cleanAge);
+      years = Math.floor(val);
+      months = Math.round((val - years) * 12);
+    }
+
+    if (years === 0 && months === 0 && days === 0) {
+      return null;
+    }
+
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - years);
+    d.setMonth(d.getMonth() - months);
+    d.setDate(d.getDate() - days);
+    
+    return d;
+  };
+
+  const extractDOBFromTag = (tag) => {
+    if (!tag) return null;
+    const cleanTag = String(tag).trim();
+    const match = cleanTag.match(/(\d{8})$/);
+    if (match) {
+      const dateStr = match[1];
+      const year = parseInt(dateStr.substring(0, 4), 10);
+      const month = parseInt(dateStr.substring(4, 6), 10) - 1;
+      const day = parseInt(dateStr.substring(6, 8), 10);
+      
+      if (year >= 1900 && year <= new Date().getFullYear() && month >= 0 && month < 12 && day > 0 && day <= 31) {
+        const d = new Date(year, month, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    return null;
+  };
+
   const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
     const [checkedRows, setCheckedRows] = useState({});
     const [medicinesList, setMedicinesList] = useState([]);
@@ -111,29 +172,92 @@
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
       fields.forEach(field => {
-        if (field.type === 'date' && formatted[field.name]) {
-          const rawVal = formatted[field.name];
+        const fieldName = field.name;
+        if ((field.type === 'date' || fieldName === 'dateOfBirth' || fieldName === 'dob') && formatted[fieldName]) {
+          const rawVal = formatted[fieldName];
           if (typeof rawVal === 'string' && rawVal.includes("/")) {
             const parts = rawVal.split("/");
             if (parts.length === 3) {
-              formatted[field.name] = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              formatted[fieldName] = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
               return;
             }
           }
           try {
             const d = parseDateString(rawVal);
             if (d && !isNaN(d.getTime())) {
-              formatted[field.name] = d.toISOString().split('T')[0];
+              formatted[fieldName] = d.toISOString().split('T')[0];
             }
           } catch (e) {
             console.error(e);
           }
         }
       });
+
+      const tagVal = formatted.tag || formatted.tagId || formatted.tag_id || "";
+      let resolvedDob = formatted.dateOfBirth || formatted.dob || "";
+      if (resolvedDob === '-' || resolvedDob === 'null') resolvedDob = "";
+      
+      if (tagVal && !resolvedDob) {
+        const extracted = extractDOBFromTag(tagVal);
+        if (extracted) {
+          resolvedDob = extracted.toISOString().split('T')[0];
+        }
+      }
+
+      if (!resolvedDob && formatted.age) {
+        const computed = calculateDOBFromAge(formatted.age);
+        if (computed && !isNaN(computed.getTime())) {
+          resolvedDob = computed.toISOString().split('T')[0];
+        }
+      }
+
+      if (resolvedDob) {
+        formatted.dateOfBirth = resolvedDob;
+        formatted.dob = resolvedDob;
+        
+        // Calculate age
+        const birth = parseDateString(resolvedDob);
+        if (birth && !isNaN(birth.getTime())) {
+          const today = new Date();
+          let years = today.getFullYear() - birth.getFullYear();
+          let months = today.getMonth() - birth.getMonth();
+          let days = today.getDate() - birth.getDate();
+          
+          if (days < 0) {
+            months -= 1;
+            const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            days += prevMonth.getDate();
+          }
+          if (months < 0) {
+            years -= 1;
+            months += 12;
+          }
+          
+          let ageText = `${years} Y`;
+          if (months > 0) ageText += ` ${months} M`;
+          if (days > 0) ageText += ` ${days} D`;
+          
+          formatted.age = ageText;
+        }
+      } else {
+        formatted.dateOfBirth = "";
+        formatted.dob = "";
+      }
+
+      if (formatted.calvings === undefined || formatted.calvings === null || formatted.calvings === "" || formatted.calvings === "-") {
+        formatted.calvings = 0;
+      }
+
       return formatted;
     };
 
-    const [formData, setFormData] = useState(() => formatInitialData(initialData, fields));
+    const [formData, setFormData] = useState(() => {
+      const formatted = formatInitialData(initialData, fields);
+      if (formatted.dameBreed && (!formatted.breed || formatted.breed === '' || formatted.breed === '-')) {
+        formatted.breed = formatted.dameBreed;
+      }
+      return formatted;
+    });
     const [tagError, setTagError] = useState("");
     const [dobError, setDobError] = useState("");
     const [userIdError, setUserIdError] = useState("");
@@ -330,6 +454,37 @@
     if (name === "tag" || name === "tagId" || name === "tag_id") {
       const cleanTag = String(value).trim().toUpperCase();
       if (cleanTag) {
+        const extractedDob = extractDOBFromTag(cleanTag);
+        if (extractedDob) {
+          const formattedDob = extractedDob.toISOString().split('T')[0];
+          const today = new Date();
+          let years = today.getFullYear() - extractedDob.getFullYear();
+          let months = today.getMonth() - extractedDob.getMonth();
+          if (months < 0 || (months === 0 && today.getDate() < extractedDob.getDate())) {
+              years--;
+              months += 12;
+          }
+          if (today.getDate() < extractedDob.getDate()) {
+              months--;
+              if (months < 0) {
+                 months += 12;
+              }
+          }
+          let ageText = "";
+          if (years > 0) {
+              ageText = `${years} Yrs ${months} Mos`;
+          } else if (months > 0) {
+              ageText = `${months} Mos`;
+          } else {
+              ageText = `0 Mos`;
+          }
+          setFormData(prev => ({
+            ...prev,
+            dateOfBirth: formattedDob,
+            age: ageText
+          }));
+        }
+
         import('../utils/api').then(({ api }) => {
           api.tags.getAllSuffixes().then(rules => {
             const ruleList = Array.isArray(rules) ? rules : (rules?.data ?? []);
@@ -367,6 +522,19 @@
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
 
+
+      if (name === "dameBreed" && value) {
+        updated["breed"] = value;
+      }
+
+      if (name === "dameId" && value) {
+        const cleanMotherTag = String(value).trim().toUpperCase();
+        const motherAnimal = livestockList.find(a => String(a.tag_id || a.tag || '').trim().toUpperCase() === cleanMotherTag);
+        if (motherAnimal) {
+          updated["dameBreed"] = motherAnimal.breed || "";
+          updated["breed"] = motherAnimal.breed || "";
+        }
+      }
 
       if (name === "farmId") {
         updated["shed"] = ""; // Clear selected shed when farm changes
@@ -421,36 +589,51 @@
         }
       }
 
-      if (name === "dateOfBirth") {
+      if (name === "dateOfBirth" || name === "dob") {
+        const fieldToSet = name === "dateOfBirth" ? "dateOfBirth" : "dob";
+        const otherField = name === "dateOfBirth" ? "dob" : "dateOfBirth";
         if (value) {
           const dob = parseDateString(value);
           if (dob) {
             const today = new Date();
-          
-          let years = today.getFullYear() - dob.getFullYear();
-          let months = today.getMonth() - dob.getMonth();
-          
-          if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
-              years--;
+            let years = today.getFullYear() - dob.getFullYear();
+            let months = today.getMonth() - dob.getMonth();
+            let days = today.getDate() - dob.getDate();
+            
+            if (days < 0) {
+              months -= 1;
+              const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+              days += prevMonth.getDate();
+            }
+            if (months < 0) {
+              years -= 1;
               months += 12;
-          }
-          if (today.getDate() < dob.getDate()) {
-              months--;
-              if (months < 0) {
-                 months += 12;
-              }
-          }
-          
-          if (years > 0) {
-              updated.age = `${years} Yrs ${months} Mos`;
-          } else if (months > 0) {
-              updated.age = `${months} Mos`;
-          } else {
-              updated.age = `0 Mos`;
-          }
+            }
+            
+            let ageText = `${years} Y`;
+            if (months > 0) ageText += ` ${months} M`;
+            if (days > 0) ageText += ` ${days} D`;
+            
+            updated.age = ageText;
+            updated[otherField] = value;
           }
         } else {
           updated.age = "";
+          updated[otherField] = "";
+        }
+      }
+
+      if (name === "age") {
+        if (value) {
+          const computed = calculateDOBFromAge(value);
+          if (computed && !isNaN(computed.getTime())) {
+            const formatted = computed.toISOString().split('T')[0];
+            updated.dateOfBirth = formatted;
+            updated.dob = formatted;
+          }
+        } else {
+          updated.dateOfBirth = "";
+          updated.dob = "";
         }
       }
 
@@ -662,7 +845,7 @@
 
 
   // AUTO CALCULATE AGE WHEN DOB
-  if (name === "dob") {
+  if (name === "dob" || name === "dateOfBirth") {
     if (value) {
       const birth = parseDateString(value);
       const today = new Date();
@@ -1168,21 +1351,21 @@
                               const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
                               return String(sFarmId) === String(selectedFarmId);
                             });
-                            selectOptions = matchingSheds.map(s => s.name || s.code);
-                            if (!selectOptions.includes('-')) {
-                              selectOptions.push('-');
+                            selectOptions = matchingSheds.map(s => ({ value: s.code || s.name, label: s.name || s.code }));
+                            if (!selectOptions.some(opt => opt.value === '-')) {
+                              selectOptions.push({ value: '-', label: '-' });
                             }
                           } else {
-                            selectOptions = allShedsList.map(s => s.name || s.code);
-                            if (!selectOptions.includes('-')) {
-                              selectOptions.push('-');
+                            selectOptions = allShedsList.map(s => ({ value: s.code || s.name, label: s.name || s.code }));
+                            if (!selectOptions.some(opt => opt.value === '-')) {
+                              selectOptions.push({ value: '-', label: '-' });
                             }
                           }
                         } else {
                           // Show all sheds across all farms for oldShed / newShed
-                          selectOptions = allShedsList.map(s => s.name || s.code);
-                          if (!selectOptions.includes('-')) {
-                            selectOptions.push('-');
+                          selectOptions = allShedsList.map(s => ({ value: s.code || s.name, label: s.name || s.code }));
+                          if (!selectOptions.some(opt => opt.value === '-')) {
+                            selectOptions.push({ value: '-', label: '-' });
                           }
                         }
                       }
@@ -1196,7 +1379,12 @@
                           return String(val) === String(curVal);
                         });
                         if (!hasVal) {
-                          optionsToRender.push(curVal);
+                          const matchingShed = allShedsList.find(s => String(s.code || '').trim() === String(curVal).trim() || String(s.name || '').trim().toUpperCase() === String(curVal).trim().toUpperCase());
+                          if (matchingShed) {
+                            optionsToRender.push({ value: matchingShed.code || matchingShed.name, label: matchingShed.name || matchingShed.code });
+                          } else {
+                            optionsToRender.push({ value: curVal, label: curVal });
+                          }
                         }
                       }
 
@@ -1309,6 +1497,19 @@
           (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
           (field.name === "purchaseDate" && formData.farmBorn === "Yes")
         ? "-" 
+        : (field.name === "dateOfBirth" || field.name === "dob")
+        ? (() => {
+            const raw = formData.dateOfBirth || formData.dob || "";
+            if (!raw || raw === '-') return "";
+            if (typeof raw === 'string' && raw.includes("-") && raw.split("-")[0].length === 4) return raw; // already YYYY-MM-DD
+            try {
+              const d = parseDateString(raw);
+              if (d && !isNaN(d.getTime())) {
+                return d.toISOString().split('T')[0];
+              }
+            } catch(e){}
+            return "";
+          })()
         : formData[field.name] || ""
     }
     /*  Required Logic */

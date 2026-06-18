@@ -38,6 +38,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/feed-items':                   ['FEED_ITEMS', 'FARM_ADMIN'],
   '/api/medicines':                    ['HEALTH', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
   '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/animals':                      ['ANIMAL_MANAGEMENT', 'FARM_ADMIN', 'CATTLE'],
   '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
   '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],
@@ -512,6 +513,14 @@ export const api = {
     create:              (data)     => apiRequest('/api/breeds', 'POST', data),
     update:              (id, data) => apiRequest(`/api/breeds/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/breeds/${id}`, 'DELETE'),
+  },
+
+  // Animal Management Configuration
+  animals: {
+    getAll:              ()         => apiRequest('/api/animals'),
+    create:              (data)     => apiRequest('/api/animals', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/animals/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/animals/${id}`, 'DELETE'),
   },
 
   // Medicines Configuration
