@@ -8,6 +8,7 @@ const DepartmentPg = ({ moduleConfig }) => {
 
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -23,6 +24,13 @@ const DepartmentPg = ({ moduleConfig }) => {
   const { data: departments, error, mutate, isLoading } = useSWR('departments_cache', fetcher, {
     revalidateOnFocus: false, // Prevents flashing when switching tabs
     dedupingInterval: 5000    // Cache for 5 seconds
+  });
+
+  const filteredDepartments = (departments || []).filter((dep) => {
+    const query = searchQuery.toLowerCase();
+    const name = (dep.name || "").toLowerCase();
+    const status = dep.status === true ? "active" : "inactive";
+    return name.includes(query) || status.includes(query);
   });
 
   const handleChange = (e) => {
@@ -94,6 +102,19 @@ const DepartmentPg = ({ moduleConfig }) => {
         </button>
       </div>
 
+      {/* SEARCH BAR */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:max-w-md">
+          <input
+            type="text"
+            placeholder="Search departments by name, status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+          />
+        </div>
+      </div>
+
       {/* ERROR */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 font-medium flex items-center gap-3">
@@ -105,19 +126,21 @@ const DepartmentPg = ({ moduleConfig }) => {
       <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">
 
         {/* EMPTY STATE */}
-        {!isLoading && (!departments || departments.length === 0) && (
+        {!isLoading && filteredDepartments.length === 0 && (
           <div className="p-16 text-center">
             <h3 className="text-lg font-bold text-gray-700">
               No Departments Found
             </h3>
             <p className="text-gray-500 mt-2 text-sm">
-              Get started by creating a new department above.
+              {!departments || departments.length === 0 
+                ? "Get started by creating a new department above." 
+                : "No departments match your search query."}
             </p>
           </div>
         )}
 
         {/* DATA TABLE */}
-        {(isLoading || departments?.length > 0) && (
+        {(isLoading || filteredDepartments.length > 0) && (
           <table className="w-full text-left min-w-[600px] relative">
             <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
               <tr>
@@ -130,7 +153,7 @@ const DepartmentPg = ({ moduleConfig }) => {
               {isLoading ? (
                 <SkeletonLoader type="table" columns={3} />
               ) : (
-                departments.map(dep => (
+                filteredDepartments.map(dep => (
                 <tr key={dep.id || dep._id} className="hover:bg-[#D1867D]/5 transition-colors">
                   <td className="p-4 text-sm font-bold text-black">{dep.name}</td>
                   <td className="p-4 text-center">

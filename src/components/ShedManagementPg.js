@@ -9,6 +9,34 @@ const ShedManagementPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const getFarmName = (fId) => {
+    if (!fId) return 'Unknown';
+    if (typeof fId === 'object') return fId.name || fId.code;
+    const farm = Array.isArray(farms) ? farms.find(f => (f?._id || f?.id) === fId) : null;
+    return farm ? farm.name : fId;
+  };
+
+  const filteredSheds = sheds.filter((shed) => {
+    const query = searchQuery.toLowerCase();
+    const farmName = getFarmName(shed.farmId).toLowerCase();
+    const code = String(shed.code || "").toLowerCase();
+    const status = String(shed.status || "").toLowerCase();
+    const remarks = String(shed.remarks || "").toLowerCase();
+    const capacity = String(shed.capacity || "").toLowerCase();
+    const lines = String(shed.lines || "").toLowerCase();
+    
+    return (
+      farmName.includes(query) ||
+      code.includes(query) ||
+      status.includes(query) ||
+      remarks.includes(query) ||
+      capacity.includes(query) ||
+      lines.includes(query)
+    );
+  });
+
 
   const [formData, setFormData] = useState({
     farmId: "",
@@ -127,12 +155,7 @@ const ShedManagementPg = () => {
     }
   };
 
-  const getFarmName = (fId) => {
-    if (!fId) return 'Unknown';
-    if (typeof fId === 'object') return fId.name || fId.code;
-    const farm = Array.isArray(farms) ? farms.find(f => (f?._id || f?.id) === fId) : null;
-    return farm ? farm.name : fId;
-  };
+
 
   return (
     <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
@@ -158,6 +181,19 @@ const ShedManagementPg = () => {
         </button>
       </div>
 
+      {/* SEARCH BAR */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:max-w-md">
+          <input
+            type="text"
+            placeholder="Search sheds by farm, code, capacity, status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+          />
+        </div>
+      </div>
+
       {/* TABLE */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">
         <table className="w-full text-left min-w-[800px] relative">
@@ -174,15 +210,19 @@ const ShedManagementPg = () => {
           <tbody className="divide-y divide-gray-100">
             {isFetching ? (
               <SkeletonLoader type="table" columns={6} />
-            ) : sheds.length === 0 ? (
+            ) : filteredSheds.length === 0 ? (
               <tr>
                 <td colSpan="6" className="p-16 text-center">
                   <h3 className="text-lg font-bold text-gray-700">No Sheds Found</h3>
-                  <p className="text-gray-500 mt-2 text-sm">Get started by creating a new shed above.</p>
+                  <p className="text-gray-500 mt-2 text-sm">
+                    {sheds.length === 0 
+                      ? "Get started by creating a new shed above." 
+                      : "No sheds match your search query."}
+                  </p>
                 </td>
               </tr>
             ) : (
-              sheds.map((shed, idx) => (
+              filteredSheds.map((shed, idx) => (
               <tr
                 key={shed._id || shed.id || idx}
                 className="hover:bg-[#D1867D]/5 transition-colors"

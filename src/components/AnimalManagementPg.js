@@ -8,15 +8,7 @@ const AnimalManagementPg = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState([{ field: "name", value: "" }]);
-
-  const filterFields = [
-    { name: "name", label: "Animal Name", type: "text" },
-    { name: "code", label: "Animal Code", type: "text" },
-    { name: "description", label: "Description", type: "text" },
-    { name: "status", label: "Status", type: "select", options: [{ label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }] }
-  ];
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState({
     id: null,
@@ -116,58 +108,13 @@ const AnimalManagementPg = () => {
     }
   };
 
-  // Group active filters by field name
-  const groupedFilters = {};
-  for (const f of filters) {
-    const fieldConfig = filterFields.find(field => field.name === f.field);
-    const hasValue = fieldConfig?.type === "select"
-      ? (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""))
-      : (f.value && String(f.value).trim() !== "");
-    if (!hasValue) continue;
-
-    if (!groupedFilters[f.field]) {
-      groupedFilters[f.field] = [];
-    }
-    groupedFilters[f.field].push(f);
-  }
-
   const filteredAnimals = animals.filter((animal) => {
-    let isMatched = true;
-
-    for (const fieldName in groupedFilters) {
-      const fieldFilters = groupedFilters[fieldName];
-      let matchAnyForField = false;
-
-      for (const f of fieldFilters) {
-        let currentMatch = true;
-
-        if (f.field === "status") {
-          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
-          if (selectedValues.length > 0) {
-            const animalStatus = animal.status !== false ? "active" : "inactive";
-            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === animalStatus);
-            if (!optionMatched) currentMatch = false;
-          }
-        } else {
-          if (f.value) {
-            currentMatch = String(animal[f.field] || "")
-              .toLowerCase()
-              .includes(f.value.toLowerCase());
-          }
-        }
-
-        if (currentMatch) {
-          matchAnyForField = true;
-          break;
-        }
-      }
-
-      if (!matchAnyForField) {
-        isMatched = false;
-        break;
-      }
-    }
-    return isMatched;
+    const query = searchQuery.toLowerCase();
+    const name = (animal.name || "").toLowerCase();
+    const code = (animal.code || "").toLowerCase();
+    const description = (animal.description || "").toLowerCase();
+    const status = animal.status !== false ? "active" : "inactive";
+    return name.includes(query) || code.includes(query) || description.includes(query) || status.includes(query);
   });
 
   return (
@@ -202,141 +149,19 @@ const AnimalManagementPg = () => {
 
       {/* SEARCH AND FILTERS */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`relative px-4 py-2.5 rounded-xl font-bold border text-xs transition-all duration-200 hover:-translate-y-px hover:shadow-md cursor-pointer flex items-center gap-2 ${
-              showFilters ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' : 'bg-white border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            🔍 Filters
-            {filters.filter(f => Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '').length > 0 && (
-              <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                {filters.filter(f => Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '').length}
-              </span>
-            )}
-          </button>
+        <div className="relative w-full md:max-w-md">
+          <input
+            type="text"
+            placeholder="Search animal types by name, code, description, status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+          />
         </div>
         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
           Registered Animals: {filteredAnimals.length}
         </div>
       </div>
-
-      {/* FILTER OVERLAY MODAL */}
-      {showFilters && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-          <div className="bg-white w-full max-w-md rounded-[30px] shadow-2xl max-h-[85vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
-              <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-black text-xl font-bold cursor-pointer">✕</button>
-            </div>
-            <div className="space-y-4">
-              {filters.map((f, index) => (
-                <div key={index} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <select
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
-                    value={f.field}
-                    onChange={e => {
-                      const updated = [...filters];
-                      updated[index] = { field: e.target.value, value: '' };
-                      setFilters(updated);
-                    }}
-                  >
-                    {filterFields.map(field => (
-                      <option key={field.name} value={field.name}>{field.label}</option>
-                    ))}
-                  </select>
-
-                  {(() => {
-                    const fieldConfig = filterFields.find(field => field.name === f.field);
-
-                    // 📋 SELECT FIELD (MULTI-SELECT CHECKBOXES)
-                    if (fieldConfig?.type === "select") {
-                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
-                      const options = fieldConfig.options || [];
-
-                      return (
-                        <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-[#D1867D] rounded-lg p-2.5">
-                          {options.map((opt) => {
-                            const valStr = typeof opt === 'object' ? opt.value : opt;
-                            const labelStr = typeof opt === 'object' ? opt.label : opt;
-                            const isChecked = currentSelected.includes(valStr);
-
-                            return (
-                              <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    const updated = [...filters];
-                                    let nextVal;
-                                    if (e.target.checked) {
-                                      nextVal = [...currentSelected, valStr];
-                                    } else {
-                                      nextVal = currentSelected.filter((v) => v !== valStr);
-                                    }
-                                    updated[index].value = nextVal;
-                                    setFilters(updated);
-                                  }}
-                                  className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
-                                />
-                                {labelStr}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      );
-                    }
-
-                    // ✏️ DEFAULT TEXT
-                    return (
-                      <input
-                        type="text"
-                        placeholder="Enter value..."
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
-                        value={f.value || ""}
-                        onChange={(e) => {
-                          const updated = [...filters];
-                          updated[index].value = e.target.value;
-                          setFilters(updated);
-                        }}
-                      />
-                    );
-                  })()}
-
-                  <button
-                    onClick={() => {
-                      const updated = filters.filter((_, i) => i !== index);
-                      setFilters(updated.length ? updated : [{ field: 'name', value: '' }]);
-                    }}
-                    className="text-red-500 hover:text-red-700 text-xs font-bold self-end mt-1 cursor-pointer transition-colors"
-                  >
-                    Remove Filter
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-6 gap-3">
-              <button
-                onClick={() => setFilters([...filters, { field: 'name', value: '' }])}
-                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20 cursor-pointer"
-              >
-                + Add Filter
-              </button>
-              <button
-                onClick={() => { setFilters([{ field: 'name', value: '' }]); }}
-                className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm cursor-pointer"
-              >
-                Clear
-              </button>
-            </div>
-            <button onClick={() => setShowFilters(false)}
-              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2.5 rounded-lg font-bold cursor-pointer">
-              Apply Filters
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* CONTENT WRAPPER */}
       <div className="flex-1 overflow-auto border border-gray-200 rounded-xl shadow-sm bg-white relative">
@@ -344,7 +169,9 @@ const AnimalManagementPg = () => {
           <div className="p-16 text-center">
             <h3 className="text-lg font-bold text-gray-700">No Animals Found</h3>
             <p className="text-gray-500 mt-2 text-sm">
-              Get started by adding custom animal configurations above.
+              {animals.length === 0
+                ? "Get started by adding custom animal configurations above."
+                : "No animals match your search query."}
             </p>
           </div>
         )}

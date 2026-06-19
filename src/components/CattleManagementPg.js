@@ -27,6 +27,7 @@ export default function CattleManagementPg({
   
   // Dynamic Filters State
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
+  const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
@@ -165,6 +166,7 @@ export default function CattleManagementPg({
 
   const clearAllFilters = () => {
     setFilters([{ field: "tag", value: "" }]);
+    setFilterSearchQueries({});
     setCurrentPage(1);
   };
 
@@ -255,10 +257,18 @@ export default function CattleManagementPg({
           }
         }
         // 🔁 MULTI-SELECT CHECKBOX MATCH
-        else if (fieldConfig?.type === "select") {
+        else if (fieldConfig?.type === "select" || f.field === "tag") {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
           if (selectedValues.length > 0) {
-            const recordVal = String(item[f.field] || "").toLowerCase();
+            let recordVal = "";
+            if (f.field === "tag") {
+              recordVal = item.tag || item.tag_id || item.code || "";
+            } else if (f.field === "farmId") {
+              recordVal = typeof item.farmId === "object" ? (item.farmId?._id || item.farmId?.id || "") : (item.farmId || "");
+            } else {
+              recordVal = item[f.field] || "";
+            }
+            recordVal = String(recordVal).toLowerCase();
             const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
             if (!optionMatched) currentMatch = false;
           }
@@ -547,6 +557,74 @@ export default function CattleManagementPg({
                               setFilters(updated);
                             }}
                           />
+                        </div>
+                      );
+                    }
+
+                    // Check if it's one of the target fields (tag, breed, gender, status, shed, farmId)
+                    const isCheckboxSearchField = ["tag", "breed", "gender", "status", "shed", "farmId"].includes(f.field);
+
+                    if (isCheckboxSearchField) {
+                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                      
+                      // Get all options
+                      const rawOptions = f.field === "tag" 
+                        ? [...new Set(cattleData.map(item => item.tag || item.tag_id || item.code).filter(Boolean))].sort()
+                        : (fieldConfig?.options || []);
+                        
+                      const searchQuery = (filterSearchQueries[index] || "").toLowerCase();
+                      
+                      // Filter options by search query
+                      const filteredOptions = rawOptions.filter((opt) => {
+                        const labelStr = typeof opt === 'object' ? (opt.label || "") : (opt || "");
+                        return String(labelStr).toLowerCase().includes(searchQuery);
+                      });
+
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <input
+                            type="text"
+                            placeholder={`Search ${fieldConfig?.label || f.field}...`}
+                            value={filterSearchQueries[index] || ""}
+                            onChange={(e) => setFilterSearchQueries({
+                              ...filterSearchQueries,
+                              [index]: e.target.value
+                            })}
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
+                          />
+                          <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                            {filteredOptions.length === 0 ? (
+                              <span className="text-xs text-gray-400 italic">No options found</span>
+                            ) : (
+                              filteredOptions.map((opt) => {
+                                const valStr = typeof opt === 'object' ? opt.value : opt;
+                                const labelStr = typeof opt === 'object' ? opt.label : opt;
+                                const isChecked = currentSelected.includes(valStr);
+
+                                return (
+                                  <label key={valStr} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        const updated = [...filters];
+                                        let nextVal;
+                                        if (e.target.checked) {
+                                          nextVal = [...currentSelected, valStr];
+                                        } else {
+                                          nextVal = currentSelected.filter((v) => v !== valStr);
+                                        }
+                                        updated[index].value = nextVal;
+                                        setFilters(updated);
+                                      }}
+                                      className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                    />
+                                    {labelStr}
+                                  </label>
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
                       );
                     }
