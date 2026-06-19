@@ -265,6 +265,52 @@ const getStandardHeaderKey = (headerValue) => {
   return clean; // Fallback to raw normalized if no alias matched
 };
 
+const parseAgeStringToDays = (ageStr) => {
+  if (!ageStr) return 0;
+  if (/^\d+$/.test(String(ageStr).trim())) {
+    return parseFloat(ageStr);
+  }
+  let years = 0, months = 0, days = 0;
+  const yMatch = String(ageStr).match(/(\d+)\s*Y/i);
+  const mMatch = String(ageStr).match(/(\d+)\s*M/i);
+  const dMatch = String(ageStr).match(/(\d+)\s*D/i);
+  if (yMatch) years = parseInt(yMatch[1], 10);
+  if (mMatch) months = parseInt(mMatch[1], 10);
+  if (dMatch) days = parseInt(dMatch[1], 10);
+  return (years * 365) + (months * 30.44) + days;
+};
+
+const getRecordAgeInDays = (log, fieldName) => {
+  let dob = null;
+  let endDate = null;
+  let storedAge = log[fieldName];
+
+  if (fieldName === 'pregnantAge') {
+    dob = log.crossingDate || log["crossingDate"];
+    endDate = log.actualCalvingDate || log["actual calving date"];
+  } else if (fieldName === 'age') {
+    dob = log.dateOfBirth || log["dateOfBirth"] || log.dob;
+  }
+
+  if (dob) {
+    const birth = parseDateString(dob);
+    if (birth && !isNaN(birth.getTime())) {
+      const today = endDate ? parseDateString(endDate) : new Date();
+      const diffTime = today.getTime() - birth.getTime();
+      return Math.max(0, diffTime / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  return parseAgeStringToDays(storedAge);
+};
+
+const getFilterAgeInDays = (y, m, d) => {
+  const years = parseFloat(y) || 0;
+  const months = parseFloat(m) || 0;
+  const days = parseFloat(d) || 0;
+  return (years * 365) + (months * 30.44) + days;
+};
+
 const AnimalDetailspg = ({ moduleConfig }) => {
 
 const router = useRouter();
@@ -677,7 +723,7 @@ const currentFields = current.fields.map(f => {
     e.target.value = '';
   };
 
-  const isCustomFilterModule = ['vaccine', 'health', 'livestock', 'shed', 'crossing'].includes(current.id);
+  const isCustomFilterModule = ['vaccine', 'health', 'livestock', 'shed', 'crossing', 'purchase', 'sale'].includes(current.id);
 
   const [allLivestockTags, setAllLivestockTags] = useState([]);
   const [openDropdowns, setOpenDropdowns] = useState({});
@@ -1041,8 +1087,10 @@ if (!moduleConfig) {
     for (const f of filtersToUse) {
       const fieldConfig = currentFields.find(field => field.name === f.field);
       const isDate = fieldConfig?.type === "date" || f.field === "entryDate" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob";
-      const isRange = fieldConfig?.type === "number";
-      const hasValue = isDate || isRange ? (f.from || f.to) : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
+      const isRange = (fieldConfig?.type === "number" && !["sellerContact", "buyerPhone"].includes(f.field)) || f.field === "age" || f.field === "pregnantAge";
+      const hasValue = isDate || isRange 
+        ? (f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays) 
+        : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
       if (!hasValue) continue;
 
       if (!groupedFilters[f.field]) {
@@ -1091,26 +1139,38 @@ if (!moduleConfig) {
           }
         }
         // 🔢 RANGE FILTER FOR NUMBER FIELDS
-        else if (fieldConfig?.type === "number") {
-          const valStr = String(log[f.field] || "").trim();
-          const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
-          if (isNaN(valNum)) {
-            currentMatch = false;
-          } else {
-            if (f.from) {
-              const fromNum = parseFloat(f.from);
-              if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+        else if ((fieldConfig?.type === "number" && !["sellerContact", "buyerPhone"].includes(f.field)) || f.field === "age" || f.field === "pregnantAge") {
+          if (f.field === "pregnantAge" || f.field === "age") {
+            const recordDays = getRecordAgeInDays(log, f.field);
+            if (f.fromYears || f.fromMonths || f.fromDays) {
+              const minDays = getFilterAgeInDays(f.fromYears, f.fromMonths, f.fromDays);
+              if (recordDays < minDays) currentMatch = false;
             }
-            if (f.to) {
-              const toNum = parseFloat(f.to);
-              if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+            if (f.toYears || f.toMonths || f.toDays) {
+              const maxDays = getFilterAgeInDays(f.toYears, f.toMonths, f.toDays);
+              if (recordDays > maxDays) currentMatch = false;
+            }
+          } else {
+            const valStr = String(log[f.field] || "").trim();
+            const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+            if (isNaN(valNum)) {
+              currentMatch = false;
+            } else {
+              if (f.from) {
+                const fromNum = parseFloat(f.from);
+                if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+              }
+              if (f.to) {
+                const toNum = parseFloat(f.to);
+                if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+              }
             }
           }
         }
         // 🔁 MULTI-SELECT CHECKBOX MATCH
         else if (
           fieldConfig?.type === "select" ||
-          (isCustomFilterModule && !f.field.toLowerCase().includes("date") && f.field !== "tagId")
+          (isCustomFilterModule && !f.field.toLowerCase().includes("date") && (f.field !== "tagId" || ['vaccine', 'health'].includes(current.id)))
         ) {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
           if (selectedValues.length > 0) {
@@ -1155,7 +1215,8 @@ const endIndex = startIndex + itemsPerPage;
 
 const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 const activeFilterCount = (isCustomFilterModule ? appliedFilters : filters).filter(
-  f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || f.from || f.to
+  f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || 
+       f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays
 ).length;
 
 
@@ -2024,7 +2085,19 @@ const getShedFromLivestock = (tagValue) => {
 
             
             <button
-    onClick={() => setShowFilters(!showFilters)}
+    onClick={() => {
+      if (showFilters) {
+        if (isCustomFilterModule) {
+          setFilters(appliedFilters.map(f => ({
+            ...f,
+            value: Array.isArray(f.value) ? [...f.value] : f.value
+          })));
+        }
+        setFilterSearchQueries({});
+        setOpenDropdowns({});
+      }
+      setShowFilters(!showFilters);
+    }}
     className={`relative px-4 py-2 rounded-lg font-bold border transition-all duration-200 ease-out hover:-translate-y-[1px] hover:shadow-md 
       ${showFilters 
         ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
@@ -2079,7 +2152,17 @@ const getShedFromLivestock = (tagValue) => {
         <h3 className="text-lg font-bold text-black">Filters</h3>
 
         <button
-          onClick={() => setShowFilters(false)}
+          onClick={() => {
+            if (isCustomFilterModule) {
+              setFilters(appliedFilters.map(f => ({
+                ...f,
+                value: Array.isArray(f.value) ? [...f.value] : f.value
+              })));
+            }
+            setFilterSearchQueries({});
+            setOpenDropdowns({});
+            setShowFilters(false);
+          }}
           className="text-gray-500 text-xl font-bold"
         >
           ✕
@@ -2118,7 +2201,7 @@ const getShedFromLivestock = (tagValue) => {
               const fieldConfig = currentFields.find(field => field.name === f.field);
 
               // 📅 DATE RANGE FIELD
-              if (f.field.toLowerCase().includes("date")) {
+              if (fieldConfig?.type === "date" || f.field.toLowerCase().includes("date")) {
                 return (
                   <div className="flex gap-2">
 
@@ -2170,26 +2253,156 @@ const getShedFromLivestock = (tagValue) => {
                 );
               }
 
-              // 🔢 NUMBER FIELD
-              if (fieldConfig?.type === "number") {
+              // 🔢 RANGE FIELD FOR AGE OR PREGNANT AGE (Years, Months, Days)
+              if (f.field === "age" || f.field === "pregnantAge") {
                 return (
-                  <input
-                    type="number"
-                    placeholder="Enter number..."
-                    className="px-2 py-1.5 border rounded-lg text-sm"
-                    value={f.value}
-                    onChange={(e) => {
-                      const updated = [...filters];
-                      updated[index].value = e.target.value;
-                      setFilters(updated);
-                    }}
-                  />
+                  <div className="flex flex-col gap-2 p-2 bg-slate-50 border rounded-lg">
+                    {/* MIN BOUND */}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-bold text-slate-500">Min Age:</span>
+                      <div className="flex gap-1.5">
+                        <div className="flex flex-col items-center flex-1">
+                          <input
+                            type="number"
+                            placeholder="Y"
+                            min="0"
+                            className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                            value={f.fromYears || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].fromYears = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Years</span>
+                        </div>
+                        <div className="flex flex-col items-center flex-1">
+                          <input
+                            type="number"
+                            placeholder="M"
+                            min="0"
+                            max="11"
+                            className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                            value={f.fromMonths || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].fromMonths = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Months</span>
+                        </div>
+                        <div className="flex flex-col items-center flex-1">
+                          <input
+                            type="number"
+                            placeholder="D"
+                            min="0"
+                            max="30"
+                            className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                            value={f.fromDays || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].fromDays = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Days</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* MAX BOUND */}
+                    <div className="flex flex-col gap-1 mt-1 border-t pt-2 border-slate-200">
+                      <span className="text-xs font-bold text-slate-500">Max Age:</span>
+                      <div className="flex gap-1.5">
+                        <div className="flex flex-col items-center flex-1">
+                          <input
+                            type="number"
+                            placeholder="Y"
+                            min="0"
+                            className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                            value={f.toYears || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].toYears = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Years</span>
+                        </div>
+                        <div className="flex flex-col items-center flex-1">
+                          <input
+                            type="number"
+                            placeholder="M"
+                            min="0"
+                            max="11"
+                            className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                            value={f.toMonths || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].toMonths = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Months</span>
+                        </div>
+                        <div className="flex flex-col items-center flex-1">
+                          <input
+                            type="number"
+                            placeholder="D"
+                            min="0"
+                            max="30"
+                            className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                            value={f.toDays || ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].toDays = e.target.value;
+                              setFilters(updated);
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Days</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 🔢 NUMBER FIELD (Min/Max range inputs)
+              if (fieldConfig?.type === "number" && !["sellerContact", "buyerPhone"].includes(f.field)) {
+                return (
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min..."
+                      step="any"
+                      className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm w-full bg-white text-black outline-none focus:border-[#D1867D]"
+                      value={f.from || ""}
+                      onChange={(e) => {
+                        const updated = [...filters];
+                        updated[index].from = e.target.value;
+                        setFilters(updated);
+                      }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max..."
+                      step="any"
+                      className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm w-full bg-white text-black outline-none focus:border-[#D1867D]"
+                      value={f.to || ""}
+                      onChange={(e) => {
+                        const updated = [...filters];
+                        updated[index].to = e.target.value;
+                        setFilters(updated);
+                      }}
+                    />
+                  </div>
                 );
               }
 
               // 📋 SELECT FIELD (for non-custom module, or custom module handling)
               if (isCustomFilterModule) {
-                if (f.field === 'tagId') {
+                if (f.field === 'tagId' && !['vaccine', 'health'].includes(current.id)) {
                   const filterVal = f.value || "";
                   const suggestions = allLivestockTags.filter(tag => 
                     tag.toLowerCase().includes(filterVal.toLowerCase()) && 
@@ -2254,8 +2467,12 @@ const getShedFromLivestock = (tagValue) => {
                     {isOpen && (
                       <div className="flex flex-col gap-1.5 bg-white border border-slate-200 rounded-xl p-2.5 shadow-inner">
                         {((current.id === 'shed' && ['tag', 'oldShed', 'newShed', 'reason'].includes(f.field)) ||
-                          (current.id === 'vaccine' && ['animalType', 'shedId', 'vaccinationName', 'batchNo'].includes(f.field)) ||
-                          (current.id === 'health' && ['animalType', 'shedId', 'symptoms', 'diagnosis', 'treatment'].includes(f.field))) && (
+                          (current.id === 'vaccine' && ['tagId', 'animalType', 'shedId', 'vaccinationName', 'batchNo'].includes(f.field)) ||
+                          (current.id === 'health' && ['tagId', 'animalType', 'shedId', 'symptoms', 'diagnosis', 'treatment'].includes(f.field)) ||
+                          (current.id === 'livestock' && ['tag', 'cattleType', 'shed', 'breed', 'gender', 'dameId', 'dameBreed', 'sireId', 'sireBreed', 'status', 'remarks'].includes(f.field)) ||
+                          (current.id === 'crossing' && ['tag', 'maleTag', 'batchNumber', 'calfTag', 'breedType', 'remarks'].includes(f.field)) ||
+                          (current.id === 'purchase' && ['tag', 'purchaseFrom', 'sellerContact', 'farmId'].includes(f.field)) ||
+                          (current.id === 'sale' && ['tag', 'buyerName', 'buyerPhone', 'remarks'].includes(f.field))) && (
                           <input
                             type="text"
                             placeholder="Search options..."

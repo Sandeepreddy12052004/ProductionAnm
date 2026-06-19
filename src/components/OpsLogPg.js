@@ -69,6 +69,7 @@ const OpsLogPg = ({ moduleConfig }) => {
   const [dynamicFields, setDynamicFields] = useState(current.fields);
 
   const [filters, setFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
+  const [appliedFilters, setAppliedFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -90,6 +91,15 @@ const OpsLogPg = ({ moduleConfig }) => {
     document.body.style.overflow = (showForm || showFilters || viewMode || selectedEntry) ? 'hidden' : 'auto';
     return () => { document.body.style.overflow = 'auto'; };
   }, [showForm, showFilters, viewMode, selectedEntry]);
+
+  useEffect(() => {
+    if (showFilters) {
+      setFilters(appliedFilters.map(f => ({
+        ...f,
+        value: Array.isArray(f.value) ? [...f.value] : f.value
+      })));
+    }
+  }, [showFilters, appliedFilters]);
 
   // ── Load dynamic shed/animal/feed options ──────────────────────────────
   useEffect(() => {
@@ -235,7 +245,10 @@ const OpsLogPg = ({ moduleConfig }) => {
 
   useEffect(() => {
     fetchLogs();
-    setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]);
+    const defaultFilter = [{ field: 'entryDate', value: '', from: '', to: '' }];
+    setFilters(defaultFilter);
+    setAppliedFilters(defaultFilter);
+    setFilterSearchQueries({});
     setCurrentPage(1);
   }, [moduleConfig]);
 
@@ -339,7 +352,7 @@ const OpsLogPg = ({ moduleConfig }) => {
   const filteredLogs = logs.filter(log => {
     // Group active filters by field name
     const groupedFilters = {};
-    for (const f of filters) {
+    for (const f of appliedFilters) {
       const fieldConfig = dynamicFields.find(field => field.name === f.field);
       const isDate = f.field === 'entryDate' || fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob";
       const isRange = fieldConfig?.type === "number";
@@ -444,10 +457,15 @@ const OpsLogPg = ({ moduleConfig }) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
-  const activeFilterCount = filters.filter(
-    f => (f.field === 'entryDate' || dynamicFields.find(fd => fd.name === f.field)?.type === 'date')
-      ? (f.from || f.to)
-      : (Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '')
+  const activeFilterCount = appliedFilters.filter(
+    f => {
+      const fieldConfig = dynamicFields.find(fd => fd.name === f.field);
+      const isDate = f.field === 'entryDate' || fieldConfig?.type === 'date' || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob";
+      const isRange = fieldConfig?.type === 'number';
+      return isDate || isRange
+        ? (f.from || f.to)
+        : (Array.isArray(f.value) ? f.value.length > 0 : String(f.value || '').trim() !== '');
+    }
   ).length;
 
   // ── Excel Export ─────────────────────────────────────────────────────────
@@ -678,7 +696,8 @@ const OpsLogPg = ({ moduleConfig }) => {
 
                       return (
                         <div className="flex flex-col gap-1.5 bg-white border border-slate-200 rounded-lg p-2.5">
-                          {current.id === 'med_inv' && ['medicineName', 'type'].includes(f.field) && (
+                          {((current.id === 'med_inv' && ['medicineName', 'type'].includes(f.field)) ||
+                            (current.id === 'feed_inv' && ['feedType'].includes(f.field))) && (
                             <input
                               type="text"
                               placeholder="Search options..."
@@ -764,7 +783,9 @@ const OpsLogPg = ({ moduleConfig }) => {
               </button>
               <button
                 onClick={() => {
-                  setFilters([{ field: 'entryDate', value: '', from: '', to: '' }]);
+                  const defaultFilter = [{ field: 'entryDate', value: '', from: '', to: '' }];
+                  setFilters(defaultFilter);
+                  setAppliedFilters(defaultFilter);
                   setFilterSearchQueries({});
                   setCurrentPage(1);
                   setShowFilters(false);
@@ -774,8 +795,17 @@ const OpsLogPg = ({ moduleConfig }) => {
                 Clear
               </button>
             </div>
-            <button onClick={() => setShowFilters(false)}
-              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2.5 rounded-lg font-bold cursor-pointer">
+            <button
+              onClick={() => {
+                setAppliedFilters(filters.map(f => ({
+                  ...f,
+                  value: Array.isArray(f.value) ? [...f.value] : f.value
+                })));
+                setShowFilters(false);
+                setCurrentPage(1);
+              }}
+              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2.5 rounded-lg font-bold cursor-pointer"
+            >
               Apply Filters
             </button>
           </div>

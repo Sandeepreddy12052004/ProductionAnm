@@ -27,6 +27,7 @@ export default function CattleManagementPg({
   
   // Dynamic Filters State
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
+  const [appliedFilters, setAppliedFilters] = useState([{ field: "tag", value: "" }]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
@@ -165,12 +166,14 @@ export default function CattleManagementPg({
   };
 
   const clearAllFilters = () => {
-    setFilters([{ field: "tag", value: "" }]);
+    const defaultFilters = [{ field: "tag", value: "" }];
+    setFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
     setFilterSearchQueries({});
     setCurrentPage(1);
   };
 
-  const activeFilterCount = filters.filter(
+  const activeFilterCount = appliedFilters.filter(
     (f) => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || f.from || f.to
   ).length;
 
@@ -187,7 +190,7 @@ export default function CattleManagementPg({
 
     // Group active filters by field name
     const groupedFilters = {};
-    for (const f of filters) {
+    for (const f of appliedFilters) {
       const fieldConfig = dynamicFields.find(field => field.name === f.field);
       const isDate = fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth";
       const isRange = fieldConfig?.type === "number";
@@ -400,7 +403,15 @@ export default function CattleManagementPg({
 
           <div className="flex gap-3">
             <button
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => {
+                if (!showFilters) {
+                  setFilters(JSON.parse(JSON.stringify(appliedFilters)));
+                } else {
+                  setFilters(JSON.parse(JSON.stringify(appliedFilters)));
+                  setFilterSearchQueries({});
+                }
+                setShowFilters(!showFilters);
+              }}
               className={`relative px-5 h-12 rounded-xl font-bold border transition-all duration-200 ease-out hover:-translate-y-[1px] hover:shadow-md flex items-center gap-2
                 ${showFilters 
                   ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
@@ -466,7 +477,11 @@ export default function CattleManagementPg({
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
               <button
-                onClick={() => setShowFilters(false)}
+                onClick={() => {
+                  setFilters(JSON.parse(JSON.stringify(appliedFilters)));
+                  setFilterSearchQueries({});
+                  setShowFilters(false);
+                }}
                 className="text-gray-400 hover:text-gray-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold"
               >
                 ✕
@@ -716,7 +731,10 @@ export default function CattleManagementPg({
 
             {/* APPLY BUTTON */}
             <button
-              onClick={() => setShowFilters(false)}
+              onClick={() => {
+                setAppliedFilters(filters);
+                setShowFilters(false);
+              }}
               className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-3 rounded-xl font-bold text-sm transition-colors shadow-md cursor-pointer"
             >
               Apply Filters

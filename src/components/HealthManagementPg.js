@@ -14,6 +14,8 @@ const HealthManagementPg = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState([{ field: "symptoms", value: "" }]);
+  const [appliedFilters, setAppliedFilters] = useState([{ field: "symptoms", value: "" }]);
+  const [filterSearchQueries, setFilterSearchQueries] = useState({});
 
   const treatmentFields = [
     { name: "symptoms", label: "Symptoms", type: "text" },
@@ -302,7 +304,7 @@ const HealthManagementPg = () => {
 
   const evaluateCompoundFilters = (item, fieldsConfig) => {
     const grouped = {};
-    for (const f of filters) {
+    for (const f of appliedFilters) {
       const fieldConfig = fieldsConfig.find(field => field.name === f.field);
       if (!fieldConfig) continue;
 
@@ -370,10 +372,19 @@ const HealthManagementPg = () => {
             }
           }
         }
-        else if (fieldConfig.type === "select") {
+        // 🔁 MULTI-SELECT CHECKBOX MATCH
+        else if (fieldConfig.type === "select" || [
+          "symptoms", "diagnosis", "treatment",
+          "vaccinationName", "batchNo",
+          "name", "type", "description", "status"
+        ].includes(f.field)) {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
           if (selectedValues.length > 0) {
-            const recordVal = String(item[f.field] !== undefined && item[f.field] !== null ? item[f.field] : "").toLowerCase();
+            let recordVal = item[f.field];
+            if (f.field === "status" && typeof recordVal === "boolean") {
+              recordVal = String(recordVal); // "true" or "false"
+            }
+            recordVal = String(recordVal !== undefined && recordVal !== null ? recordVal : "").toLowerCase();
             const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
             if (!optionMatched) currentMatch = false;
           }
@@ -515,6 +526,8 @@ const HealthManagementPg = () => {
             setActiveTab("treatments");
             setSearchQuery("");
             setFilters([{ field: "symptoms", value: "" }]);
+            setAppliedFilters([{ field: "symptoms", value: "" }]);
+            setFilterSearchQueries({});
           }}
           className={`pb-3 text-sm font-black transition-all ${
             activeTab === "treatments"
@@ -529,6 +542,8 @@ const HealthManagementPg = () => {
             setActiveTab("vaccinations");
             setSearchQuery("");
             setFilters([{ field: "vaccinationName", value: "" }]);
+            setAppliedFilters([{ field: "vaccinationName", value: "" }]);
+            setFilterSearchQueries({});
           }}
           className={`pb-3 text-sm font-black transition-all ${
             activeTab === "vaccinations"
@@ -543,6 +558,8 @@ const HealthManagementPg = () => {
             setActiveTab("medicines");
             setSearchQuery("");
             setFilters([{ field: "name", value: "" }]);
+            setAppliedFilters([{ field: "name", value: "" }]);
+            setFilterSearchQueries({});
           }}
           className={`pb-3 text-sm font-black transition-all ${
             activeTab === "medicines"
@@ -570,7 +587,15 @@ const HealthManagementPg = () => {
           className="flex-1 h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
         />
         <button
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={() => {
+            if (!showFilters) {
+              setFilters(JSON.parse(JSON.stringify(appliedFilters)));
+            } else {
+              setFilters(JSON.parse(JSON.stringify(appliedFilters)));
+              setFilterSearchQueries({});
+            }
+            setShowFilters(!showFilters);
+          }}
           className={`px-4 h-11 rounded-xl font-bold border transition-all flex items-center justify-center gap-2 text-xs
             ${showFilters 
               ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' 
@@ -578,9 +603,9 @@ const HealthManagementPg = () => {
           `}
         >
           🔍 Filters
-          {filters.filter(f => f.value || f.from || f.to).length > 0 && (
+          {appliedFilters.filter(f => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || f.from || f.to).length > 0 && (
             <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-              {filters.filter(f => f.value || f.from || f.to).length}
+              {appliedFilters.filter(f => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || f.from || f.to).length}
             </span>
           )}
         </button>
@@ -1025,7 +1050,11 @@ const HealthManagementPg = () => {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-black text-[#16223F]">Filters</h3>
               <button
-                onClick={() => setShowFilters(false)}
+                onClick={() => {
+                  setFilters(JSON.parse(JSON.stringify(appliedFilters)));
+                  setFilterSearchQueries({});
+                  setShowFilters(false);
+                }}
                 className="text-gray-400 hover:text-gray-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold"
               >
                 ✕
@@ -1114,6 +1143,87 @@ const HealthManagementPg = () => {
                       );
                     }
 
+                    // Check if it's one of the target fields
+                    const isCheckboxSearchField = [
+                      "symptoms", "diagnosis", "treatment",
+                      "vaccinationName", "batchNo",
+                      "name", "type", "description", "status"
+                    ].includes(f.field);
+
+                    if (isCheckboxSearchField) {
+                      const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                      
+                      // Dynamically gather options based on the active tab and field
+                      let rawOptions = [];
+                      if (activeTab === "treatments") {
+                        rawOptions = [...new Set(treatments.map(t => t[f.field]).filter(Boolean))].sort();
+                      } else if (activeTab === "vaccinations") {
+                        rawOptions = [...new Set(vaccinations.map(v => v[f.field]).filter(Boolean))].sort();
+                      } else if (activeTab === "medicines") {
+                        if (f.field === "type" || f.field === "status") {
+                          rawOptions = fieldConfig?.options || [];
+                        } else {
+                          rawOptions = [...new Set(medicines.map(m => m[f.field]).filter(Boolean))].sort();
+                        }
+                      }
+
+                      const searchQuery = (filterSearchQueries[index] || "").toLowerCase();
+                      
+                      // Filter options by search query
+                      const filteredOptions = rawOptions.filter((opt) => {
+                        const labelStr = typeof opt === 'object' ? (opt.label || "") : (opt || "");
+                        return String(labelStr).toLowerCase().includes(searchQuery);
+                      });
+
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <input
+                            type="text"
+                            placeholder={`Search ${fieldConfig?.label || f.field}...`}
+                            value={filterSearchQueries[index] || ""}
+                            onChange={(e) => setFilterSearchQueries({
+                              ...filterSearchQueries,
+                              [index]: e.target.value
+                            })}
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-[#16223F] font-semibold outline-none focus:border-[#D1867D]"
+                          />
+                          <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto bg-white border border-slate-200 rounded-lg p-2.5">
+                            {filteredOptions.length === 0 ? (
+                              <span className="text-xs text-gray-400 italic">No options found</span>
+                            ) : (
+                              filteredOptions.map((opt) => {
+                                const valStr = typeof opt === 'object' ? opt.value : opt;
+                                const labelStr = typeof opt === 'object' ? opt.label : opt;
+                                const isChecked = currentSelected.includes(String(valStr));
+
+                                return (
+                                  <label key={String(valStr)} className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        const updated = [...filters];
+                                        let nextVal;
+                                        if (e.target.checked) {
+                                          nextVal = [...currentSelected, String(valStr)];
+                                        } else {
+                                          nextVal = currentSelected.filter((v) => String(v) !== String(valStr));
+                                        }
+                                        updated[index].value = nextVal;
+                                        setFilters(updated);
+                                      }}
+                                      className="w-4 h-4 text-[#16223F] border-gray-300 rounded focus:ring-[#16223F]"
+                                    />
+                                    {labelStr}
+                                  </label>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
                     if (fieldConfig.type === "select") {
                       const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
                       const options = fieldConfig.options || [];
@@ -1194,7 +1304,10 @@ const HealthManagementPg = () => {
               <button
                 onClick={() => {
                   const defaultField = activeFields[0]?.name || "";
-                  setFilters([{ field: defaultField, value: "" }]);
+                  const defaultFilters = [{ field: defaultField, value: "" }];
+                  setFilters(defaultFilters);
+                  setAppliedFilters(defaultFilters);
+                  setFilterSearchQueries({});
                 }}
                 className="flex-1 bg-red-50 text-red-600 py-2.5 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors"
               >
@@ -1203,7 +1316,10 @@ const HealthManagementPg = () => {
             </div>
 
             <button
-              onClick={() => setShowFilters(false)}
+              onClick={() => {
+                setAppliedFilters(filters);
+                setShowFilters(false);
+              }}
               className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-3 rounded-xl font-bold text-sm transition-colors shadow-md"
             >
               Apply Filters
