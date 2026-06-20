@@ -1091,6 +1091,69 @@ useEffect(() => {
       }
     }
   }
+
+  if (current.id === 'crossing') {
+    // 1. Check Tag Filter
+    const tagFilter = appliedFilters.find(f => f.field === 'tag' || f.field === 'tagId');
+    let selectedTags = [];
+    if (tagFilter) {
+      if (Array.isArray(tagFilter.value)) {
+        selectedTags = tagFilter.value.map(val => String(val).trim()).filter(Boolean);
+      } else if (tagFilter.value && typeof tagFilter.value === 'string' && tagFilter.value.trim() !== '') {
+        selectedTags = [tagFilter.value.trim()];
+      }
+    }
+
+    if (selectedTags.length > 0 && logs && logs.length > 0) {
+      const matchedLogs = selectedTags.map(selectedTag => {
+        return logs.find(log => {
+          const t = String(log.tag_id || log.tag || log.tagId || '').trim();
+          return t.toLowerCase() === selectedTag.toLowerCase();
+        });
+      }).filter(Boolean);
+
+      if (matchedLogs.length > 0) {
+        const categories = matchedLogs.map(log => {
+          const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+          if (pregStatus === 'POSITIVE') return 'POSITIVE';
+          if (pregStatus === 'NEGATIVE') return 'NEGATIVE';
+          return 'PENDING';
+        });
+
+        const allSameCategory = categories.every(cat => cat === categories[0]);
+        if (allSameCategory) {
+          setCrossingSubTab(categories[0]);
+          setCurrentPage(1);
+          return; // Triggered by tag, skip status check
+        }
+      }
+    }
+
+    // 2. Check Pregnancy Status Filter
+    const pregFilter = appliedFilters.find(f => f.field === 'pregnancyStatus' || f.field === 'pregnancy status');
+    let selectedPregStatuses = [];
+    if (pregFilter) {
+      if (Array.isArray(pregFilter.value)) {
+        selectedPregStatuses = pregFilter.value.map(val => String(val).toUpperCase().trim()).filter(Boolean);
+      } else if (pregFilter.value && typeof pregFilter.value === 'string' && pregFilter.value.trim() !== '') {
+        selectedPregStatuses = [pregFilter.value.toUpperCase().trim()];
+      }
+    }
+
+    if (selectedPregStatuses.length > 0) {
+      const categories = selectedPregStatuses.map(status => {
+        if (status === 'POSITIVE') return 'POSITIVE';
+        if (status === 'NEGATIVE') return 'NEGATIVE';
+        return 'PENDING';
+      });
+
+      const allSameCategory = categories.every(cat => cat === categories[0]);
+      if (allSameCategory) {
+        setCrossingSubTab(categories[0]);
+        setCurrentPage(1);
+      }
+    }
+  }
 }, [appliedFilters, logs, current.id]);
 
 if (!moduleConfig) {
