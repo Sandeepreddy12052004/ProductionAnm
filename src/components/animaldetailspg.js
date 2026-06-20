@@ -1024,6 +1024,74 @@ useEffect(() => {
   };
 }, [showForm, selectedEntry, viewMode, showFilters]);
 
+// Automatically switch livestock tab capsule based on selected Tag ID or Status filter
+useEffect(() => {
+  if (current.id === 'livestock') {
+    // 1. Check Tag Filter
+    const tagFilter = appliedFilters.find(f => f.field === 'tag' || f.field === 'tagId');
+    let selectedTags = [];
+    if (tagFilter) {
+      if (Array.isArray(tagFilter.value)) {
+        selectedTags = tagFilter.value.map(val => String(val).trim()).filter(Boolean);
+      } else if (tagFilter.value && typeof tagFilter.value === 'string' && tagFilter.value.trim() !== '') {
+        selectedTags = [tagFilter.value.trim()];
+      }
+    }
+
+    if (selectedTags.length > 0 && logs && logs.length > 0) {
+      const matchedAnimals = selectedTags.map(selectedTag => {
+        return logs.find(log => {
+          const t = String(log.tag_id || log.tag || log.tagId || '').trim();
+          return t.toLowerCase() === selectedTag.toLowerCase();
+        });
+      }).filter(Boolean);
+
+      if (matchedAnimals.length > 0) {
+        const categories = matchedAnimals.map(animal => {
+          const statusUpper = String(animal.status || '').toUpperCase();
+          if (statusUpper === 'SOLD') return 'SOLD';
+          if (statusUpper === 'DECEASED' || statusUpper === 'DEAD') return 'DECEASED';
+          return 'ACTIVE';
+        });
+
+        const allSameCategory = categories.every(cat => cat === categories[0]);
+        if (allSameCategory) {
+          setLivestockSubTab(categories[0]);
+          setCurrentPage(1);
+          return; // Triggered by tag, skip status check
+        }
+      }
+    }
+
+    // 2. Check Status Filter
+    const statusFilter = appliedFilters.find(f => f.field === 'status');
+    let selectedStatuses = [];
+    if (statusFilter) {
+      if (Array.isArray(statusFilter.value)) {
+        selectedStatuses = statusFilter.value.map(val => String(val).toUpperCase().trim()).filter(Boolean);
+      } else if (statusFilter.value && typeof statusFilter.value === 'string' && statusFilter.value.trim() !== '') {
+        selectedStatuses = [statusFilter.value.toUpperCase().trim()];
+      }
+    }
+
+    if (selectedStatuses.length > 0) {
+      const categories = selectedStatuses.map(status => {
+        if (status === 'SOLD') return 'SOLD';
+        if (status === 'DECEASED' || status === 'DEAD') return 'DECEASED';
+        if (['ACTIVE', 'PREGNANT', 'PENDING', 'EMPTY'].includes(status)) return 'ACTIVE';
+        return null;
+      }).filter(Boolean);
+
+      if (categories.length > 0) {
+        const allSameCategory = categories.every(cat => cat === categories[0]);
+        if (allSameCategory) {
+          setLivestockSubTab(categories[0]);
+          setCurrentPage(1);
+        }
+      }
+    }
+  }
+}, [appliedFilters, logs, current.id]);
 
 if (!moduleConfig) {
   return (
@@ -1035,53 +1103,7 @@ if (!moduleConfig) {
 }
 
  
-  const activeCount = logs.filter(log => {
-    const statusUpper = String(log.status || '').toUpperCase();
-    return statusUpper !== 'SOLD' && statusUpper !== 'DECEASED' && statusUpper !== 'DEAD';
-  }).length;
-  const soldCount = logs.filter(log => String(log.status || '').toUpperCase() === 'SOLD').length;
-  const deceasedCount = logs.filter(log => {
-    const statusUpper = String(log.status || '').toUpperCase();
-    return statusUpper === 'DECEASED' || statusUpper === 'DEAD';
-  }).length;
-
-  const crossingPendingCount = logs.filter(log => {
-    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
-    return pregStatus === 'PENDING' || pregStatus === '' || !pregStatus;
-  }).length;
-  const crossingPositiveCount = logs.filter(log => {
-    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
-    return pregStatus === 'POSITIVE';
-  }).length;
-  const crossingNegativeCount = logs.filter(log => {
-    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
-    return pregStatus === 'NEGATIVE';
-  }).length;
-
-  const filteredLogs = logs.filter(log => {
-    if (current.id === 'livestock') {
-      const statusUpper = String(log.status || '').toUpperCase();
-      if (livestockSubTab === 'ACTIVE') {
-        if (statusUpper === 'SOLD' || statusUpper === 'DECEASED' || statusUpper === 'DEAD') return false;
-      } else if (livestockSubTab === 'SOLD') {
-        if (statusUpper !== 'SOLD') return false;
-      } else if (livestockSubTab === 'DECEASED') {
-        if (statusUpper !== 'DECEASED' && statusUpper !== 'DEAD') return false;
-      } else if (livestockSubTab === 'WARNINGS') {
-        return false;
-      }
-    }
-    if (current.id === 'crossing') {
-      const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
-      if (crossingSubTab === 'PENDING') {
-        if (pregStatus !== 'PENDING' && pregStatus !== '') return false;
-      } else if (crossingSubTab === 'POSITIVE') {
-        if (pregStatus !== 'POSITIVE') return false;
-      } else if (crossingSubTab === 'NEGATIVE') {
-        if (pregStatus !== 'NEGATIVE') return false;
-      }
-    }
-    // Group active filters by field name
+  const matchesAppliedFilters = (log) => {
     const filtersToUse = isCustomFilterModule ? appliedFilters : filters;
     const groupedFilters = {};
     for (const f of filtersToUse) {
@@ -1114,17 +1136,17 @@ if (!moduleConfig) {
           if (!logDate) {
             currentMatch = false;
           } else {
-            const current = parseDateString(logDate);
-            if (!current || isNaN(current.getTime())) {
+            const currentVal = parseDateString(logDate);
+            if (!currentVal || isNaN(currentVal.getTime())) {
               currentMatch = false;
             } else {
-              current.setHours(0, 0, 0, 0);
+              currentVal.setHours(0, 0, 0, 0);
 
               if (f.from) {
                 const fromDate = parseDateString(f.from);
                 if (fromDate) {
                   fromDate.setHours(0, 0, 0, 0);
-                  if (current < fromDate) currentMatch = false;
+                  if (currentVal < fromDate) currentMatch = false;
                 }
               }
 
@@ -1132,7 +1154,7 @@ if (!moduleConfig) {
                 const toDate = parseDateString(f.to);
                 if (toDate) {
                   toDate.setHours(0, 0, 0, 0);
-                  if (current > toDate) currentMatch = false;
+                  if (currentVal > toDate) currentMatch = false;
                 }
               }
             }
@@ -1196,16 +1218,73 @@ if (!moduleConfig) {
 
         if (currentMatch) {
           matchAnyForField = true;
-          break; // Matches at least one filter for this field
+          break;
         }
       }
 
       if (!matchAnyForField) {
         isMatched = false;
-        break; // Fails this field, so fail the whole check
+        break;
       }
     }
     return isMatched;
+  };
+
+  const activeCount = logs.filter(log => {
+    const statusUpper = String(log.status || '').toUpperCase();
+    const isTabMatch = statusUpper !== 'SOLD' && statusUpper !== 'DECEASED' && statusUpper !== 'DEAD';
+    return isTabMatch && matchesAppliedFilters(log);
+  }).length;
+  const soldCount = logs.filter(log => {
+    const isTabMatch = String(log.status || '').toUpperCase() === 'SOLD';
+    return isTabMatch && matchesAppliedFilters(log);
+  }).length;
+  const deceasedCount = logs.filter(log => {
+    const statusUpper = String(log.status || '').toUpperCase();
+    const isTabMatch = statusUpper === 'DECEASED' || statusUpper === 'DEAD';
+    return isTabMatch && matchesAppliedFilters(log);
+  }).length;
+
+  const crossingPendingCount = logs.filter(log => {
+    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+    const isTabMatch = pregStatus === 'PENDING' || pregStatus === '' || !pregStatus;
+    return isTabMatch && matchesAppliedFilters(log);
+  }).length;
+  const crossingPositiveCount = logs.filter(log => {
+    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+    const isTabMatch = pregStatus === 'POSITIVE';
+    return isTabMatch && matchesAppliedFilters(log);
+  }).length;
+  const crossingNegativeCount = logs.filter(log => {
+    const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+    const isTabMatch = pregStatus === 'NEGATIVE';
+    return isTabMatch && matchesAppliedFilters(log);
+  }).length;
+
+  const filteredLogs = logs.filter(log => {
+    if (current.id === 'livestock') {
+      const statusUpper = String(log.status || '').toUpperCase();
+      if (livestockSubTab === 'ACTIVE') {
+        if (statusUpper === 'SOLD' || statusUpper === 'DECEASED' || statusUpper === 'DEAD') return false;
+      } else if (livestockSubTab === 'SOLD') {
+        if (statusUpper !== 'SOLD') return false;
+      } else if (livestockSubTab === 'DECEASED') {
+        if (statusUpper !== 'DECEASED' && statusUpper !== 'DEAD') return false;
+      } else if (livestockSubTab === 'WARNINGS') {
+        return false;
+      }
+    }
+    if (current.id === 'crossing') {
+      const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+      if (crossingSubTab === 'PENDING') {
+        if (pregStatus !== 'PENDING' && pregStatus !== '') return false;
+      } else if (crossingSubTab === 'POSITIVE') {
+        if (pregStatus !== 'POSITIVE') return false;
+      } else if (crossingSubTab === 'NEGATIVE') {
+        if (pregStatus !== 'NEGATIVE') return false;
+      }
+    }
+    return matchesAppliedFilters(log);
   });
 
   const totalItems = filteredLogs.length;
