@@ -10,6 +10,60 @@ import {
   MoreVertical,
 } from "lucide-react";
 
+const parseDateString = (dateVal) => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return dateVal;
+  const valStr = String(dateVal).trim();
+  if (valStr.includes('/')) {
+    const parts = valStr.split('/');
+    if (parts.length === 3) {
+      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+  const parsed = new Date(valStr);
+  if (!isNaN(parsed.getTime())) return parsed;
+  return null;
+};
+
+const parseAgeStringToDays = (ageStr) => {
+  if (!ageStr) return 0;
+  if (/^\d+$/.test(String(ageStr).trim())) {
+    return parseFloat(ageStr);
+  }
+  let years = 0, months = 0, days = 0;
+  const yMatch = String(ageStr).match(/(\d+)\s*Y/i);
+  const mMatch = String(ageStr).match(/(\d+)\s*M/i);
+  const dMatch = String(ageStr).match(/(\d+)\s*D/i);
+  if (yMatch) years = parseInt(yMatch[1], 10);
+  if (mMatch) months = parseInt(mMatch[1], 10);
+  if (dMatch) days = parseInt(dMatch[1], 10);
+  return (years * 365) + (months * 30.44) + days;
+};
+
+const getRecordAgeInDays = (log, fieldName) => {
+  let dob = log.dateOfBirth || log["dateOfBirth"] || log.dob;
+  let storedAge = log[fieldName];
+
+  if (dob) {
+    const birth = parseDateString(dob);
+    if (birth && !isNaN(birth.getTime())) {
+      const today = new Date();
+      const diffTime = today.getTime() - birth.getTime();
+      return Math.max(0, diffTime / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  return parseAgeStringToDays(storedAge);
+};
+
+const getFilterAgeInDays = (y, m, d) => {
+  const years = parseFloat(y) || 0;
+  const months = parseFloat(m) || 0;
+  const days = parseFloat(d) || 0;
+  return (years * 365) + (months * 30.44) + days;
+};
+
 export default function CattleManagementPg({
   moduleConfig,
 }) {
@@ -171,10 +225,12 @@ export default function CattleManagementPg({
     setAppliedFilters(defaultFilters);
     setFilterSearchQueries({});
     setCurrentPage(1);
+    setShowFilters(false);
   };
 
   const activeFilterCount = appliedFilters.filter(
-    (f) => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || f.from || f.to
+    (f) => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || 
+           f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays
   ).length;
 
   const filteredData = cattleData.filter((item) => {
@@ -193,8 +249,10 @@ export default function CattleManagementPg({
     for (const f of appliedFilters) {
       const fieldConfig = dynamicFields.find(field => field.name === f.field);
       const isDate = fieldConfig?.type === "date" || f.field.toLowerCase().includes("date") || f.field.toLowerCase() === "dob" || f.field.toLowerCase() === "dateofbirth";
-      const isRange = fieldConfig?.type === "number";
-      const hasValue = isDate || isRange ? (f.from || f.to) : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
+      const isRange = fieldConfig?.type === "number" || f.field === "milk" || f.field === "age";
+      const hasValue = isDate || isRange
+        ? (f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays)
+        : (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== ""));
       if (!hasValue) continue;
 
       if (!groupedFilters[f.field]) {
@@ -243,19 +301,31 @@ export default function CattleManagementPg({
           }
         }
         // 🔢 RANGE FILTER FOR NUMBER FIELDS
-        else if (fieldConfig?.type === "number") {
-          const valStr = String(item[f.field] || "").trim();
-          const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
-          if (isNaN(valNum)) {
-            currentMatch = false;
-          } else {
-            if (f.from) {
-              const fromNum = parseFloat(f.from);
-              if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+        else if (fieldConfig?.type === "number" || f.field === "milk" || f.field === "age") {
+          if (f.field === "age") {
+            const recordDays = getRecordAgeInDays(item, f.field);
+            if (f.fromYears || f.fromMonths || f.fromDays) {
+              const minDays = getFilterAgeInDays(f.fromYears, f.fromMonths, f.fromDays);
+              if (recordDays < minDays) currentMatch = false;
             }
-            if (f.to) {
-              const toNum = parseFloat(f.to);
-              if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+            if (f.toYears || f.toMonths || f.toDays) {
+              const maxDays = getFilterAgeInDays(f.toYears, f.toMonths, f.toDays);
+              if (recordDays > maxDays) currentMatch = false;
+            }
+          } else {
+            const valStr = String(item[f.field] || "").trim();
+            const valNum = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+            if (isNaN(valNum)) {
+              currentMatch = false;
+            } else {
+              if (f.from) {
+                const fromNum = parseFloat(f.from);
+                if (!isNaN(fromNum) && valNum < fromNum) currentMatch = false;
+              }
+              if (f.to) {
+                const toNum = parseFloat(f.to);
+                if (!isNaN(toNum) && valNum > toNum) currentMatch = false;
+              }
             }
           }
         }
@@ -498,10 +568,18 @@ export default function CattleManagementPg({
                     value={f.field}
                     onChange={(e) => {
                       const updated = [...filters];
-                      updated[index].field = e.target.value;
-                      updated[index].value = "";
-                      updated[index].from = "";
-                      updated[index].to = "";
+                      updated[index] = {
+                        field: e.target.value,
+                        value: "",
+                        from: "",
+                        to: "",
+                        fromYears: "",
+                        fromMonths: "",
+                        fromDays: "",
+                        toYears: "",
+                        toMonths: "",
+                        toDays: ""
+                      };
                       setFilters(updated);
                     }}
                   >
@@ -544,8 +622,123 @@ export default function CattleManagementPg({
                       );
                     }
 
-                    // 🔢 RANGE FIELD FOR AGE AND MILK YIELD
-                    if (f.field === "age" || f.field === "milk") {
+                    // 🔢 RANGE FIELD FOR AGE (Years, Months, Days)
+                    if (f.field === "age") {
+                      return (
+                        <div className="flex flex-col gap-2 p-2 bg-slate-50 border rounded-lg">
+                          {/* MIN BOUND */}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-bold text-slate-500">Min Age:</span>
+                            <div className="flex gap-1.5">
+                              <div className="flex flex-col items-center flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="Y"
+                                  min="0"
+                                  className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                                  value={f.fromYears || ""}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    updated[index].fromYears = e.target.value;
+                                    setFilters(updated);
+                                  }}
+                                />
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Years</span>
+                              </div>
+                              <div className="flex flex-col items-center flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="M"
+                                  min="0"
+                                  max="11"
+                                  className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                                  value={f.fromMonths || ""}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    updated[index].fromMonths = e.target.value;
+                                    setFilters(updated);
+                                  }}
+                                />
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Months</span>
+                              </div>
+                              <div className="flex flex-col items-center flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="D"
+                                  min="0"
+                                  max="30"
+                                  className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                                  value={f.fromDays || ""}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    updated[index].fromDays = e.target.value;
+                                    setFilters(updated);
+                                  }}
+                                />
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Days</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* MAX BOUND */}
+                          <div className="flex flex-col gap-1 mt-1 border-t pt-2 border-slate-200">
+                            <span className="text-xs font-bold text-slate-500">Max Age:</span>
+                            <div className="flex gap-1.5">
+                              <div className="flex flex-col items-center flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="Y"
+                                  min="0"
+                                  className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                                  value={f.toYears || ""}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    updated[index].toYears = e.target.value;
+                                    setFilters(updated);
+                                  }}
+                                />
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Years</span>
+                              </div>
+                              <div className="flex flex-col items-center flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="M"
+                                  min="0"
+                                  max="11"
+                                  className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                                  value={f.toMonths || ""}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    updated[index].toMonths = e.target.value;
+                                    setFilters(updated);
+                                  }}
+                                />
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Months</span>
+                              </div>
+                              <div className="flex flex-col items-center flex-1">
+                                <input
+                                  type="number"
+                                  placeholder="D"
+                                  min="0"
+                                  max="30"
+                                  className="px-1.5 py-1 border rounded text-xs w-full text-center bg-white text-black outline-none focus:border-[#D1867D]"
+                                  value={f.toDays || ""}
+                                  onChange={(e) => {
+                                    const updated = [...filters];
+                                    updated[index].toDays = e.target.value;
+                                    setFilters(updated);
+                                  }}
+                                />
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">Days</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // 🔢 RANGE FIELD FOR MILK YIELD OR OTHER NUMBERS
+                    if (f.field === "milk" || fieldConfig?.type === "number") {
                       return (
                         <div className="flex gap-2">
                           <input
