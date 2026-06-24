@@ -357,21 +357,28 @@ const UserManagementPg = ({ moduleConfig }) => {
 
     // 2. Check inline Farm filter
     if (selectedFarm) {
-      // Resolve selected farm name from farmsData
-      let selectedFarmName = "";
-      if (farmsData) {
-        const selectedFarmObj = farmsData.find(f => f._id === selectedFarm || f.id === selectedFarm);
-        if (selectedFarmObj) {
-          selectedFarmName = selectedFarmObj.name || selectedFarmObj.code || "";
+      if (selectedFarm === 'all_farms') {
+        const userFarmName = getFarmName(user);
+        if (userFarmName !== 'All Farms') {
+          return false;
         }
-      }
-      
-      // Resolve user's farm name
-      const userFarmName = getFarmName(user);
-      
-      // Compare names case-insensitively
-      if (!selectedFarmName || !userFarmName || selectedFarmName.toLowerCase() !== userFarmName.toLowerCase()) {
-        return false;
+      } else {
+        // Resolve selected farm name from farmsData
+        let selectedFarmName = "";
+        if (farmsData) {
+          const selectedFarmObj = farmsData.find(f => f._id === selectedFarm || f.id === selectedFarm);
+          if (selectedFarmObj) {
+            selectedFarmName = selectedFarmObj.name || selectedFarmObj.code || "";
+          }
+        }
+        
+        // Resolve user's farm name
+        const userFarmName = getFarmName(user);
+        
+        // Compare names case-insensitively
+        if (!selectedFarmName || !userFarmName || selectedFarmName.toLowerCase() !== userFarmName.toLowerCase()) {
+          return false;
+        }
       }
     }
 
@@ -635,7 +642,8 @@ const UserManagementPg = ({ moduleConfig }) => {
               onChange={(e) => setSelectedFarm(e.target.value)}
               className="w-full h-11 px-3 pr-8 rounded-xl border border-slate-200 text-sm bg-slate-50/30 text-[#16223F] font-semibold outline-none focus:bg-white focus:border-[#D1867D] appearance-none cursor-pointer transition-all duration-200"
             >
-              <option value="">All Farms</option>
+              <option value="">All</option>
+              <option value="all_farms">All Farms</option>
               {farmsData?.filter(f => f.name !== 'ALL' && f.code !== 'ALL').map(f => (
                 <option key={f._id || f.id} value={f._id || f.id}>
                   {f.name || f.code}

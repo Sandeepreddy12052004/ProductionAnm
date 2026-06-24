@@ -323,7 +323,7 @@ const ShedManagementPg = () => {
 
       {/* SLIDE-OVER FORM MODAL */}
       {showForm && (
-        <div className="fixed inset-0 bg-[#071437]/20 backdrop-blur-sm z-50 flex justify-end">
+        <div className="fixed inset-0 bg-[#071437]/20 backdrop-blur-sm z-[200] flex justify-end">
           <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col animate-slide-in-right">
             
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-[#f9fafb]">
@@ -464,7 +464,7 @@ const ShedManagementPg = () => {
 
       {/* LINE OVERVIEW MODAL */}
       {selectedShedForOverview && (
-        <div className="fixed inset-0 bg-[#071437]/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#071437]/45 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-slate-100 animate-slide-up">
             
             {/* Modal Header */}

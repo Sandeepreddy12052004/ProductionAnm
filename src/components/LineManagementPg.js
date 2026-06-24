@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { api } from "../utils/api";
-import { swalSuccess, swalError } from "../utils/swal";
+import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
 
 const LineManagementPg = () => {
@@ -24,6 +24,8 @@ const LineManagementPg = () => {
   const [selectedReplacementAnimal, setSelectedReplacementAnimal] = useState(null);
   const [showReplaceDropdown, setShowReplaceDropdown] = useState(false);
 
+  const [unassignedSelections, setUnassignedSelections] = useState({});
+
   const dropdownRef = useRef(null);
 
   const getFarmName = (fId) => {
@@ -41,10 +43,10 @@ const LineManagementPg = () => {
         api.farms.getAll(),
         api.cattle.getAll().catch(() => [])
       ]);
-      
+
       const activeSheds = shedsData || [];
       const lineManagedSheds = activeSheds.filter(s => s.lineManagement === "Yes");
-      
+
       setSheds(lineManagedSheds);
       setFarms(farmsData || []);
       setCattleData(Array.isArray(cattleRes) ? cattleRes : (cattleRes?.data ?? []));
@@ -55,11 +57,12 @@ const LineManagementPg = () => {
         setSelectedShedId(targetId);
         const found = lineManagedSheds.find(s => (s._id || s.id) === targetId);
         setSelectedShed(found || lineManagedSheds[0]);
-        
+
         // Default active row logic
         const maxRows = found ? found.lines : lineManagedSheds[0]?.lines || 0;
         if (selectedRowNum > maxRows || selectedRowNum <= 0) {
-          setSelectedRowNum(1);
+          +
+            setSelectedRowNum(1)
         }
       } else {
         setSelectedShedId("");
@@ -108,11 +111,11 @@ const LineManagementPg = () => {
 
       await api.cattle.update(targetId, payload);
       swalSuccess("Success", `Assigned animal #${animal.tag || animal.tag_id} to Position ${slotNum}`);
-      
+
       // Clear inputs
       setSlotSearchQueries(prev => ({ ...prev, [slotKey]: "" }));
       setSelectedAnimalsForSlot(prev => ({ ...prev, [slotKey]: null }));
-      
+
       await fetchShedsAndFarms(selectedShed._id || selectedShed.id, true);
     } catch (err) {
       console.error(err);
@@ -125,6 +128,12 @@ const LineManagementPg = () => {
   // REMOVE ANIMAL FROM ROW HANDLER
   const handleRemoveAnimal = async (animal) => {
     if (!selectedShed) return;
+
+    const confirmed = await swalConfirm(
+      "Remove Animal?", 
+      `Are you sure you want to remove animal #${animal.tag || animal.tag_id} from Row ${animal.lineNo}, Position ${animal.position}?`
+    );
+    if (!confirmed) return;
 
     setIsLoading(true);
     try {
@@ -153,12 +162,24 @@ const LineManagementPg = () => {
 
     setIsLoading(true);
     try {
-      // 1. Remove old animal
-      await api.cattle.update(oldAnimal._id || oldAnimal.id, {
-        ...oldAnimal,
-        lineNo: 0,
-        position: 0
-      });
+      const prevLineNo = Number(selectedReplacementAnimal.lineNo || 0);
+      const prevPosition = Number(selectedReplacementAnimal.position || 0);
+
+      if (prevLineNo > 0 && prevPosition > 0) {
+        // Interchange: 1. Move old animal to replacement animal's old position
+        await api.cattle.update(oldAnimal._id || oldAnimal.id, {
+          ...oldAnimal,
+          lineNo: prevLineNo,
+          position: prevPosition
+        });
+      } else {
+        // Standard: 1. Remove old animal
+        await api.cattle.update(oldAnimal._id || oldAnimal.id, {
+          ...oldAnimal,
+          lineNo: 0,
+          position: 0
+        });
+      }
 
       // 2. Assign new animal to this slot
       const targetFarmId = selectedShed.farmId?._id || selectedShed.farmId?.id || selectedShed.farmId || selectedReplacementAnimal.farmId;
@@ -171,16 +192,90 @@ const LineManagementPg = () => {
         position: Number(slotNum)
       });
 
-      swalSuccess("Success", `Replaced #${oldAnimal.tag || oldAnimal.tag_id} with #${selectedReplacementAnimal.tag || selectedReplacementAnimal.tag_id} in Position ${slotNum}`);
-      
+      const swapMsg = prevLineNo > 0 && prevPosition > 0
+        ? `Swapped #${oldAnimal.tag || oldAnimal.tag_id} and #${selectedReplacementAnimal.tag || selectedReplacementAnimal.tag_id} positions.`
+        : `Replaced #${oldAnimal.tag || oldAnimal.tag_id} with #${selectedReplacementAnimal.tag || selectedReplacementAnimal.tag_id} in Position ${slotNum}.`;
+
+      swalSuccess("Success", swapMsg);
+
       setReplaceModalData(null);
       setReplaceSearchQuery("");
       setSelectedReplacementAnimal(null);
-      
+
       await fetchShedsAndFarms(selectedShed._id || selectedShed.id, true);
     } catch (err) {
       console.error(err);
       swalError("Error", typeof err === 'string' ? err : "Failed to replace animal.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getUnassignedAnimals = () => {
+    if (!selectedShed) return [];
+    return cattleData.filter(animal => 
+      String(animal.shed || animal.shedId || '').trim() === String(selectedShed.code || '').trim() &&
+      (!animal.lineNo || Number(animal.lineNo) === 0) &&
+      !animal.isDeleted &&
+      String(animal.gender || '').trim().toLowerCase() === 'female'
+    );
+  };
+
+  const getEmptySlotsInRow = (rowNum) => {
+    if (!selectedShed) return [];
+    const rowAnimals = cattleData.filter(c => 
+      String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() && 
+      Number(c.lineNo || 0) === Number(rowNum) &&
+      Number(c.position || 0) > 0 &&
+      Number(c.position || 0) <= 10
+    );
+    const occupiedPositions = new Set(rowAnimals.map(a => Number(a.position)));
+    const emptySlots = [];
+    for (let i = 1; i <= 10; i++) {
+      if (!occupiedPositions.has(i)) {
+        emptySlots.push(i);
+      }
+    }
+    return emptySlots;
+  };
+
+  const handleAssignUnassigned = async (animalId, tag) => {
+    const selection = unassignedSelections[animalId];
+    if (!selection || !selection.row || !selection.slot || !selectedShed) {
+      swalError("Error", "Please select both Row and Slot.");
+      return;
+    }
+
+    const rowNum = Number(selection.row);
+    const slotNum = Number(selection.slot);
+    const animal = cattleData.find(a => (a._id || a.id) === animalId);
+    if (!animal) return;
+
+    setIsLoading(true);
+    try {
+      const targetFarmId = selectedShed.farmId?._id || selectedShed.farmId?.id || selectedShed.farmId || animal.farmId;
+      const payload = {
+        ...animal,
+        shed: selectedShed.code,
+        shedId: selectedShed.code,
+        farmId: targetFarmId,
+        lineNo: rowNum,
+        position: slotNum
+      };
+
+      await api.cattle.update(animalId, payload);
+      swalSuccess("Success", `Assigned animal #${tag} to Row ${rowNum}, Position ${slotNum}`);
+      
+      setUnassignedSelections(prev => {
+        const copy = { ...prev };
+        delete copy[animalId];
+        return copy;
+      });
+
+      await fetchShedsAndFarms(selectedShed._id || selectedShed.id, true);
+    } catch (err) {
+      console.error(err);
+      swalError("Error", typeof err === 'string' ? err : "Failed to assign animal.");
     } finally {
       setIsLoading(false);
     }
@@ -195,6 +290,8 @@ const LineManagementPg = () => {
     const selectedShedFarmId = selectedShed.farmId?._id || selectedShed.farmId?.id || selectedShed.farmId || "";
 
     return cattleData.filter(animal => {
+      if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
+
       const animalFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || "";
       if (String(animalFarmId) !== String(selectedShedFarmId)) return false;
       if (animal.isDeleted) return false;
@@ -218,10 +315,12 @@ const LineManagementPg = () => {
     if (!query || !selectedShed || !replaceModalData) return [];
 
     const selectedShedFarmId = selectedShed.farmId?._id || selectedShed.farmId?.id || selectedShed.farmId || "";
-    const { rowNum, oldAnimal } = replaceModalData;
+    const { oldAnimal } = replaceModalData;
 
     return cattleData.filter(animal => {
       if ((animal._id || animal.id) === (oldAnimal._id || oldAnimal.id)) return false;
+
+      if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
 
       const animalFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || "";
       if (String(animalFarmId) !== String(selectedShedFarmId)) return false;
@@ -232,11 +331,7 @@ const LineManagementPg = () => {
       if (!isRespectiveShed) return false;
 
       const tagMatches = String(animal.tag || animal.tag_id || "").toLowerCase().includes(query);
-      if (!tagMatches) return false;
-
-      // Cannot be already in this row
-      const isAlreadyInRow = Number(animal.lineNo || 0) === rowNum;
-      return !isAlreadyInRow;
+      return tagMatches;
     }).slice(0, 5);
   };
 
@@ -252,16 +347,16 @@ const LineManagementPg = () => {
   // Build the list of 10 slots for the active selectedRowNum
   const getActiveRowSlots = () => {
     if (!selectedShed) return [];
-    
+
     // Get all animals currently assigned to the active row
-    const rowAnimals = cattleData.filter(c => 
-      String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() && 
+    const rowAnimals = cattleData.filter(c =>
+      String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() &&
       Number(c.lineNo || 0) === selectedRowNum
     );
 
     // Filter out unpositioned animals (position === 0 or position > 10)
-    const unpositionedAnimals = rowAnimals.filter(a => 
-      Number(a.position || 0) === 0 || 
+    const unpositionedAnimals = rowAnimals.filter(a =>
+      Number(a.position || 0) === 0 ||
       Number(a.position || 0) > 10
     );
 
@@ -363,6 +458,106 @@ const LineManagementPg = () => {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* UNASSIGNED / RECENTLY MOVED ANIMALS SECTION */}
+            {getUnassignedAnimals().length > 0 && (
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 mb-6">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <span className="text-xl">📋</span>
+                  <h3 className="font-extrabold text-base text-[#16223F] uppercase tracking-wider">
+                    Recently Moved / Unassigned Cattle
+                  </h3>
+                  <span className="text-xs font-bold bg-[#D1867D]/10 border border-[#D1867D]/20 text-[#D1867D] px-2.5 py-0.5 rounded-full">
+                    {getUnassignedAnimals().length} Animals Need Row Assignment
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2">
+                  {getUnassignedAnimals().map(animal => {
+                    const animalId = animal._id || animal.id;
+                    const selection = unassignedSelections[animalId] || { row: "", slot: "" };
+                    const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO' 
+                      ? '🐃' 
+                      : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF' 
+                        ? '🍼' 
+                        : '🐄';
+
+                    const availableSlots = selection.row ? getEmptySlotsInRow(selection.row) : [];
+
+                    return (
+                      <div 
+                        key={animalId}
+                        className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-sm transition-all"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{animalEmoji}</span>
+                            <span className="font-extrabold text-sm text-[#16223F]">#{animal.tag || animal.tag_id}</span>
+                          </div>
+                          <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/50 uppercase">
+                            {animal.breed || 'Unknown'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Row</label>
+                            <select
+                              value={selection.row}
+                              onChange={(e) => {
+                                const rowVal = e.target.value;
+                                setUnassignedSelections(prev => ({
+                                  ...prev,
+                                  [animalId]: { row: rowVal, slot: "" }
+                                }));
+                              }}
+                              className="w-full text-xs font-semibold p-1.5 border border-slate-200 rounded-lg outline-none bg-white text-slate-700"
+                            >
+                              <option value="">Select Row</option>
+                              {Array.from({ length: selectedShed.lines || 0 }, (_, idx) => {
+                                const rowNum = idx + 1;
+                                return (
+                                  <option key={rowNum} value={rowNum}>Row {rowNum}</option>
+                                );
+                              })}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Slot</label>
+                            <select
+                              value={selection.slot}
+                              disabled={!selection.row}
+                              onChange={(e) => {
+                                const slotVal = e.target.value;
+                                setUnassignedSelections(prev => ({
+                                  ...prev,
+                                  [animalId]: { ...prev[animalId], slot: slotVal }
+                                }));
+                              }}
+                              className="w-full text-xs font-semibold p-1.5 border border-slate-200 rounded-lg outline-none bg-white text-slate-700 disabled:bg-slate-100/50 disabled:text-slate-400"
+                            >
+                              <option value="">Select Slot</option>
+                              {availableSlots.map(slotNum => (
+                                <option key={slotNum} value={slotNum}>Slot {slotNum}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleAssignUnassigned(animalId, animal.tag || animal.tag_id)}
+                          disabled={isLoading || !selection.row || !selection.slot}
+                          className="w-full bg-[#16223F] hover:bg-[#253359] text-white font-extrabold py-2 rounded-xl text-xs transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                        >
+                          Confirm Assignment
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* ROW SELECTOR NAVIGATION */}
             <div className="flex flex-wrap gap-2.5 p-1 bg-slate-100/50 rounded-2xl border border-slate-200/40 w-fit max-w-full">
               {Array.from({ length: selectedShed.lines || 0 }, (_, idx) => {
@@ -377,11 +572,10 @@ const LineManagementPg = () => {
                       setSelectedAnimalsForSlot({});
                       setActiveDropdownSlot(null);
                     }}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-200 ${
-                      selectedRowNum === rowNum
-                        ? "bg-[#D1867D] text-white shadow-md shadow-[#D1867D]/15 scale-[1.02]"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
-                    }`}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-200 ${selectedRowNum === rowNum
+                      ? "bg-[#D1867D] text-white shadow-md shadow-[#D1867D]/15 scale-[1.02]"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                      }`}
                   >
                     Row {rowNum}
                   </button>
@@ -412,15 +606,15 @@ const LineManagementPg = () => {
                 const suggestions = getSuggestions(selectedRowNum, slotNum);
 
                 if (animal) {
-                  const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO' 
-                    ? '🐃' 
-                    : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF' 
-                      ? '🍼' 
+                  const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO'
+                    ? '🐃'
+                    : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF'
+                      ? '🍼'
                       : '🐄';
 
                   return (
-                    <div 
-                      key={animal._id || animal.id} 
+                    <div
+                      key={animal._id || animal.id}
                       className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-[#D1867D]/35 transition-all duration-300 transform hover:-translate-y-0.5 flex flex-col justify-between min-h-[240px]"
                     >
                       <div>
@@ -449,7 +643,7 @@ const LineManagementPg = () => {
                         <div className="space-y-1.5 text-xs text-slate-500 font-semibold border-t border-slate-100 pt-3">
                           <div>Breed: <span className="text-slate-800 font-bold">{animal.breed || '-'}</span></div>
                           <div>Gender: <span className="text-slate-800 font-bold">{animal.gender || '-'}</span></div>
-                          <div>Milk Yield: <span className="text-[#D1867D] font-extrabold">{animal.milk || animal.production || '-'} { (animal.milk || animal.production) && (animal.milk !== '-' && animal.production !== '-') ? 'L' : ''}</span></div>
+                          <div>Milk Yield: <span className="text-[#D1867D] font-extrabold">{animal.milk || animal.production || '-'} {(animal.milk || animal.production) && (animal.milk !== '-' && animal.production !== '-') ? 'L' : ''}</span></div>
                         </div>
                       </div>
 
@@ -477,7 +671,7 @@ const LineManagementPg = () => {
                 } else {
                   // Render Empty Slot Grid Card
                   return (
-                    <div 
+                    <div
                       key={slotNum}
                       className="bg-slate-50/20 rounded-[24px] border-2 border-dashed border-slate-200/70 p-5 flex flex-col justify-between min-h-[240px] hover:bg-slate-50/50 hover:border-slate-300 transition-all duration-300"
                     >
@@ -515,7 +709,7 @@ const LineManagementPg = () => {
                                 </div>
                               ) : (
                                 suggestions.map(item => {
-                                  const currentLoc = item.shed 
+                                  const currentLoc = item.shed
                                     ? `Shed ${item.shed}${item.lineNo ? `, Row ${item.lineNo}` : ''}`
                                     : 'Unassigned';
                                   return (
@@ -602,7 +796,7 @@ const LineManagementPg = () => {
                       </div>
                     ) : (
                       getReplacementSuggestions().map(animal => {
-                        const currentLoc = animal.shed 
+                        const currentLoc = animal.shed
                           ? `Shed ${animal.shed}${animal.lineNo ? `, Row ${animal.lineNo}` : ''}`
                           : 'Unassigned';
                         return (

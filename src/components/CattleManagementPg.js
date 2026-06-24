@@ -1157,7 +1157,7 @@ export default function CattleManagementPg({
 
       {/* Action Popover */}
       {showActionModal && selectedAnimal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-[320px] transform transition-all">
             <h3 className="font-bold text-lg mb-4 text-center text-black">Manage Cattle</h3>
             <div className="space-y-2">
@@ -1205,7 +1205,7 @@ export default function CattleManagementPg({
 
       {/* VIEW MODAL */}
       {showViewModal && selectedAnimal && (
-        <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+        <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex justify-center items-center z-[200] p-4">
           <div className="bg-white p-7 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-[400px] relative">
             <button
               onClick={() => {
