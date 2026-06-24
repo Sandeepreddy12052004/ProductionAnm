@@ -336,6 +336,7 @@ const [showFilters, setShowFilters] = useState(false);
 const [currentPage, setCurrentPage] = useState(1);
 const [livestockSubTab, setLivestockSubTab] = useState('ACTIVE');
 const [crossingSubTab, setCrossingSubTab] = useState('PENDING');
+const [selectedCategory, setSelectedCategory] = useState('ALL');
 const itemsPerPage = 10;
 
 // MODULE ROUTING (PILL TABS)
@@ -1293,19 +1294,25 @@ if (!moduleConfig) {
     return isMatched;
   };
 
+  const matchesCategory = (log) => {
+    if (selectedCategory === 'ALL') return true;
+    const type = String(log.cattleType || log.animalType || '').trim().toUpperCase();
+    return type === selectedCategory;
+  };
+
   const activeCount = logs.filter(log => {
     const statusUpper = String(log.status || '').toUpperCase();
     const isTabMatch = statusUpper !== 'SOLD' && statusUpper !== 'DECEASED' && statusUpper !== 'DEAD';
-    return isTabMatch && matchesAppliedFilters(log);
+    return isTabMatch && matchesAppliedFilters(log) && matchesCategory(log);
   }).length;
   const soldCount = logs.filter(log => {
     const isTabMatch = String(log.status || '').toUpperCase() === 'SOLD';
-    return isTabMatch && matchesAppliedFilters(log);
+    return isTabMatch && matchesAppliedFilters(log) && matchesCategory(log);
   }).length;
   const deceasedCount = logs.filter(log => {
     const statusUpper = String(log.status || '').toUpperCase();
     const isTabMatch = statusUpper === 'DECEASED' || statusUpper === 'DEAD';
-    return isTabMatch && matchesAppliedFilters(log);
+    return isTabMatch && matchesAppliedFilters(log) && matchesCategory(log);
   }).length;
 
   const crossingPendingCount = logs.filter(log => {
@@ -1336,6 +1343,7 @@ if (!moduleConfig) {
       } else if (livestockSubTab === 'WARNINGS') {
         return false;
       }
+      if (!matchesCategory(log)) return false;
     }
     if (current.id === 'crossing') {
       const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
@@ -2965,6 +2973,32 @@ const getShedFromLivestock = (tagValue) => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Categories Filter for Livestock */}
+      {current.id === 'livestock' && (
+        <div className="flex flex-wrap gap-2 mb-4 p-1 bg-slate-50 border border-slate-200 rounded-2xl max-w-4xl shadow-sm items-center">
+          {['ALL', 'COW', 'BUFFALO', 'BUFFALO CALF', 'COW CALF'].map((cat) => {
+            const label = cat === 'ALL' ? 'All Animals' : cat.charAt(0) + cat.slice(1).toLowerCase();
+            const isActive = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setCurrentPage(1);
+                }}
+                className={`py-2 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
+                  isActive
+                    ? 'bg-[#16223F] text-white border-[#16223F] shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                    : 'bg-white hover:bg-slate-50 text-[#16223F] border-slate-200/60 shadow-sm'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       )}
 

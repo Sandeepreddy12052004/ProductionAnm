@@ -140,7 +140,8 @@ export default function DailyMilkCollection() {
   const farmSheds = useMemo(() => {
     if (!selectedFarmId) return [];
     return sheds.filter(
-      (s) => String(s.farmId?._id || s.farmId?.id || s.farmId) === String(selectedFarmId)
+      (s) => String(s.farmId?._id || s.farmId?.id || s.farmId) === String(selectedFarmId) &&
+             s.milking === "Yes"
     );
   }, [selectedFarmId, sheds]);
 
@@ -148,13 +149,14 @@ export default function DailyMilkCollection() {
   useEffect(() => {
     if (farmSheds.length > 0) {
       const firstShedWithAnimals = farmSheds.find((s) => {
-        const shedKey = s.name || s.code || String(s._id);
         const count = animals.filter(
           (a) =>
-            String(a.shed || a.shedId).trim().toUpperCase() ===
-            String(shedKey).trim().toUpperCase() &&
+            (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
+             String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+             String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
             String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-            !["SOLD", "DECEASED", "DEAD"].includes(a.status)
+            !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
+            String(a.gender || '').trim().toUpperCase() === 'FEMALE'
         ).length;
         return count > 0;
       });
@@ -224,10 +226,12 @@ export default function DailyMilkCollection() {
       
       const shedAnimals = animals.filter(
         (a) =>
-          String(a.shed || a.shedId).trim().toUpperCase() ===
-          String(shedKey).trim().toUpperCase() &&
+          (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
+           String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+           String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
           String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-          !["SOLD", "DECEASED", "DEAD"].includes(a.status)
+          !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
+          String(a.gender || '').trim().toUpperCase() === 'FEMALE'
       );
 
       const totalQty = shedAnimals.reduce((sum, a) => {
@@ -265,14 +269,21 @@ export default function DailyMilkCollection() {
   // Active Animals list inside currently selected active shed
   const activeShedAnimals = useMemo(() => {
     if (!activeShedId) return [];
+    const activeShed = sheds.find(s => 
+      String(s.name || s.code || s._id).trim().toUpperCase() === String(activeShedId).trim().toUpperCase()
+    );
+    if (!activeShed) return [];
+
     return animals.filter(
       (a) =>
-        String(a.shed || a.shedId).trim().toUpperCase() ===
-        String(activeShedId).trim().toUpperCase() &&
+        (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
+         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase() ||
+         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed._id || '').trim().toUpperCase()) &&
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-        !["SOLD", "DECEASED", "DEAD"].includes(a.status)
+        !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
+        String(a.gender || '').trim().toUpperCase() === 'FEMALE'
     );
-  }, [activeShedId, animals, selectedFarmId]);
+  }, [activeShedId, animals, selectedFarmId, sheds]);
 
   // Filtered animals inside active shed based on overlay filters
   const searchedAnimals = useMemo(() => {

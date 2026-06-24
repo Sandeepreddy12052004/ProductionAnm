@@ -30,6 +30,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/shed",
     "/animals",
     "/farms",
+    "/shed-management",
+    "/line-management",
     "/cattle-management",
     "/health-management",
     "/feed-items",
@@ -37,8 +39,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/breed-management"
   ].includes(router.pathname) && !router.query.tab;
 
-  const isNormalRoute = 
-    ["/animals", "/shed", "/crossing", "/purchase", "/sale", "/treatment", "/vaccination"].includes(router.pathname) || 
+  const isNormalRoute =
+    ["/animals", "/shed", "/crossing", "/purchase", "/sale", "/treatment", "/vaccination"].includes(router.pathname) ||
     (isFarmRoute && router.query.tab);
 
   const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["health", "vaccine"].includes(router.query.tab));
@@ -50,7 +52,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const [userRole, setUserRole] = useState(null);
   /** @type {Record<string, any> | null} */
   const [userObj, setUserObj] = useState(null);
-  
+
   // Collapse states
   const [shedOpen, setShedOpen] = useState(false);
 
@@ -111,9 +113,9 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
       if (typeof p === 'string') {
         const lowerP = p.trim().toLowerCase();
         const lowerModKey = moduleKey.trim().toLowerCase();
-        return lowerP === lowerModKey || 
-               lowerP.startsWith(lowerModKey + '_') || 
-               lowerP.includes(lowerModKey);
+        return lowerP === lowerModKey ||
+          lowerP.startsWith(lowerModKey + '_') ||
+          lowerP.includes(lowerModKey);
       }
       return false;
     });
@@ -252,349 +254,351 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
 
               {/* BRAND LOGO HEADER */}
               <div className={`flex items-center gap-3 mb-6 pb-5 border-b border-slate-100 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
-          <div className="w-14 h-14 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
-            <img
-              src="/LOGO.png"
-              alt="logo"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="font-black text-[#16223F] text-[20px] leading-none mb-1 tracking-tight">AGASTHYA</span>
-              <span className="font-black text-[11px] text-[#D1867D] uppercase tracking-[0.2em] leading-none">Nutro Milk</span>
+                <div className="w-14 h-14 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center p-1.5 border border-slate-100 shadow-sm">
+                  <img
+                    src="/LOGO.png"
+                    alt="logo"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                {!isCollapsed && (
+                  <div className="flex flex-col">
+                    <span className="font-black text-[#16223F] text-[20px] leading-none mb-1 tracking-tight">AGASTHYA</span>
+                    <span className="font-black text-[11px] text-[#D1867D] uppercase tracking-[0.2em] leading-none">Nutro Milk</span>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* SCROLLABLE LINKS */}
+            {/* SCROLLABLE LINKS */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden whitespace-nowrap px-4 pb-6 custom-scrollbar">
               <ul className="space-y-1.5 px-1">
                 {/* Dashboard Link */}
-          {hasAccess('dashboard') && (
-            <li>
-              <motion.div whileHover={{ scale: 1.02, x: 3 }}>
-                <Link href="/dashboard" onClick={handleCloseSidebar}
-                  className={`block p-2 rounded border-l-4 ${isLinkActive("/dashboard") ? activeStyle : normalStyle}`}>
-                  📊 Dashboard
-                </Link>
-              </motion.div>
-            </li>
-          )}
+                {hasAccess('dashboard') && (
+                  <li>
+                    <motion.div whileHover={{ scale: 1.02, x: 3 }}>
+                      <Link href="/dashboard" onClick={handleCloseSidebar}
+                        className={`block p-2 rounded border-l-4 ${isLinkActive("/dashboard") ? activeStyle : normalStyle}`}>
+                        📊 Dashboard
+                      </Link>
+                    </motion.div>
+                  </li>
+                )}
 
-          {/* CORE MODULES GROUP */}
-          {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT')) && (
-          <li className="mt-4">
-            <button
-              onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
-              className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-            >
-              <span>Core Modules</span>
-              <motion.span animate={{ rotate: coreOpen ? 180 : 0 }}>
-                ▼
-              </motion.span>
-            </button>
+                {/* CORE MODULES GROUP */}
+                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT')) && (
+                  <li className="mt-4">
+                    <button
+                      onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
+                      className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                    >
+                      <span>Core Modules</span>
+                      <motion.span animate={{ rotate: coreOpen ? 180 : 0 }}>
+                        ▼
+                      </motion.span>
+                    </button>
 
-            <AnimatePresence>
-              {coreOpen && (
-                <motion.ul
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: "easeInOut" }}
-                  className="mt-2 space-y-2 pl-2 overflow-hidden"
-                >
+                    <AnimatePresence>
+                      {coreOpen && (
+                        <motion.ul
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="mt-2 space-y-2 pl-2 overflow-hidden"
+                        >
 
-                  {hasAccess('USER_MANAGEMENT') && (
-                    <li>
-                      <Link href="/users" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
-                        👥 User Management
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('USER_MANAGEMENT') && (
+                            <li>
+                              <Link href="/users" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
+                                👥 User Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('DEPARTMENT') && (
-                    <li>
-                      <Link href="/department" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
-                        🏢 Department
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('DEPARTMENT') && (
+                            <li>
+                              <Link href="/department" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
+                                🏢 Department
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('ROLES') && (
-                    <li>
-                      <Link href="/roles" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/roles") ? activeStyle : normalStyle}`}>
-                        🛡️ Role & Permissions
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('ROLES') && (
+                            <li>
+                              <Link href="/roles" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/roles") ? activeStyle : normalStyle}`}>
+                                🛡️ Role & Permissions
+                              </Link>
+                            </li>
+                          )}
 
-                  {/* Farm Management Navigation */}
-                  {hasAccess('FARM_MANAGEMENT') && (
-                    <li>
-                      <Link href="/farms" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
-                        🏠 Farm Management
-                      </Link>
-                    </li>
-                  )}
+                          {/* Farm Management Navigation */}
+                          {hasAccess('FARM_MANAGEMENT') && (
+                            <li>
+                              <Link href="/farms" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
+                                🏠 Farm Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {/* SHED MANAGEMENT Navigation */}
-                  {hasAccess('SHED_MANAGEMENT') && (
-                    <li>
-                      <Link href="/shed-management" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${router.pathname === "/shed-management" ? activeStyle : normalStyle}`}>
-                        ⚙️ Shed Management
-                      </Link>
-                    </li>
-                  )}
+                          {/* SHED MANAGEMENT Navigation */}
+                          {hasAccess('SHED_MANAGEMENT') && (
+                            <li>
+                              <Link href="/shed-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${router.pathname === "/shed-management" ? activeStyle : normalStyle}`}>
+                                ⚙️ Shed Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('CATTLE_MANAGEMENT') && (
-                    <li>
-                      <Link href="/cattle-management" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/cattle-management") ? activeStyle : normalStyle}`}>
-                        🐄 Cattle Management
-                      </Link>
-                    </li>
-                  )}
+                          {/* LINE MANAGEMENT Navigation */}
+                          {hasAccess('SHED_MANAGEMENT') && (
+                            <li>
+                              <Link href="/line-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${router.pathname === "/line-management" ? activeStyle : normalStyle}`}>
+                                📏 Line Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('HEALTH_MANAGEMENT') && (
-                    <li>
-                      <Link href="/health-management" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/health-management") ? activeStyle : normalStyle}`}>
-                        🩺 Health Management
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('CATTLE_MANAGEMENT') && (
+                            <li>
+                              <Link href="/cattle-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/cattle-management") ? activeStyle : normalStyle}`}>
+                                🐄 Cattle Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('FEED_ITEMS') && (
-                    <li>
-                      <Link href="/feed-items" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/feed-items") ? activeStyle : normalStyle}`}>
-                        🌾 Feed Items
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('HEALTH_MANAGEMENT') && (
+                            <li>
+                              <Link href="/health-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/health-management") ? activeStyle : normalStyle}`}>
+                                🩺 Health Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('TAG_MANAGEMENT') && (
-                    <li>
-                      <Link href="/tag-management" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/tag-management") ? activeStyle : normalStyle}`}>
-                        🏷️ Tag Management
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('FEED_ITEMS') && (
+                            <li>
+                              <Link href="/feed-items" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/feed-items") ? activeStyle : normalStyle}`}>
+                                🌾 Feed Items
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('BREED_MANAGEMENT') && (
-                    <li>
-                      <Link href="/breed-management" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/breed-management") ? activeStyle : normalStyle}`}>
-                        🧬 Breed Management
-                      </Link>
-                    </li>
-                  )}
+                          {hasAccess('TAG_MANAGEMENT') && (
+                            <li>
+                              <Link href="/tag-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/tag-management") ? activeStyle : normalStyle}`}>
+                                🏷️ Tag Management
+                              </Link>
+                            </li>
+                          )}
 
-                  {hasAccess('ANIMAL_MANAGEMENT') && (
-                    <li>
-                      <Link href="/animal-management" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/animal-management") ? activeStyle : normalStyle}`}>
-                        🐏 Animal Management
-                      </Link>
-                    </li>
-                  )}
-                </motion.ul>
-              )}
-            </AnimatePresence>
-          </li>
-          )}
+                          {hasAccess('BREED_MANAGEMENT') && (
+                            <li>
+                              <Link href="/breed-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/breed-management") ? activeStyle : normalStyle}`}>
+                                🧬 Breed Management
+                              </Link>
+                            </li>
+                          )}
 
-          {/* NORMAL MODULES GROUP */}
-          {(hasAccess('LIVESTOCK') || hasAccess('SHED_LOG') || hasAccess('CROSSING_LOG') || hasAccess('PURCHASE_LOG') || hasAccess('SALE_LOG') || hasAccess('HEALTH') || hasAccess('INVENTORY') || hasAccess('GRASS') || hasAccess('FEEDING') || hasAccess('MILK')) && (
-          <li className="mt-4 border-t border-slate-100 pt-4">
-            <button
-              onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
-              className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-            >
-              <span>Modules</span>
-              <motion.span animate={{ rotate: normalOpen ? 180 : 0 }}>
-                ▼
-              </motion.span>
-            </button>
- 
-            <AnimatePresence>
-              {normalOpen && (
-                <motion.ul
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: "easeInOut" }}
-                  className="mt-2 space-y-2 pl-2 overflow-hidden"
-                >
-                  {/* Live Stock */}
-                  {hasAccess('LIVESTOCK') && (
-                    <li>
-                      <Link href="/animals" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
-                        🐄 Live Stock
-                      </Link>
-                    </li>
-                  )}
- 
-                  {/* Shed Log */}
-                  {hasAccess('SHED_LOG') && (
-                    <li>
-                      <Link href="/shed" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
-                        📝 Shed Log
-                      </Link>
-                    </li>
-                  )}
- 
-                  {/* Crossing Log */}
-                  {hasAccess('CROSSING_LOG') && (
-                    <li>
-                      <Link href="/crossing" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/crossing") ? activeStyle : normalStyle}`}>
-                        🧬 Crossing Log
-                      </Link>
-                    </li>
-                  )}
- 
-                  {/* Purchase Log */}
-                  {hasAccess('PURCHASE_LOG') && (
-                    <li>
-                      <Link href="/purchase" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/purchase") ? activeStyle : normalStyle}`}>
-                        📥 Purchase Log
-                      </Link>
-                    </li>
-                  )}
- 
-                  {/* Sale Log */}
-                  {hasAccess('SALE_LOG') && (
-                    <li>
-                      <Link href="/sale" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${isLinkActive("/sale") ? activeStyle : normalStyle}`}>
-                        📤 Sale Log
-                      </Link>
-                    </li>
-                  )}
- 
- 
-                  {/* Health Dropdown */}
-                 {/* Treatment Log */}
-{hasAccess('HEALTH') && (
-  <li>
-    <Link href="/treatment" onClick={handleCloseSidebar}
-      className={`block p-2 rounded border-l-4 ${
-        isLinkActive("/treatment") ? activeStyle : normalStyle
-      }`}>
-      📋 Treatment Log
-    </Link>
-  </li>
-)}
+                          {hasAccess('ANIMAL_MANAGEMENT') && (
+                            <li>
+                              <Link href="/animal-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/animal-management") ? activeStyle : normalStyle}`}>
+                                🐏 Animal Management
+                              </Link>
+                            </li>
+                          )}
+                        </motion.ul>
+                      )}
+                    </AnimatePresence>
+                  </li>
+                )}
 
-{/* Vaccination Log */}
-{hasAccess('HEALTH') && (
-  <li>
-    <Link href="/vaccination" onClick={handleCloseSidebar}
-      className={`block p-2 rounded border-l-4 ${
-        isLinkActive("/vaccination") ? activeStyle : normalStyle
-      }`}>
-      💉 Vaccination Log
-    </Link>
-  </li>
-)}
- 
-                  {/* Inventory Dropdown */}
-                  {/* Feed Inventory */}
-{hasAccess('INVENTORY') && (
-  <li>
-    <Link href="/feed-inventory" onClick={handleCloseSidebar}
-      className={`block p-2 rounded border-l-4 ${
-        isLinkActive("/feed-inventory") ? activeStyle : normalStyle
-      }`}>
-      📦 Feed Inventory
-    </Link>
-  </li>
-)}
+                {/* NORMAL MODULES GROUP */}
+                {(hasAccess('LIVESTOCK') || hasAccess('SHED_LOG') || hasAccess('CROSSING_LOG') || hasAccess('PURCHASE_LOG') || hasAccess('SALE_LOG') || hasAccess('HEALTH') || hasAccess('INVENTORY') || hasAccess('GRASS') || hasAccess('FEEDING') || hasAccess('MILK')) && (
+                  <li className="mt-4 border-t border-slate-100 pt-4">
+                    <button
+                      onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
+                      className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                    >
+                      <span>Modules</span>
+                      <motion.span animate={{ rotate: normalOpen ? 180 : 0 }}>
+                        ▼
+                      </motion.span>
+                    </button>
 
-{/* Medicine Inventory */}
-{hasAccess('INVENTORY') && (
-  <li>
-    <Link href="/medicine-inventory" onClick={handleCloseSidebar}
-      className={`block p-2 rounded border-l-4 ${
-        isLinkActive("/medicine-inventory") ? activeStyle : normalStyle
-      }`}>
-      💊 Medicine Inventory
-    </Link>
-  </li>
-)}
- 
-                  {/* Grass Collection */}
-                  {hasAccess('GRASS') && (
-                    <li>
-                      <Link href="/grass" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${
-                          isLinkActive("/grass") ? activeStyle : normalStyle
-                        }`}>
-                        🌿 Grass Collection
-                      </Link>
-                    </li>
-                  )}
- 
-                  {/* Daily Feeding */}
-                  {hasAccess('FEEDING') && (
-                    <li>
-                      <Link href="/feeding" onClick={handleCloseSidebar}
-                        className={`block p-2 rounded border-l-4 ${
-                          isLinkActive("/feeding") ? activeStyle : normalStyle
-                        }`}>
-                        🌾 Daily Feeding
-                      </Link>
-                    </li>
-                  )}
- 
-                  {/* Milk Production Dropdown */}
-                  {/* Daily Milk Collection */}
-{hasAccess('MILK') && (
-  <li>
-    <Link href="/milk" onClick={handleCloseSidebar}
-      className={`block p-2 rounded border-l-4 ${
-        isLinkActive("/milk") ? activeStyle : normalStyle
-      }`}>
-      🥛 Daily Milk Collection
-    </Link>
-  </li>
-)}
+                    <AnimatePresence>
+                      {normalOpen && (
+                        <motion.ul
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="mt-2 space-y-2 pl-2 overflow-hidden"
+                        >
+                          {/* Live Stock */}
+                          {hasAccess('LIVESTOCK') && (
+                            <li>
+                              <Link href="/animals" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
+                                🐄 Live Stock
+                              </Link>
+                            </li>
+                          )}
 
-{/* Milk QA */}
-{hasAccess('MILK') && (
-  <li>
-    <Link href="/milk-quality" onClick={handleCloseSidebar}
-      className={`block p-2 rounded border-l-4 ${
-        isLinkActive("/milk-quality") ? activeStyle : normalStyle
-      }`}>
-      🔬 Milk QA
-    </Link>
-  </li>
-)}
-                </motion.ul>
-              )}
-            </AnimatePresence>
-          </li>
-          )}
-        </ul>
+                          {/* Shed Log */}
+                          {hasAccess('SHED_LOG') && (
+                            <li>
+                              <Link href="/shed" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
+                                📝 Shed Log
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Crossing Log */}
+                          {hasAccess('CROSSING_LOG') && (
+                            <li>
+                              <Link href="/crossing" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/crossing") ? activeStyle : normalStyle}`}>
+                                🧬 Crossing Log
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Purchase Log */}
+                          {hasAccess('PURCHASE_LOG') && (
+                            <li>
+                              <Link href="/purchase" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/purchase") ? activeStyle : normalStyle}`}>
+                                📥 Purchase Log
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Sale Log */}
+                          {hasAccess('SALE_LOG') && (
+                            <li>
+                              <Link href="/sale" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/sale") ? activeStyle : normalStyle}`}>
+                                📤 Sale Log
+                              </Link>
+                            </li>
+                          )}
+
+
+                          {/* Health Dropdown */}
+                          {/* Treatment Log */}
+                          {hasAccess('HEALTH') && (
+                            <li>
+                              <Link href="/treatment" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/treatment") ? activeStyle : normalStyle
+                                  }`}>
+                                📋 Treatment Log
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Vaccination Log */}
+                          {hasAccess('HEALTH') && (
+                            <li>
+                              <Link href="/vaccination" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/vaccination") ? activeStyle : normalStyle
+                                  }`}>
+                                💉 Vaccination Log
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Inventory Dropdown */}
+                          {/* Feed Inventory */}
+                          {hasAccess('INVENTORY') && (
+                            <li>
+                              <Link href="/feed-inventory" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/feed-inventory") ? activeStyle : normalStyle
+                                  }`}>
+                                📦 Feed Inventory
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Medicine Inventory */}
+                          {hasAccess('INVENTORY') && (
+                            <li>
+                              <Link href="/medicine-inventory" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/medicine-inventory") ? activeStyle : normalStyle
+                                  }`}>
+                                💊 Medicine Inventory
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Grass Collection */}
+                          {hasAccess('GRASS') && (
+                            <li>
+                              <Link href="/grass" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/grass") ? activeStyle : normalStyle
+                                  }`}>
+                                🌿 Grass Collection
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Daily Feeding */}
+                          {hasAccess('FEEDING') && (
+                            <li>
+                              <Link href="/feeding" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/feeding") ? activeStyle : normalStyle
+                                  }`}>
+                                🌾 Daily Feeding
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Milk Production Dropdown */}
+                          {/* Daily Milk Collection */}
+                          {hasAccess('MILK') && (
+                            <li>
+                              <Link href="/milk" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milk") ? activeStyle : normalStyle
+                                  }`}>
+                                🥛 Daily Milk Collection
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Milk QA */}
+                          {hasAccess('MILK') && (
+                            <li>
+                              <Link href="/milk-quality" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milk-quality") ? activeStyle : normalStyle
+                                  }`}>
+                                🔬 Milk QA
+                              </Link>
+                            </li>
+                          )}
+                        </motion.ul>
+                      )}
+                    </AnimatePresence>
+                  </li>
+                )}
+              </ul>
             </div>
           </>
         )}
-        
+
         {/* DESKTOP TOGGLE BUTTON (Absolute on the right edge) */}
-        <button 
+        <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="hidden md:flex absolute top-10 -right-3.5 bg-white border border-gray-200 rounded-full p-1 shadow-md text-gray-500 hover:text-[#16223F] hover:bg-gray-50 z-[120] transition-colors"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}

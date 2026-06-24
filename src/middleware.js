@@ -85,7 +85,7 @@ export function middleware(request) {
     { key: 'DEPARTMENT', match: pathname === '/department' },
     { key: 'ROLES', match: pathname === '/roles' },
     { key: 'FARM_MANAGEMENT', match: pathname === '/farms' || pathname.startsWith('/farm-management') },
-    { key: 'SHED_MANAGEMENT', match: pathname === '/shed-management' },
+    { key: 'SHED_MANAGEMENT', match: pathname === '/shed-management' || pathname === '/line-management' },
     { key: 'CATTLE_MANAGEMENT', match: pathname === '/cattle-management' },
     { key: 'HEALTH_MANAGEMENT', match: pathname === '/health-management' },
     { key: 'FEED_ITEMS', match: pathname === '/feed-items' },
@@ -137,7 +137,7 @@ export function middleware(request) {
 
     const firstAllowed = routeMappings.find(r => hasAccess(r.key));
     const targetPath = firstAllowed ? firstAllowed.path : '/profile';
-    
+
     return NextResponse.redirect(new URL(targetPath, request.url));
   }
 

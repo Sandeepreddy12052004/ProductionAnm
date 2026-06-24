@@ -78,6 +78,7 @@ export default function CattleManagementPg({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
+  const [allSheds, setAllSheds] = useState([]);
   
   // Dynamic Filters State
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
@@ -125,6 +126,7 @@ export default function CattleManagementPg({
           const breedOpts = breedList.filter(b => b.status !== false).map(b => b.name).filter(Boolean);
 
           const shedList = Array.isArray(shedsRes) ? shedsRes : (shedsRes?.data ?? []);
+          setAllSheds(shedList);
           const shedOpts = shedList.map(s => s.name || s.code).filter(Boolean);
 
           const farmList = Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []);
@@ -153,11 +155,21 @@ export default function CattleManagementPg({
     try {
       const resolvedShed = data.shed && data.shed !== '' && data.shed !== '-' ? data.shed : (data.shedId || '-');
       const resolvedType = data.cattleType || data.animalType || 'COW';
+
+      let resolvedFarmId = data.farmId || null;
+      const matchedShed = allSheds.find(s => 
+        String(s.code).trim() === String(resolvedShed).trim() || 
+        String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase()
+      );
+      if (matchedShed) {
+        resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || resolvedFarmId;
+      }
+
       const payload = {
         ...data,
         tag: data.tag || data.tagId,
         code: data.code || `CTL-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-        farmId: data.farmId || null,
+        farmId: resolvedFarmId,
         shed: resolvedShed,
         shedId: resolvedShed,
         cattleType: resolvedType,
@@ -180,9 +192,23 @@ export default function CattleManagementPg({
     setIsLoading(true);
     try {
       const id = selectedAnimal?.id || selectedAnimal?._id;
+      const resolvedShed = data.shed && data.shed !== '' && data.shed !== '-' ? data.shed : (data.shedId || '-');
+
+      let resolvedFarmId = data.farmId || null;
+      const matchedShed = allSheds.find(s => 
+        String(s.code).trim() === String(resolvedShed).trim() || 
+        String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase()
+      );
+      if (matchedShed) {
+        resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || resolvedFarmId;
+      }
+
       const payload = { 
         ...data, 
-        tagId: data.tag || data.tagId 
+        tagId: data.tag || data.tagId,
+        farmId: resolvedFarmId,
+        shed: resolvedShed,
+        shedId: resolvedShed
       };
 
       await api.cattle.update(id, payload);
