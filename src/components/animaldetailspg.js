@@ -2976,102 +2976,103 @@ const getShedFromLivestock = (tagValue) => {
         </div>
       )}
 
-      {/* Categories Filter for Livestock */}
+        {/* Sub-tabs and Categories Filter for Livestock */}
       {current.id === 'livestock' && (
-        <div className="flex flex-wrap gap-2 mb-4 p-1 bg-slate-50 border border-slate-200 rounded-2xl max-w-4xl shadow-sm items-center">
-          {['ALL', 'COW', 'BUFFALO', 'BUFFALO CALF', 'COW CALF'].map((cat) => {
-            const label = cat === 'ALL' ? 'All Animals' : cat.charAt(0) + cat.slice(1).toLowerCase();
-            const isActive = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => {
-                  setSelectedCategory(cat);
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-gray-50 border border-gray-200/80 rounded-xl max-w-2xl shadow-sm">
+            <button
+              onClick={() => {
+                setLivestockSubTab('ACTIVE');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                livestockSubTab === 'ACTIVE'
+                  ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                  : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              Active  <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'ACTIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{activeCount}</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setLivestockSubTab('SOLD');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                livestockSubTab === 'SOLD'
+                  ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                  : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              Sold <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'SOLD' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{soldCount}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setLivestockSubTab('DECEASED');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                livestockSubTab === 'DECEASED'
+                  ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                  : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              Deceased <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'DECEASED' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{deceasedCount}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setLivestockSubTab('WARNINGS');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                livestockSubTab === 'WARNINGS'
+                  ? 'bg-[#D1867D] text-white shadow-md shadow-[#D1867D]/10 scale-[1.02]'
+                  : 'text-red-600 opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              ⚠️ Warnings <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'WARNINGS' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'}`}>{pendingImports.length}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-[160px]">
+            <span className="text-[11px] font-bold text-slate-500 tracking-wide uppercase whitespace-nowrap">Category:</span>
+            <div className="relative flex-1">
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
                   setCurrentPage(1);
                 }}
-                className={`py-2 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 border cursor-pointer ${
-                  isActive
-                    ? 'bg-[#16223F] text-white border-[#16223F] shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                    : 'bg-white hover:bg-slate-50 text-[#16223F] border-slate-200/60 shadow-sm'
-                }`}
+                className="w-full h-9 px-3 pr-8 rounded-lg border border-slate-200 text-xs bg-slate-50/30 text-[#16223F] font-bold outline-none focus:bg-white focus:border-[#D1867D] appearance-none cursor-pointer transition-all duration-200"
               >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Sub-tabs for Livestock */}
-      {current.id === 'livestock' && (
-        <div className="flex flex-wrap gap-2 mb-4 p-1.5 bg-gray-50 border border-gray-200/80 rounded-2xl max-w-2xl shadow-sm">
-          <button
-            onClick={() => {
-              setLivestockSubTab('ACTIVE');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              livestockSubTab === 'ACTIVE'
-                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            Active  <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'ACTIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{activeCount}</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setLivestockSubTab('SOLD');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              livestockSubTab === 'SOLD'
-                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            Sold <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'SOLD' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{soldCount}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setLivestockSubTab('DECEASED');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              livestockSubTab === 'DECEASED'
-                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            Deceased <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'DECEASED' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{deceasedCount}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setLivestockSubTab('WARNINGS');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              livestockSubTab === 'WARNINGS'
-                ? 'bg-[#D1867D] text-white shadow-md shadow-[#D1867D]/10 scale-[1.02]'
-                : 'text-red-600 opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            ⚠️ Warnings <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'WARNINGS' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'}`}>{pendingImports.length}</span>
-          </button>
+                <option value="ALL">All</option>
+                <option value="COW">Cow</option>
+                <option value="BUFFALO">Buffalo</option>
+                <option value="BUFFALO CALF">Buffalo Calf</option>
+                <option value="COW CALF">Cow Calf</option>
+              </select>
+              <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Sub-tabs for Crossing Log */}
       {current.id === 'crossing' && (
-        <div className="flex flex-wrap gap-2 mb-4 p-1.5 bg-gray-50 border border-gray-200/80 rounded-2xl max-w-xl shadow-sm">
+        <div className="flex flex-wrap gap-1.5 mb-4 p-1 bg-gray-50 border border-gray-200/80 rounded-xl max-w-xl shadow-sm">
           <button
             onClick={() => {
               setCrossingSubTab('PENDING');
               setCurrentPage(1);
             }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
               crossingSubTab === 'PENDING'
                 ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
                 : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
@@ -3085,7 +3086,7 @@ const getShedFromLivestock = (tagValue) => {
               setCrossingSubTab('POSITIVE');
               setCurrentPage(1);
             }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
               crossingSubTab === 'POSITIVE'
                 ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
                 : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
@@ -3099,7 +3100,7 @@ const getShedFromLivestock = (tagValue) => {
               setCrossingSubTab('NEGATIVE');
               setCurrentPage(1);
             }}
-            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
               crossingSubTab === 'NEGATIVE'
                 ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
                 : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
