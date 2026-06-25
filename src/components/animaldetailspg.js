@@ -311,6 +311,28 @@ const getFilterAgeInDays = (y, m, d) => {
   return (years * 365) + (months * 30.44) + days;
 };
 
+const ID_PREFIX_MAP = {
+  livestock: { prefix: 'LIVESTOCK', baseToken: 'CATTLE' },
+  shedlog: { prefix: 'SHED_LOG', baseToken: 'SHED_LOG' },
+  crossing: { prefix: 'CROSSING_LOG', baseToken: 'CROSSING_LOG' },
+  purchase: { prefix: 'PURCHASE_LOG', baseToken: 'PURCHASE_LOG' },
+  sale: { prefix: 'SALE_LOG', baseToken: 'SALE_LOG' },
+  treatment: { prefix: 'HEALTH', baseToken: 'HEALTH' },
+  vaccination: { prefix: 'HEALTH', baseToken: 'HEALTH' },
+  feed_inv: { prefix: 'INVENTORY', baseToken: 'INVENTORY' },
+  med_inv: { prefix: 'INVENTORY', baseToken: 'INVENTORY' },
+  grass: { prefix: 'GRASS', baseToken: 'GRASS' },
+  feeding: { prefix: 'FEEDING', baseToken: 'FEEDING' },
+  milk_prod: { prefix: 'MILK', baseToken: 'MILK' },
+  components: { prefix: 'MILK', baseToken: 'MILK' },
+  'cattle-management': { prefix: 'CATTLE_MANAGEMENT', baseToken: 'CATTLE' },
+  'health-management': { prefix: 'HEALTH_MANAGEMENT', baseToken: 'HEALTH' },
+  'feed-items': { prefix: 'FEED_ITEMS', baseToken: 'INVENTORY' },
+  'tag-management': { prefix: 'TAG_MANAGEMENT', baseToken: 'CATTLE' },
+  'breed-management': { prefix: 'BREED_MANAGEMENT', baseToken: 'CATTLE' },
+  'animal-management': { prefix: 'ANIMAL_MANAGEMENT', baseToken: 'CATTLE' },
+};
+
 const AnimalDetailspg = ({ moduleConfig }) => {
 
 const router = useRouter();
@@ -328,6 +350,33 @@ const [selectedEntry, setSelectedEntry] = useState(null);
 const [viewMode, setViewMode] = useState(false);
 const [isEditing, setIsEditing] = useState(false);
 const [isLoading, setIsLoading] = useState(false);
+
+const [userObj, setUserObj] = useState(null);
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) setUserObj(JSON.parse(raw));
+    } catch (e) {
+      console.error("Failed to parse user session in AnimalDetailspg:", e);
+    }
+  }
+}, []);
+
+const hasCRUD = (action) => {
+  if (!userObj) return false;
+  const role = String(userObj.role || '').trim().toUpperCase();
+  if (role === 'SUPER_ADMIN') return true;
+  const permissions = userObj.permissions;
+  if (!Array.isArray(permissions)) return false;
+  if (permissions.includes('ALL')) return true;
+
+  const mapping = ID_PREFIX_MAP[moduleConfig?.id];
+  if (!mapping) return true;
+
+  const permToken = `${mapping.prefix}_${action.toUpperCase()}`;
+  return permissions.includes(permToken) || permissions.includes(mapping.baseToken);
+};
 
 const [filters, setFilters] = useState([
   { field: "entryDate", value: "" }
@@ -2271,12 +2320,14 @@ const getShedFromLivestock = (tagValue) => {
       </span>
     )}
   </button>
-            <button 
-              onClick={() => { setIsEditing(false); setShowForm(true); }} 
-              className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
-            >
-              + Add Entry
-            </button>
+            {hasCRUD('create') && (
+              <button 
+                onClick={() => { setIsEditing(false); setShowForm(true); }} 
+                className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+              >
+                + Add Entry
+              </button>
+            )}
           </div>
         </header>
 
@@ -3401,19 +3452,23 @@ const getShedFromLivestock = (tagValue) => {
     👁️ View Details
   </button>
 
-  <button 
-    onClick={() => { setIsEditing(true); setShowForm(true); }} 
-    className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
-  >
-    ✏️ Edit Entry
-  </button>
+  {hasCRUD('edit') && (
+    <button 
+      onClick={() => { setIsEditing(true); setShowForm(true); }} 
+      className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
+    >
+      ✏️ Edit Entry
+    </button>
+  )}
 
-  <button 
-    onClick={handleDelete} 
-    className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"
-  >
-    🗑️ Delete Entry
-  </button>
+  {hasCRUD('delete') && (
+    <button 
+      onClick={handleDelete} 
+      className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"
+    >
+      🗑️ Delete Entry
+    </button>
+  )}
 
   <button 
     onClick={() => setSelectedEntry(null)} 
@@ -3568,7 +3623,8 @@ const getShedFromLivestock = (tagValue) => {
 {!showForm &&
  !selectedEntry &&
  !viewMode &&
- !showFilters && (
+ !showFilters &&
+ hasCRUD('create') && (
   <div className="md:hidden fixed bottom-20 right-6 z-[100]">
 
     <button

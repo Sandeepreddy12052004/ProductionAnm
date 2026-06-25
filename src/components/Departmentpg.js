@@ -15,10 +15,33 @@ const DepartmentPg = ({ moduleConfig }) => {
     status: true
   });
 
+  const [userObj, setUserObj] = React.useState(null);
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) setUserObj(JSON.parse(raw));
+      } catch (e) {
+        console.error("Failed to parse user session in DepartmentPg:", e);
+      }
+    }
+  }, []);
+
+  const hasCRUD = (action) => {
+    if (!userObj) return false;
+    const role = String(userObj.role || '').trim().toUpperCase();
+    if (role === 'SUPER_ADMIN') return true;
+    const permissions = userObj.permissions;
+    if (!Array.isArray(permissions)) return false;
+    if (permissions.includes('ALL')) return true;
+    const permToken = `DEPARTMENT_${action.toUpperCase()}`;
+    return permissions.includes(permToken) || permissions.includes('DEPARTMENTS');
+  };
+
   // SWR Caching Logic - Stale While Revalidate
   const fetcher = async () => {
     const data = await api.departments.getAll();
-    return data || [];
+    return Array.isArray(data) ? data : [];
   };
 
   const { data: departments, error, mutate, isLoading } = useSWR('departments_cache', fetcher, {
@@ -26,7 +49,9 @@ const DepartmentPg = ({ moduleConfig }) => {
     dedupingInterval: 5000    // Cache for 5 seconds
   });
 
-  const filteredDepartments = (departments || []).filter((dep) => {
+  const safeDepartments = Array.isArray(departments) ? departments : [];
+
+  const filteredDepartments = safeDepartments.filter((dep) => {
     const query = searchQuery.toLowerCase();
     const name = (dep.name || "").toLowerCase();
     const status = dep.status === true ? "active" : "inactive";
@@ -91,15 +116,17 @@ const DepartmentPg = ({ moduleConfig }) => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setFormData({ name: "", status: true });
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>+ Create New Department</span>
-        </button>
+        {hasCRUD('create') && (
+          <button
+            onClick={() => {
+              setFormData({ name: "", status: true });
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>+ Create New Department</span>
+          </button>
+        )}
       </div>
 
       {/* SEARCH BAR */}
@@ -132,7 +159,7 @@ const DepartmentPg = ({ moduleConfig }) => {
               No Departments Found
             </h3>
             <p className="text-gray-500 mt-2 text-sm">
-              {!departments || departments.length === 0 
+              {safeDepartments.length === 0 
                 ? "Get started by creating a new department above." 
                 : "No departments match your search query."}
             </p>
@@ -165,12 +192,16 @@ const DepartmentPg = ({ moduleConfig }) => {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => handleDelete(dep.id || dep._id)}
-                      className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5 ml-auto"
-                    >
-                      <span>🗑️</span> Delete
-                    </button>
+                    {hasCRUD('delete') ? (
+                      <button
+                        onClick={() => handleDelete(dep.id || dep._id)}
+                        className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5 ml-auto"
+                      >
+                        <span>🗑️</span> Delete
+                      </button>
+                    ) : (
+                      <span className="text-slate-300 font-bold text-xs select-none">-</span>
+                    )}
                   </td>
                 </tr>
               )))}

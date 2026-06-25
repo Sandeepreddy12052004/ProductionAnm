@@ -357,7 +357,7 @@
       if (hasRoleField && title?.includes('User')) {
         import('../utils/api').then(({ api }) => {
           api.roles.getAll().then(roles => {
-            setRoleList(roles || []);
+            setRoleList(Array.isArray(roles) ? roles : []);
           }).catch(err => {
             console.error("Failed to load roles for select:", err);
           });

@@ -241,7 +241,7 @@ const UserManagementPg = ({ moduleConfig }) => {
   // SWR Caching Logic
   const fetcher = async () => {
     const data = await api.users.getAll();
-    return data || [];
+    return Array.isArray(data) ? data : [];
   };
 
   const { data: users, error, mutate, isLoading } = useSWR('users_cache', fetcher, {
@@ -251,13 +251,16 @@ const UserManagementPg = ({ moduleConfig }) => {
 
   const { data: farmsData } = useSWR('farms_cache', async () => {
     const data = await api.farms.getAll();
-    return data || [];
+    return Array.isArray(data) ? data : [];
   }, { revalidateOnFocus: false });
 
   const { data: rolesList } = useSWR('roles_cache', async () => {
     const data = await api.roles.getAll();
-    return data || [];
+    return Array.isArray(data) ? data : [];
   }, { revalidateOnFocus: false });
+
+  const safeFarmsData = Array.isArray(farmsData) ? farmsData : [];
+  const safeRolesList = Array.isArray(rolesList) ? rolesList : [];
 
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -272,6 +275,29 @@ const UserManagementPg = ({ moduleConfig }) => {
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
 
+  const [userObj, setUserObj] = useState(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) setUserObj(JSON.parse(raw));
+      } catch (e) {
+        console.error("Failed to parse user session in UserManagementPg:", e);
+      }
+    }
+  }, []);
+
+  const hasCRUD = (action) => {
+    if (!userObj) return false;
+    const role = String(userObj.role || '').trim().toUpperCase();
+    if (role === 'SUPER_ADMIN') return true;
+    const permissions = userObj.permissions;
+    if (!Array.isArray(permissions)) return false;
+    if (permissions.includes('ALL')) return true;
+    const permToken = `USER_MANAGEMENT_${action.toUpperCase()}`;
+    return permissions.includes(permToken) || permissions.includes('USERS');
+  };
+
 
   const filterFields = React.useMemo(() => [
     { name: 'name', label: 'Name', type: 'text' },
@@ -282,7 +308,7 @@ const UserManagementPg = ({ moduleConfig }) => {
       name: 'farmId', 
       label: 'Farm', 
       type: 'select', 
-      options: farmsData ? farmsData.filter(f => f.name !== 'ALL' && f.code !== 'ALL').map(f => ({ label: f.name || f.code, value: f._id || f.id })) : []
+      options: safeFarmsData.filter(f => f.name !== 'ALL' && f.code !== 'ALL').map(f => ({ label: f.name || f.code, value: f._id || f.id }))
     },
     { 
       name: 'department', 
@@ -294,7 +320,7 @@ const UserManagementPg = ({ moduleConfig }) => {
       name: 'role', 
       label: 'Role', 
       type: 'select', 
-      options: rolesList ? rolesList.map(r => ({ label: r.name, value: r.name })) : []
+      options: safeRolesList.map(r => ({ label: r.name, value: r.name }))
     },
     { 
       name: 'status', 
@@ -302,7 +328,7 @@ const UserManagementPg = ({ moduleConfig }) => {
       type: 'select', 
       options: [{ label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }]
     }
-  ], [farmsData, rolesList, moduleConfig]);
+  ], [safeFarmsData, safeRolesList, moduleConfig]);
 
   // Dynamically capture redirection query params to trigger auto-filled user creation
   useEffect(() => {
@@ -334,8 +360,8 @@ const UserManagementPg = ({ moduleConfig }) => {
     if (!userFarmId || userFarmId === 'ALL') {
       return user.farm || "All Farms";
     }
-    if (farmsData) {
-      const f = farmsData.find(f => f._id === userFarmId || f.id === userFarmId);
+    if (safeFarmsData.length > 0) {
+      const f = safeFarmsData.find(f => f._id === userFarmId || f.id === userFarmId);
       if (f) return f.name || f.code;
     }
     return user.farm || "-";
@@ -363,10 +389,10 @@ const UserManagementPg = ({ moduleConfig }) => {
           return false;
         }
       } else {
-        // Resolve selected farm name from farmsData
+        // Resolve selected farm name from safeFarmsData
         let selectedFarmName = "";
-        if (farmsData) {
-          const selectedFarmObj = farmsData.find(f => f._id === selectedFarm || f.id === selectedFarm);
+        if (safeFarmsData.length > 0) {
+          const selectedFarmObj = safeFarmsData.find(f => f._id === selectedFarm || f.id === selectedFarm);
           if (selectedFarmObj) {
             selectedFarmName = selectedFarmObj.name || selectedFarmObj.code || "";
           }
@@ -605,12 +631,14 @@ const UserManagementPg = ({ moduleConfig }) => {
       <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-black text-[#16223F]">👥 User Management</h1>
 
-        <button
-          onClick={() => { setIsEditing(false); setShowForm(true); }}
-          className="bg-[#16223F] hover:bg-[#16223F]/90 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all duration-200 active:scale-[0.98]"
-        >
-          Create New User
-        </button>
+        {hasCRUD('create') && (
+          <button
+            onClick={() => { setIsEditing(false); setShowForm(true); }}
+            className="bg-[#16223F] hover:bg-[#16223F]/90 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all duration-200 active:scale-[0.98]"
+          >
+            Create New User
+          </button>
+        )}
       </div>
 
       {/* SEARCH AND FILTERS */}
@@ -644,7 +672,7 @@ const UserManagementPg = ({ moduleConfig }) => {
             >
               <option value="">All</option>
               <option value="all_farms">All Farms</option>
-              {farmsData?.filter(f => f.name !== 'ALL' && f.code !== 'ALL').map(f => (
+              {safeFarmsData.filter(f => f.name !== 'ALL' && f.code !== 'ALL').map(f => (
                 <option key={f._id || f.id} value={f._id || f.id}>
                   {f.name || f.code}
                 </option>
@@ -696,7 +724,7 @@ const UserManagementPg = ({ moduleConfig }) => {
               className="w-full h-11 px-3 pr-8 rounded-xl border border-slate-200 text-sm bg-slate-50/30 text-[#16223F] font-semibold outline-none focus:bg-white focus:border-[#D1867D] appearance-none cursor-pointer transition-all duration-200"
             >
               <option value="">All Roles</option>
-              {(rolesList || []).map(r => (
+              {safeRolesList.map(r => (
                 <option key={r._id || r.id} value={r.name}>
                   {r.name}
                 </option>
@@ -781,7 +809,7 @@ const UserManagementPg = ({ moduleConfig }) => {
 
                   {/* ✅ STATUS CLICKABLE */}
                   <td className="p-4 text-center align-middle">
-                    {statusEditId === (user.id || user._id) ? (
+                    {hasCRUD('edit') && statusEditId === (user.id || user._id) ? (
                       <select
                         value={user.status === false || user.status === 'Inactive' ? 'Inactive' : 'Active'}
                         onChange={(e) => handleStatusChange(user.id || user._id, e.target.value)}
@@ -793,8 +821,12 @@ const UserManagementPg = ({ moduleConfig }) => {
                       </select>
                     ) : (
                       <span
-                        onClick={(e) => { e.stopPropagation(); setStatusEditId(user.id || user._id); }}
-                        className={`cursor-pointer px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
+                        onClick={(e) => {
+                          if (!hasCRUD('edit')) return;
+                          e.stopPropagation();
+                          setStatusEditId(user.id || user._id);
+                        }}
+                        className={`${hasCRUD('edit') ? 'cursor-pointer' : 'cursor-default'} px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
                           user.status === false || user.status === 'Inactive'
                             ? "bg-red-50 text-red-700 border-red-100/50"
                             : "bg-emerald-50 text-emerald-700 border-emerald-100/50"
@@ -806,15 +838,19 @@ const UserManagementPg = ({ moduleConfig }) => {
                   </td>
 
                   <td className="p-4 text-center align-middle">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(user);
-                      }}
-                      className="bg-[#D1867D] hover:bg-[#D1867D]/90 text-white px-4 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
-                    >
-                      Edit
-                    </button>
+                    {hasCRUD('edit') ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(user);
+                        }}
+                        className="bg-[#D1867D] hover:bg-[#D1867D]/90 text-white px-4 py-1.5 rounded-lg font-bold text-xs shadow-sm transition-all duration-200"
+                      >
+                        Edit
+                      </button>
+                    ) : (
+                      <span className="text-slate-300 font-bold text-xs select-none">-</span>
+                    )}
                   </td>
 
                 </tr>
@@ -892,7 +928,7 @@ const UserManagementPg = ({ moduleConfig }) => {
           existingRecords={users}
           onSubmit={handleSave}
           onClose={closeAll}
-          onDelete={isEditing ? () => handleDelete(selectedEntry.id || selectedEntry._id) : null}
+          onDelete={isEditing && hasCRUD('delete') ? () => handleDelete(selectedEntry.id || selectedEntry._id) : null}
         />
       )}
 
