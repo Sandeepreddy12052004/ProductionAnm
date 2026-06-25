@@ -645,7 +645,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'milk_prod') await api.milk.collections.delete(entryId);
         else if (activeTab === 'components') await api.milk.quality.delete(entryId);
         else {
-          const filtered = logs.filter(log => log.id !== selectedEntry.id);
+          const filtered = logs.filter(log => (log._id || log.id) !== (selectedEntry._id || selectedEntry.id));
           saveToStorage(filtered);
         }
         swalSuccess("Deleted", `${current.name} deleted successfully!`);

@@ -67,7 +67,7 @@ const FarmModule = ({ farmName, availableModules }) => {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {logs.map(log => (
-              <tr key={log.id} className="hover:bg-[#D1867D]/5 transition-colors">
+              <tr key={log._id || log.id} className="hover:bg-[#D1867D]/5 transition-colors">
                 <td className="p-4 text-sm text-gray-600">{log.date}</td>
                 {currentModule.fields.map(f => (
                   <td key={f.name} className="p-4 text-sm font-semibold text-gray-800">{log[f.name]}</td>

@@ -381,7 +381,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
         else if (activeTab === 'medicine') await api.inventory.medicines.update(entryId, payload);
         else {
-          const updated = logs.map(log => log.id === selectedEntry.id ? { ...log, ...data } : log);
+          const updated = logs.map(log => (log._id || log.id) === (selectedEntry._id || selectedEntry.id) ? { ...log, ...data } : log);
           saveToStorage(updated);
         }
         swalSuccess("Success", `${current.name} updated successfully!`);
@@ -620,7 +620,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.delete(entryId);
         else if (activeTab === 'medicine') await api.inventory.medicines.delete(entryId);
         else {
-          const filtered = logs.filter(log => log.id !== selectedEntry.id);
+          const filtered = logs.filter(log => (log._id || log.id) !== (selectedEntry._id || selectedEntry.id));
           saveToStorage(filtered);
         }
         swalSuccess("Deleted", `${current.name} deleted successfully!`);
@@ -901,7 +901,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
             {isLoading ? (
               <SkeletonLoader type="table" columns={columns.length + 1} />
             ) : paginatedLogs.length > 0 ? paginatedLogs.map(log => (
-              <tr key={log.id} className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" onClick={() => setSelectedEntry(log)}>
+              <tr key={log._id || log.id} className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" onClick={() => setSelectedEntry(log)}>
                 <td className="p-4 text-sm text-gray-600 font-sans">{log.date || log.entryDate}</td>
                 {current.fields.map(f => <td key={f.name} className="p-4 font-semibold text-gray-800">{log[f.name]}</td>)}
                 <td className="p-4 text-gray-300 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>

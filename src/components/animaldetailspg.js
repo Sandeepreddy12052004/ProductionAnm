@@ -1824,7 +1824,7 @@ const handleSave = async (data) => {
       // Local Storage Fallback for auxiliary logs
       if (isEditing) {
         const updated = logs.map(log => {
-          if (log.id === selectedEntry.id) {
+          if ((log._id || log.id) === (selectedEntry._id || selectedEntry.id)) {
             return { ...log, ...data };
           }
           return log;
@@ -2094,7 +2094,7 @@ const handleSave = async (data) => {
           }
           await fetchLogs();
         } else {
-          const filtered = logs.filter(log => log.id !== selectedEntry.id);
+          const filtered = logs.filter(log => (log._id || log.id) !== (selectedEntry._id || selectedEntry.id));
           saveToStorage(filtered);
           swalSuccess("Deleted", "Record deleted successfully!");
         }
@@ -3222,7 +3222,7 @@ const getShedFromLivestock = (tagValue) => {
                 ) : paginatedLogs.length > 0 ? (
                   paginatedLogs.map(log => (
                     <tr 
-                      key={log.id}
+                      key={log._id || log.id}
                       className={`
                         cursor-pointer group transition-colors
                         hover:bg-[#D1867D]/5
