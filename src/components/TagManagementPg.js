@@ -9,6 +9,7 @@ const TagManagementPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [animalOptions, setAnimalOptions] = useState([]);
 
   // Suffix Form state
   const [suffixFormData, setSuffixFormData] = useState({
@@ -20,11 +21,30 @@ const TagManagementPg = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const suffixesData = await api.tags.getAllSuffixes();
+      const [suffixesData, animalsData] = await Promise.all([
+        api.tags.getAllSuffixes(),
+        api.animals.getAll()
+      ]);
       setSuffixes(suffixesData || []);
+      const activeAnimals = (animalsData || [])
+        .filter(a => a && a.status !== false)
+        .map(a => String(a.name || a.code || '').trim())
+        .filter(Boolean);
+      if (activeAnimals.length > 0) {
+        setAnimalOptions(activeAnimals);
+        setSuffixFormData(prev => {
+          const currentValid = activeAnimals.some(name => name.toUpperCase() === prev.animalType.toUpperCase());
+          return {
+            ...prev,
+            animalType: currentValid ? prev.animalType : activeAnimals[0].toUpperCase()
+          };
+        });
+      } else {
+        setAnimalOptions(['COW', 'BUFFALO', 'CALF']);
+      }
     } catch (err) {
       console.error(err);
-      swalError("Error", "Failed to retrieve suffix rules.");
+      swalError("Error", "Failed to retrieve initial data.");
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +127,7 @@ const TagManagementPg = () => {
             setSuffixFormData({
               id: null,
               suffix: "",
-              animalType: "COW",
+              animalType: animalOptions[0]?.toUpperCase() || "COW",
             });
             setShowForm(true);
           }}
@@ -214,9 +234,9 @@ const TagManagementPg = () => {
                   onChange={handleSuffixChange}
                   className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437] bg-white"
                 >
-                  <option value="COW">COW</option>
-                  <option value="BUFFALO">BUFFALO</option>
-                  <option value="CALF">CALF</option>
+                  {animalOptions.map(name => (
+                    <option key={name} value={name.toUpperCase()}>{name.toUpperCase()}</option>
+                  ))}
                 </select>
               </div>
 

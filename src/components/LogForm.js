@@ -494,15 +494,20 @@
                 const matchedType = r.animalType;
                 const animalTypeField = fields.find(f => f.name === 'cattleType' || f.name === 'animalType');
                 if (animalTypeField && animalTypeField.options) {
-                  const resolved = animalTypeField.options.find(opt => 
-                    opt.toLowerCase() === matchedType.toLowerCase() || 
-                    opt.toLowerCase().includes(matchedType.toLowerCase())
+                  let resolved = animalTypeField.options.find(opt => 
+                    opt.toLowerCase() === matchedType.toLowerCase()
                   );
+                  if (!resolved) {
+                    resolved = animalTypeField.options.find(opt => 
+                      opt.toLowerCase().includes(matchedType.toLowerCase())
+                    );
+                  }
                   if (resolved) {
                     setFormData(prev => ({
                       ...prev,
                       [animalTypeField.name]: resolved
                     }));
+                    break;
                   }
                 }
               }

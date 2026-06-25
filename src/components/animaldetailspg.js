@@ -323,7 +323,7 @@ const [pendingImports, setPendingImports] = useState([]);
 const [rawShedsList, setRawShedsList] = useState([]);
 const [allowedSheds, setAllowedSheds] = useState(new Set());
 const [allowedBreeds, setAllowedBreeds] = useState(new Set());
-const [allowedAnimals, setAllowedAnimals] = useState(new Set());
+const [allowedAnimals, setAllowedAnimals] = useState(new Map());
 const [selectedEntry, setSelectedEntry] = useState(null);
 const [viewMode, setViewMode] = useState(false);
 const [isEditing, setIsEditing] = useState(false);
@@ -3049,10 +3049,9 @@ const getShedFromLivestock = (tagValue) => {
                 className="w-full h-9 px-3 pr-8 rounded-lg border border-slate-200 text-xs bg-slate-50/30 text-[#16223F] font-bold outline-none focus:bg-white focus:border-[#D1867D] appearance-none cursor-pointer transition-all duration-200"
               >
                 <option value="ALL">All</option>
-                <option value="COW">Cow</option>
-                <option value="BUFFALO">Buffalo</option>
-                <option value="BUFFALO CALF">Buffalo Calf</option>
-                <option value="COW CALF">Cow Calf</option>
+                {Array.from(allowedAnimals.values()).map(name => (
+                  <option key={name} value={name.toUpperCase()}>{name}</option>
+                ))}
               </select>
               <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
