@@ -5,6 +5,7 @@ export default function GrassCollectionPage() {
     id: 'grass',
     name: 'Grass Collection',
     icon: '🌿',
+    showAllOption: false,
     fields: [
       { name: 'noOfLoads', label: 'No. of Loads', type: 'number' },
       { name: 'weight',    label: 'Weight (KG)',   type: 'number' },

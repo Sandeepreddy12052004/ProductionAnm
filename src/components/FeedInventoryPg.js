@@ -34,6 +34,7 @@ export default function FeedInventoryPg() {
     id: 'feed_inv',
     name: 'Feed Log',
     icon: '📋',
+    showAllOption: false,
     fields: [
       { name: 'feedType',        label: 'Feed Item',       type: 'select', options: [] },
       { name: 'oldStock',        label: 'Old Stock',       type: 'number' },
@@ -230,7 +231,7 @@ export default function FeedInventoryPg() {
               />
             </div>
             <div className="flex flex-wrap gap-4 items-center">
-              <FarmFilterSelector layout="horizontal" size="md" />
+              <FarmFilterSelector layout="horizontal" size="md" showAllOption={false} />
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Listed Items: {filteredStockItems.length}
               </div>

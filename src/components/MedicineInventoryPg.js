@@ -34,6 +34,7 @@ export default function MedicineInventoryPg() {
     id: 'med_inv',
     name: 'Medicine Inventory',
     icon: '💊',
+    showAllOption: false,
     fields: [
       { name: 'medicineName',  label: 'Medicine Name', type: 'select', options: [] },
       { name: 'type',          label: 'Type',          type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'], disabled: true },
@@ -233,7 +234,7 @@ export default function MedicineInventoryPg() {
               />
             </div>
             <div className="flex flex-wrap gap-4 items-center">
-              <FarmFilterSelector layout="horizontal" size="md" />
+              <FarmFilterSelector layout="horizontal" size="md" showAllOption={false} />
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Listed Items: {filteredStockItems.length}
               </div>

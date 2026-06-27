@@ -5,6 +5,7 @@ export default function MilkQualityPage() {
     id: 'components',
     name: 'Milk QA',
     icon: '🔬',
+    showAllOption: false,
     fields: [
       { name: 'fat',     label: 'Fat %',        type: 'number' },
       { name: 'snf',     label: 'SNF %',        type: 'number' },

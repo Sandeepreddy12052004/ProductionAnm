@@ -3292,7 +3292,11 @@ const getShedFromLivestock = (tagValue) => {
         <>
           {current.id !== 'livestock' && current.id !== 'crossing' && (
             <div className="mb-4 flex items-center justify-start">
-              <FarmFilterSelector layout="horizontal" size="sm" />
+              <FarmFilterSelector 
+                layout="horizontal" 
+                size="sm" 
+                showAllOption={current.id !== 'vaccine' && current.id !== 'health'} 
+              />
             </div>
           )}
           <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">

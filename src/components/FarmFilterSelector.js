@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
-export default function FarmFilterSelector({ layout = 'vertical', size = 'md' }) {
+export default function FarmFilterSelector({ layout = 'vertical', size = 'md', showAllOption = true }) {
   const [farms, setFarms] = useState([]);
   const [activeFarmId, setActiveFarmId] = useState('ALL');
   const [user, setUser] = useState(null);
@@ -30,17 +30,20 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md' })
           if (Array.isArray(data)) {
             setFarms(data);
             const storedActive = localStorage.getItem('__active_farm_id__');
-            if (storedActive) {
-              setActiveFarmId(storedActive);
-            } else {
-              localStorage.setItem('__active_farm_id__', 'ALL');
-              setActiveFarmId('ALL');
+            let initialActive = storedActive || 'ALL';
+            
+            if (initialActive === 'ALL' && !showAllOption && data.length > 0) {
+              const firstFarmId = data[0]._id || data[0].id;
+              localStorage.setItem('__active_farm_id__', firstFarmId);
+              initialActive = firstFarmId;
             }
+            
+            setActiveFarmId(initialActive);
           }
         })
         .catch((err) => console.error('Error fetching farms for FarmFilterSelector:', err));
     }
-  }, [user, isGlobal]);
+  }, [user, isGlobal, showAllOption]);
 
   const handleFarmChange = (e) => {
     const selectedId = e.target.value;
@@ -62,7 +65,7 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md' })
               onChange={handleFarmChange}
               className="w-full h-9 px-3 pr-8 rounded-lg border border-slate-200 text-xs bg-slate-50/30 text-[#16223F] font-bold outline-none focus:bg-white focus:border-[#D1867D] appearance-none cursor-pointer transition-all duration-200"
             >
-              <option value="ALL">All</option>
+              {showAllOption && <option value="ALL">All</option>}
               {farms.map((farm) => (
                 <option key={farm._id || farm.id} value={farm._id || farm.id}>
                   {farm.name}
@@ -89,7 +92,7 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md' })
             onChange={handleFarmChange}
             className="w-full h-12 px-3 pr-8 rounded-xl border border-slate-200 text-sm bg-slate-50/30 text-[#16223F] font-semibold outline-none focus:bg-white focus:border-[#D1867D] appearance-none cursor-pointer transition-all duration-200"
           >
-            <option value="ALL">All</option>
+            {showAllOption && <option value="ALL">All</option>}
             {farms.map((farm) => (
               <option key={farm._id || farm.id} value={farm._id || farm.id}>
                 {farm.name}
@@ -118,7 +121,7 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md' })
             size === 'sm' ? 'h-9 text-xs' : 'h-12'
           }`}
         >
-          <option value="ALL">All</option>
+          {showAllOption && <option value="ALL">All</option>}
           {farms.map((farm) => (
             <option key={farm._id || farm.id} value={farm._id || farm.id}>
               {farm.name}

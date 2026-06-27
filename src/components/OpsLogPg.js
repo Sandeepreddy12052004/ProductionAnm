@@ -654,7 +654,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         description={`Module: ${current.name}`}
       >
         <div className="flex flex-wrap gap-2 w-full md:w-auto items-end">
-          <FarmFilterSelector layout="horizontal" size="sm" />
+          <FarmFilterSelector layout="horizontal" size="sm" showAllOption={current.showAllOption !== false} />
           <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all text-sm">
             📊 Excel
           </button>
