@@ -56,9 +56,19 @@ export default function LoginPage() {
             return;
           }
           localStorage.setItem("user", JSON.stringify(userObj));
+          
+          let activeFarmId = 'ALL';
+          const rawFarmId = userObj.farmId && typeof userObj.farmId === 'object'
+            ? (userObj.farmId._id || userObj.farmId.id)
+            : userObj.farmId;
+          if (rawFarmId && rawFarmId !== 'ALL') {
+            activeFarmId = String(rawFarmId).trim();
+          }
+          localStorage.setItem("__active_farm_id__", activeFarmId);
         } else {
           // Fallback if production API doesn't return user object clearly
           localStorage.setItem("user", JSON.stringify({ role: 'SUPER_ADMIN' }));
+          localStorage.setItem("__active_farm_id__", 'ALL');
         }
         
         localStorage.setItem("isLoggedIn", "true");

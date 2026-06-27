@@ -293,17 +293,110 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
       }
 
       // Auto-unwrap { success: true, data: [...] } envelope
-      const data = await response.json();
+      const responseData = await response.json();
+      let finalData = responseData;
       if (
-        data &&
-        typeof data === 'object' &&
-        data.success === true &&
-        data.data !== undefined
+        responseData &&
+        typeof responseData === 'object' &&
+        responseData.success === true &&
+        responseData.data !== undefined
       ) {
-        return data.data;
+        finalData = responseData.data;
       }
 
-      return data;
+      // Filter by farmId if user has a restricted farmId OR if they are global and have selected an active farm
+      const userObj = getSessionUser();
+      if (userObj && method === 'GET') {
+        const rawFarmId = userObj.farmId && typeof userObj.farmId === 'object'
+          ? (userObj.farmId._id || userObj.farmId.id)
+          : userObj.farmId;
+
+        const isGlobal =
+          !rawFarmId ||
+          rawFarmId === 'ALL' ||
+          String(userObj.role).toUpperCase() === 'SUPER_ADMIN';
+
+        let restrictedFarmId = null;
+        let isBypassedEndpoint = false;
+
+        const cleanPath = endpoint.split('?')[0];
+
+        if (!isGlobal) {
+          // Restricted user: locked to their assigned farm
+          restrictedFarmId = rawFarmId ? String(rawFarmId).trim() : null;
+          isBypassedEndpoint =
+            cleanPath === '/api/users' ||
+            cleanPath.startsWith('/api/users/') ||
+            cleanPath === '/api/roles' ||
+            cleanPath.startsWith('/api/roles/') ||
+            cleanPath === '/api/departments' ||
+            cleanPath.startsWith('/api/departments/') ||
+            cleanPath === '/api/feed-items' ||
+            cleanPath.startsWith('/api/feed-items/');
+        } else {
+          // Global user: filter by the selected active farm if set (and not 'ALL')
+          const activeFarmId = localStorage.getItem('__active_farm_id__');
+          if (activeFarmId && activeFarmId !== 'ALL') {
+            restrictedFarmId = String(activeFarmId).trim();
+          }
+          // Global user must NOT have farms or auth endpoints filtered
+          isBypassedEndpoint =
+            cleanPath === '/api/farms' ||
+            cleanPath.startsWith('/api/farms/') ||
+            cleanPath.startsWith('/api/auth') ||
+            cleanPath === '/api/feed-items' ||
+            cleanPath.startsWith('/api/feed-items/');
+        }
+
+        if (restrictedFarmId && !isBypassedEndpoint) {
+          // Helper to check if item matches the restricted farm
+          const matchesRestrictedFarm = (item) => {
+            if (!item) return false;
+
+            const itemFarmId = item.farmId && typeof item.farmId === 'object'
+              ? (item.farmId._id || item.farmId.id)
+              : item.farmId;
+
+            const itemFarm = item.farm && typeof item.farm === 'object'
+              ? (item.farm._id || item.farm.id)
+              : item.farm;
+
+            // If the item explicitly has a farmId or farm, it must match.
+            if (itemFarmId && String(itemFarmId).trim() !== restrictedFarmId) {
+              return false;
+            }
+            if (itemFarm && String(itemFarm).trim() !== restrictedFarmId) {
+              return false;
+            }
+
+            // If the item itself is a farm object (returned from /api/farms), check its own ID
+            // Only apply this check if the endpoint is actually querying farms.
+            const isFarm = cleanPath.startsWith('/api/farms');
+            if (isFarm) {
+              const farmId = item._id || item.id;
+              if (String(farmId).trim() !== restrictedFarmId) {
+                return false;
+              }
+            }
+
+            return true;
+          };
+
+          if (Array.isArray(finalData)) {
+            finalData = finalData.filter(matchesRestrictedFarm);
+          } else if (finalData && typeof finalData === 'object') {
+            // Single record checks
+            if (!matchesRestrictedFarm(finalData)) {
+              const hasFarmField = finalData.farmId || finalData.farm;
+              if (hasFarmField) {
+                return null;
+              }
+            }
+          }
+        }
+      }
+
+      return finalData;
     } catch (error) {
       const errMsg =
         error instanceof Error ? error.message : String(error);
@@ -407,6 +500,7 @@ export const api = {
       create:            (data)     => apiRequest('/api/operations/daily-feeding', 'POST', data),
       update:            (id, data) => apiRequest(`/api/operations/daily-feeding/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/operations/daily-feeding/${id}`, 'DELETE'),
+      bulkCreate:        (data)     => apiRequest('/api/operations/daily-feeding/bulk', 'POST', data),
     },
   },
 

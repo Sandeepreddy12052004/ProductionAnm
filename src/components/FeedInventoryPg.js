@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { api } from "../utils/api";
 import SkeletonLoader from "./SkeletonLoader";
 import OpsLogPg from "./OpsLogPg";
+import ModulePageHeader from "./ModulePageHeader";
+import FarmFilterSelector from "./FarmFilterSelector";
 import { 
   Package, 
   Search, 
@@ -113,16 +115,10 @@ export default function FeedInventoryPg() {
   return (
     <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
       {/* HEADER SECTION */}
-      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
-            Feed Inventory
-          </h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">
-            Real-time stock levels and transaction logs for registered feed items.
-          </p>
-        </div>
-
+      <ModulePageHeader
+        title="Feed Inventory"
+        description="Real-time stock levels and transaction logs for registered feed items."
+      >
         {activeTab === "summary" && (
           <button
             onClick={fetchInventoryLogs}
@@ -132,7 +128,7 @@ export default function FeedInventoryPg() {
             <span>Refresh Stock</span>
           </button>
         )}
-      </div>
+      </ModulePageHeader>
 
       {/* TABS HEADER */}
       <div className="flex border-b border-gray-200 mb-6 gap-6 flex-none">
@@ -220,11 +216,14 @@ export default function FeedInventoryPg() {
                 placeholder="Search feed items by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+                className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
               />
             </div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Listed Items: {filteredStockItems.length}
+            <div className="flex flex-wrap gap-4 items-center">
+              <FarmFilterSelector layout="horizontal" size="md" />
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Listed Items: {filteredStockItems.length}
+              </div>
             </div>
           </div>
 

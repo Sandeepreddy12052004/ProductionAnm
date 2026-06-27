@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import ModulePageHeader from "./ModulePageHeader";
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -91,19 +92,38 @@ export default function DailyMilkCollection() {
       setIsLoading(true);
       try {
         const [farmsData, shedsData, animalsData] = await Promise.all([
-          api.farms.getAll(),
-          api.sheds.getAll(),
-          api.cattle.getAll(),
+          api.farms.getAll().catch(() => []),
+          api.sheds.getAll().catch(() => []),
+          api.cattle.getAll().catch(() => []),
         ]);
 
-        const sorted = sortFarms(farmsData || []);
+        let finalFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
+        if (!Array.isArray(finalFarms) || finalFarms.length === 0) {
+          try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const user = JSON.parse(storedUser);
+              const userFarmId = user.farmId && typeof user.farmId === 'object'
+                ? (user.farmId._id || user.farmId.id)
+                : user.farmId;
+              if (userFarmId && userFarmId !== 'ALL') {
+                finalFarms = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
+              }
+            }
+          } catch (e) {}
+        }
+
+        const sorted = sortFarms(finalFarms);
         setFarms(sorted);
         setSheds(shedsData || []);
         
         const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
         setAnimals(rawAnimals);
 
-        if (sorted && sorted.length > 0) {
+        const storedActive = localStorage.getItem('__active_farm_id__');
+        if (storedActive && storedActive !== 'ALL') {
+          setSelectedFarmId(storedActive);
+        } else if (sorted && sorted.length > 0) {
           setSelectedFarmId(sorted[0]._id || sorted[0].id);
         }
       } catch (err) {
@@ -459,18 +479,10 @@ export default function DailyMilkCollection() {
     <div className="p-6 md:p-10 w-full h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans min-h-screen">
       
       {/* A. Header & Sub-Header Section */}
-      <div className="flex-none flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-6">
-        <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-[0.2em]">
-            EXECUTIVE CONTROL CENTER
-          </span>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            Daily Milk Collection
-          </h1>
-          <p className="text-sm text-slate-500 font-medium">
-            Welcome back, Josh. Log, verify, and monitor session yield outputs across sheds.
-          </p>
-        </div>
+      <ModulePageHeader
+        title="Daily Milk Collection"
+        description="Log, verify, and monitor session yield outputs across sheds."
+      >
         <button
           onClick={openSettings}
           className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 text-slate-700 font-bold rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] active:scale-[0.98] transition-all duration-300 text-xs self-start sm:self-center"
@@ -478,7 +490,7 @@ export default function DailyMilkCollection() {
           <Settings className="w-4 h-4 text-slate-400 hover:text-emerald-600 transition-colors" />
           Set Farm Order
         </button>
-      </div>
+      </ModulePageHeader>
 
       {isLoading ? (
         <SkeletonLoader type="table" columns={4} />

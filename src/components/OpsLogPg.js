@@ -5,6 +5,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '@/utils/api';
 import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
+import ModulePageHeader from "./ModulePageHeader";
+import FarmFilterSelector from "./FarmFilterSelector";
 
 const toCamelCase = (str) => {
   return str
@@ -67,6 +69,10 @@ const OpsLogPg = ({ moduleConfig }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showFAB, setShowFAB] = useState(true);
   const [dynamicFields, setDynamicFields] = useState(current.fields);
+  const [rawSheds, setRawSheds] = useState([]);
+  const [rawAnimals, setRawAnimals] = useState([]);
+  const [rawFeedItems, setRawFeedItems] = useState([]);
+  const [rawMedicines, setRawMedicines] = useState([]);
 
   const [filters, setFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
@@ -160,6 +166,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       api.sheds.getAll()
         .then(res => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
+          setRawSheds(list);
           shed_opts = list.map(s => s.name || s.code).filter(Boolean);
           tryMerge();
         })
@@ -170,6 +177,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       api.cattle.getAll()
         .then(res => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
+          setRawAnimals(list);
           animal_opts = list.map(c => ({
             label: `${c.tag || c.tag_id} (${c.cattleType || c.animalType || ''})`,
             value: c._id || c.id,
@@ -184,6 +192,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       api.feedItems.getAll()
         .then(res => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
+          setRawFeedItems(list);
           feed_opts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
           tryMerge();
         })
@@ -194,6 +203,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       api.medicines.getAll()
         .then(res => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
+          setRawMedicines(list);
           medicine_opts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
           tryMerge();
         })
@@ -204,6 +214,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       api.feedItems.getAll()
         .then(res => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
+          setRawFeedItems(list);
           dynamic_feeds = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
           tryMerge();
         })
@@ -252,6 +263,30 @@ const OpsLogPg = ({ moduleConfig }) => {
     setCurrentPage(1);
   }, [moduleConfig]);
 
+  const getActiveFarmId = () => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const rawFarmId = user.farmId && typeof user.farmId === 'object'
+          ? (user.farmId._id || user.farmId.id)
+          : user.farmId;
+        const isGlobal =
+          !rawFarmId ||
+          rawFarmId === 'ALL' ||
+          String(user.role).toUpperCase() === 'SUPER_ADMIN';
+        if (!isGlobal) {
+          return rawFarmId;
+        }
+      }
+      const activeFarm = localStorage.getItem("__active_farm_id__");
+      if (activeFarm && activeFarm !== 'ALL') {
+        return activeFarm;
+      }
+    } catch (e) {}
+    return null;
+  };
+
   // ── Save ─────────────────────────────────────────────────────────────────
   const handleSave = async (data) => {
     setIsLoading(true);
@@ -261,6 +296,51 @@ const OpsLogPg = ({ moduleConfig }) => {
 
       const now = new Date();
       const formattedDate = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+
+      const activeFarm = getActiveFarmId();
+      const originalFarmId = selectedEntry?.farmId && typeof selectedEntry.farmId === 'object'
+        ? (selectedEntry.farmId._id || selectedEntry.farmId.id)
+        : selectedEntry?.farmId;
+
+      const resolveItemFarmId = (item) => {
+        if (originalFarmId) return originalFarmId;
+        if (activeFarm) return activeFarm;
+
+        // Fallback for global user viewing 'All Farms' -> resolve from animal, shed, feed, or medicine
+        if (item.animalId) {
+          const selectedAnimal = rawAnimals.find(a => (a._id || a.id) === item.animalId || a.tag_id === item.animalId || a.tag === item.animalId);
+          if (selectedAnimal) {
+            return selectedAnimal.farmId && typeof selectedAnimal.farmId === 'object'
+              ? (selectedAnimal.farmId._id || selectedAnimal.farmId.id)
+              : selectedAnimal.farmId;
+          }
+        }
+        if (item.shedId) {
+          const selectedShed = rawSheds.find(s => (s._id || s.id) === item.shedId || s.name === item.shedId || s.code === item.shedId);
+          if (selectedShed) {
+            return selectedShed.farmId && typeof selectedShed.farmId === 'object'
+              ? (selectedShed.farmId._id || selectedShed.farmId.id)
+              : selectedShed.farmId;
+          }
+        }
+        if (item.feedType) {
+          const selectedFeed = rawFeedItems.find(f => f.name === item.feedType);
+          if (selectedFeed) {
+            return selectedFeed.farmId && typeof selectedFeed.farmId === 'object'
+              ? (selectedFeed.farmId._id || selectedFeed.farmId.id)
+              : selectedFeed.farmId;
+          }
+        }
+        if (item.medicineName) {
+          const selectedMed = rawMedicines.find(m => m.name === item.medicineName);
+          if (selectedMed) {
+            return selectedMed.farmId && typeof selectedMed.farmId === 'object'
+              ? (selectedMed.farmId._id || selectedMed.farmId.id)
+              : selectedMed.farmId;
+          }
+        }
+        return null;
+      };
 
       let payload;
       if (Array.isArray(data)) {
@@ -281,6 +361,10 @@ const OpsLogPg = ({ moduleConfig }) => {
             itemPayload.entryDate = formattedDate;
             itemPayload.date = now.toISOString();
           }
+          const itemFarmId = resolveItemFarmId(item);
+          if (itemFarmId) {
+            itemPayload.farmId = itemFarmId;
+          }
           return itemPayload;
         });
       } else {
@@ -299,6 +383,10 @@ const OpsLogPg = ({ moduleConfig }) => {
         if (!isEditing) {
           payload.entryDate = formattedDate;
           payload.date = now.toISOString();
+        }
+        const itemFarmId = resolveItemFarmId(data);
+        if (itemFarmId) {
+          payload.farmId = itemFarmId;
         }
       }
 
@@ -561,12 +649,12 @@ const OpsLogPg = ({ moduleConfig }) => {
     <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
 
       {/* ── Header ── */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-[#16223F]">{current.icon} {current.name}</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Module: {current.name}</p>
-        </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+      <ModulePageHeader
+        title={`${current.icon || "📋"} ${current.name}`}
+        description={`Module: ${current.name}`}
+      >
+        <div className="flex flex-wrap gap-2 w-full md:w-auto items-end">
+          <FarmFilterSelector layout="horizontal" size="sm" />
           <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all text-sm">
             📊 Excel
           </button>
@@ -593,7 +681,7 @@ const OpsLogPg = ({ moduleConfig }) => {
             + Add Entry
           </button>
         </div>
-      </header>
+      </ModulePageHeader>
 
       {/* ── Filter Modal ── */}
       {showFilters && (

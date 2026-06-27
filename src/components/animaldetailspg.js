@@ -7,6 +7,7 @@ import autoTable from "jspdf-autotable";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
+import FarmFilterSelector from './FarmFilterSelector';
 
 const parseDateString = (dateVal) => {
   if (!dateVal) return null;
@@ -439,10 +440,34 @@ useEffect(() => {
 useEffect(() => {
   let isMounted = true;
   api.farms.getAll().then(res => {
-    if (isMounted && Array.isArray(res)) {
-      setFarmsList(res);
+    if (!isMounted) return;
+    const clean = Array.isArray(res) ? res : (res?.data ?? []);
+    if (clean.length > 0) {
+      setFarmsList(clean);
+    } else {
+      triggerFallback();
     }
-  }).catch(console.error);
+  }).catch(err => {
+    console.error(err);
+    triggerFallback();
+  });
+
+  function triggerFallback() {
+    if (isMounted) {
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          const userFarmId = user.farmId && typeof user.farmId === 'object'
+            ? (user.farmId._id || user.farmId.id)
+            : user.farmId;
+          if (userFarmId && userFarmId !== 'ALL') {
+            setFarmsList([{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }]);
+          }
+        }
+      } catch (e) {}
+    }
+  }
   return () => { isMounted = false; };
 }, []);
 
@@ -2247,7 +2272,7 @@ const getShedFromLivestock = (tagValue) => {
             <h1 className="text-3xl font-bold text-[#16223F] opacity-80">Animal Details</h1>
             <p className="text-black opacity-60 italic">Module: {current.name}</p>
           </div>
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
             {(current.id === 'livestock' || current.id === 'sale') && (
               <>
                 <input
@@ -2259,7 +2284,7 @@ const getShedFromLivestock = (tagValue) => {
                 />
                 <button 
                   onClick={() => document.getElementById('excel-upload-input').click()} 
-                  className="px-4 py-2 bg-[#16223F] text-white rounded-lg font-bold shadow-md hover:bg-[#16223F]/90 transition-all flex items-center gap-2 text-sm"
+                  className="h-9 px-4 bg-[#16223F] text-white rounded-lg font-bold shadow-md hover:bg-[#16223F]/90 transition-all flex items-center justify-center gap-1.5 text-xs"
                 >
                   📥 Import Excel
                 </button>
@@ -2269,7 +2294,7 @@ const getShedFromLivestock = (tagValue) => {
             {/* EXCEL BUTTON */}
             <button 
               onClick={exportExcel} 
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2 text-sm"
+              className="h-9 px-4 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center justify-center gap-1.5 text-xs"
             >
               📊 Excel
             </button>
@@ -2277,12 +2302,13 @@ const getShedFromLivestock = (tagValue) => {
             {/* PDF BUTTON */}
             <button 
               onClick={exportPDF} 
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all flex items-center gap-2 text-sm"
+              className="h-9 px-4 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all flex items-center justify-center gap-1.5 text-xs"
             >
               📄 PDF
             </button>
 
-            
+
+
             <button
     onClick={() => {
       if (showFilters) {
@@ -2297,13 +2323,13 @@ const getShedFromLivestock = (tagValue) => {
       }
       setShowFilters(!showFilters);
     }}
-    className={`relative px-4 py-2 rounded-lg font-bold border transition-all duration-200 ease-out hover:-translate-y-[1px] hover:shadow-md 
+    className={`relative h-9 px-4 rounded-lg font-bold border transition-all duration-200 ease-out hover:-translate-y-[1px] hover:shadow-md flex items-center justify-center gap-1.5 text-xs
       ${showFilters 
         ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
         : 'bg-white border-gray-300 hover:bg-gray-50'}
     `}
   >
-    {showFilters ? '✕ Hide Filter' : '🔍 Filters '}
+    {showFilters ? '✕ Hide Filter' : '🔍 Filters'}
 
     {/*  FILTER COUNT BADGE */}
     {activeFilterCount > 0 && (
@@ -2323,7 +2349,7 @@ const getShedFromLivestock = (tagValue) => {
             {hasCRUD('create') && (
               <button 
                 onClick={() => { setIsEditing(false); setShowForm(true); }} 
-                className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+                className="hidden md:flex h-9 px-4 bg-[#16223F] text-white rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-xs items-center justify-center gap-1.5"
               >
                 + Add Entry
               </button>
@@ -3111,53 +3137,59 @@ const getShedFromLivestock = (tagValue) => {
               </span>
             </div>
           </div>
+
+          <FarmFilterSelector layout="horizontal" />
         </div>
       )}
 
       {/* Sub-tabs for Crossing Log */}
       {current.id === 'crossing' && (
-        <div className="flex flex-wrap gap-1.5 mb-4 p-1 bg-gray-50 border border-gray-200/80 rounded-xl max-w-xl shadow-sm">
-          <button
-            onClick={() => {
-              setCrossingSubTab('PENDING');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              crossingSubTab === 'PENDING'
-                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            ⏳ Pending <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'PENDING' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingPendingCount}</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setCrossingSubTab('POSITIVE');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              crossingSubTab === 'POSITIVE'
-                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            ✅ Positive <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'POSITIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingPositiveCount}</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-gray-50 border border-gray-200/80 rounded-xl max-w-xl shadow-sm">
+            <button
+              onClick={() => {
+                setCrossingSubTab('PENDING');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                crossingSubTab === 'PENDING'
+                  ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                  : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              ⏳ Pending <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'PENDING' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingPendingCount}</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                setCrossingSubTab('POSITIVE');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                crossingSubTab === 'POSITIVE'
+                  ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                  : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              ✅ Positive <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'POSITIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingPositiveCount}</span>
+            </button>
 
-          <button
-            onClick={() => {
-              setCrossingSubTab('NEGATIVE');
-              setCurrentPage(1);
-            }}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-              crossingSubTab === 'NEGATIVE'
-                ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
-                : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-            }`}
-          >
-            ❌ Negative <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'NEGATIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingNegativeCount}</span>
-          </button>
+            <button
+              onClick={() => {
+                setCrossingSubTab('NEGATIVE');
+                setCurrentPage(1);
+              }}
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                crossingSubTab === 'NEGATIVE'
+                  ? 'bg-[#16223F] text-white shadow-md shadow-[#16223F]/10 scale-[1.02]'
+                  : 'text-[#16223F] opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
+              }`}
+            >
+              ❌ Negative <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${crossingSubTab === 'NEGATIVE' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{crossingNegativeCount}</span>
+            </button>
+          </div>
+
+          <FarmFilterSelector layout="horizontal" size="sm" />
         </div>
       )}
 
@@ -3258,6 +3290,11 @@ const getShedFromLivestock = (tagValue) => {
         </div>
       ) : (
         <>
+          {current.id !== 'livestock' && current.id !== 'crossing' && (
+            <div className="mb-4 flex items-center justify-start">
+              <FarmFilterSelector layout="horizontal" size="sm" />
+            </div>
+          )}
           <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
             <table className="w-full text-left min-w-[600px] relative">
               <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">

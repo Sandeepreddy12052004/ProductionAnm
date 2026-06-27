@@ -3,6 +3,8 @@ import LogForm from "@/components/LogForm";
 import { swalSuccess, swalError, swalConfirm } from "@/utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import { api } from "@/utils/api";
+import ModulePageHeader from "./ModulePageHeader";
+import FarmFilterSelector from "./FarmFilterSelector";
 import {
   Search,
   Filter,
@@ -116,9 +118,9 @@ export default function CattleManagementPg({
     const loadOptions = async () => {
       try {
         const [breedsRes, shedsRes, farmsRes] = await Promise.all([
-          api.breeds.getAll(),
-          api.sheds.getAll(),
-          api.farms.getAll()
+          api.breeds.getAll().catch(() => []),
+          api.sheds.getAll().catch(() => []),
+          api.farms.getAll().catch(() => [])
         ]);
 
         if (isMounted) {
@@ -129,7 +131,21 @@ export default function CattleManagementPg({
           setAllSheds(shedList);
           const shedOpts = shedList.map(s => s.name || s.code).filter(Boolean);
 
-          const farmList = Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []);
+          let farmList = Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []);
+          if (farmList.length === 0) {
+            try {
+              const storedUser = localStorage.getItem("user");
+              if (storedUser) {
+                const user = JSON.parse(storedUser);
+                const userFarmId = user.farmId && typeof user.farmId === 'object'
+                  ? (user.farmId._id || user.farmId.id)
+                  : user.farmId;
+                if (userFarmId && userFarmId !== 'ALL') {
+                  farmList = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm" }];
+                }
+              }
+            } catch (e) {}
+          }
           const farmOpts = farmList.map(f => ({ label: f.name, value: f._id || f.id }));
 
           setDynamicFields(prev => prev.map(f => {
@@ -404,14 +420,10 @@ export default function CattleManagementPg({
   return (
     <div className="w-full flex flex-col text-black font-sans">
       {/* HEADER */}
-      <div className="mb-5">
-        <h1 className="text-3xl font-bold text-[#16223F]">
-          {moduleConfig?.name}
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage and track cattle records directly connected to unified livestock entries.
-        </p>
-      </div>
+      <ModulePageHeader
+        title={moduleConfig?.name || "Cattle Management"}
+        description="Manage and track cattle records directly connected to unified livestock entries."
+      />
 
       {/* OVERVIEW */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
@@ -466,7 +478,7 @@ export default function CattleManagementPg({
 
       {/* SEARCH */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
-        <div className="flex flex-col lg:flex-row gap-4 justify-between">
+        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
           <div className="relative w-full lg:max-w-xl">
             <Search
               size={18}
@@ -497,7 +509,8 @@ export default function CattleManagementPg({
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            <FarmFilterSelector layout="horizontal" size="md" />
             <button
               onClick={() => {
                 if (!showFilters) {

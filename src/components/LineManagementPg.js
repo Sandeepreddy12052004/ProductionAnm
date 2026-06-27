@@ -39,8 +39,8 @@ const LineManagementPg = () => {
     if (!silent) setIsFetching(true);
     try {
       const [shedsData, farmsData, cattleRes] = await Promise.all([
-        api.sheds.getAll(),
-        api.farms.getAll(),
+        api.sheds.getAll().catch(() => []),
+        api.farms.getAll().catch(() => []),
         api.cattle.getAll().catch(() => [])
       ]);
 
@@ -48,7 +48,25 @@ const LineManagementPg = () => {
       const lineManagedSheds = activeSheds.filter(s => s.lineManagement === "Yes");
 
       setSheds(lineManagedSheds);
-      setFarms(farmsData || []);
+      
+      let rawFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
+      let finalFarms = Array.isArray(rawFarms) ? rawFarms : [];
+      if (!Array.isArray(finalFarms) || finalFarms.length === 0) {
+        try {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            const userFarmId = user.farmId && typeof user.farmId === 'object'
+              ? (user.farmId._id || user.farmId.id)
+              : user.farmId;
+            if (userFarmId && userFarmId !== 'ALL') {
+              finalFarms = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
+            }
+          }
+        } catch (e) {}
+      }
+      setFarms(finalFarms);
+      
       setCattleData(Array.isArray(cattleRes) ? cattleRes : (cattleRes?.data ?? []));
 
       // Handle selection updates
@@ -61,8 +79,7 @@ const LineManagementPg = () => {
         // Default active row logic
         const maxRows = found ? found.lines : lineManagedSheds[0]?.lines || 0;
         if (selectedRowNum > maxRows || selectedRowNum <= 0) {
-          +
-            setSelectedRowNum(1)
+          setSelectedRowNum(1);
         }
       } else {
         setSelectedShedId("");

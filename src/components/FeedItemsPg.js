@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import ModulePageHeader from "./ModulePageHeader";
+
 
 const FeedItemsPg = () => {
   const [feedItems, setFeedItems] = useState([]);
@@ -14,6 +16,7 @@ const FeedItemsPg = () => {
   const [formData, setFormData] = useState({
     id: null,
     name: "",
+    type: "",
     description: "",
     status: true,
     farmId: "",
@@ -23,11 +26,28 @@ const FeedItemsPg = () => {
     setIsLoading(true);
     try {
       const [itemsData, farmsData] = await Promise.all([
-        api.feedItems.getAll(),
-        api.farms.getAll(),
+        api.feedItems.getAll().catch(() => []),
+        api.farms.getAll().catch(() => []),
       ]);
       setFeedItems(itemsData || []);
-      setFarms(farmsData || []);
+      
+      let rawFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
+      let finalFarms = Array.isArray(rawFarms) ? rawFarms : [];
+      if (!Array.isArray(finalFarms) || finalFarms.length === 0) {
+        try {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            const userFarmId = user.farmId && typeof user.farmId === 'object'
+              ? (user.farmId._id || user.farmId.id)
+              : user.farmId;
+            if (userFarmId && userFarmId !== 'ALL') {
+              finalFarms = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
+            }
+          }
+        } catch (e) {}
+      }
+      setFarms(finalFarms);
     } catch (err) {
       console.error(err);
       swalError("Error", "Failed to retrieve feed items.");
@@ -62,6 +82,7 @@ const FeedItemsPg = () => {
     try {
       const payload = {
         name: formData.name.trim(),
+        type: formData.type.trim(),
         description: formData.description.trim(),
         status: formData.status,
         farmId: formData.farmId || null,
@@ -88,6 +109,7 @@ const FeedItemsPg = () => {
     setFormData({
       id: item.id || item._id,
       name: item.name,
+      type: item.type || "",
       description: item.description || "",
       status: item.status !== undefined ? item.status : true,
       farmId: item.farmId?._id || item.farmId || "",
@@ -120,21 +142,16 @@ const FeedItemsPg = () => {
   return (
     <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
       {/* HEADER SECTION */}
-      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
-            Feed Items Registry
-          </h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">
-            Configure dynamic feed types and options that populate daily feeding and stock logs.
-          </p>
-        </div>
-
+      <ModulePageHeader
+        title="Feed Items Registry"
+        description="Configure dynamic feed types and options that populate daily feeding and stock logs."
+      >
         <button
           onClick={() => {
             setFormData({
               id: null,
               name: "",
+              type: "",
               description: "",
               status: true,
               farmId: farms[0]?._id || farms[0]?.id || "",
@@ -145,7 +162,7 @@ const FeedItemsPg = () => {
         >
           <span>+ Add Feed Item</span>
         </button>
-      </div>
+      </ModulePageHeader>
 
       {/* SEARCH AND FILTERS */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -155,11 +172,13 @@ const FeedItemsPg = () => {
             placeholder="Search feed items by name, description, status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+            className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
           />
         </div>
-        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Registered Feed Types: {filteredItems.length}
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Registered Feed Types: {filteredItems.length}
+          </div>
         </div>
       </div>
 
@@ -181,6 +200,7 @@ const FeedItemsPg = () => {
             <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
               <tr>
                 <th className="p-4 border-b">Feed Item Name</th>
+                <th className="p-4 border-b">Measuring Type</th>
                 <th className="p-4 border-b">Description</th>
                 <th className="p-4 border-b text-center">Status</th>
                 <th className="p-4 border-b text-right">Actions</th>
@@ -194,6 +214,15 @@ const FeedItemsPg = () => {
                   <tr key={item.id || item._id} className="hover:bg-[#D1867D]/5 transition-colors">
                     <td className="p-4 text-sm font-black text-black">
                       🌾 {item.name}
+                    </td>
+                    <td className="p-4 text-sm font-bold text-slate-600">
+                      {item.type ? (
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg border border-slate-200/50 text-[10px] font-black uppercase">
+                          {item.type}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                     <td className="p-4 text-sm font-semibold text-gray-500">
                       {item.description || "-"}
@@ -260,6 +289,21 @@ const FeedItemsPg = () => {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="e.g. Cotton Cake"
+                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
+                />
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="block mb-2 text-sm font-bold text-[#53698c]">
+                  Quantity Measuring Type (e.g., KG, G, ML, Bags)
+                </label>
+                <input
+                  type="text"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  placeholder="e.g. KG"
                   className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
                 />
               </div>

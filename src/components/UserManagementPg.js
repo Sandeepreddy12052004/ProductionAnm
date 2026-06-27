@@ -234,6 +234,7 @@ import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import LogForm from './LogForm';
 import SkeletonLoader from './SkeletonLoader';
+import ModulePageHeader from "./ModulePageHeader";
 
 const UserManagementPg = ({ moduleConfig }) => {
   const router = useRouter();
@@ -250,16 +251,42 @@ const UserManagementPg = ({ moduleConfig }) => {
   });
 
   const { data: farmsData } = useSWR('farms_cache', async () => {
-    const data = await api.farms.getAll();
-    return Array.isArray(data) ? data : [];
+    try {
+      const data = await api.farms.getAll();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }, { revalidateOnFocus: false });
 
   const { data: rolesList } = useSWR('roles_cache', async () => {
-    const data = await api.roles.getAll();
-    return Array.isArray(data) ? data : [];
+    try {
+      const data = await api.roles.getAll();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }, { revalidateOnFocus: false });
 
-  const safeFarmsData = Array.isArray(farmsData) ? farmsData : [];
+  const safeFarmsData = React.useMemo(() => {
+    let list = Array.isArray(farmsData) ? farmsData : [];
+    if (list.length === 0 && typeof window !== 'undefined') {
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          const userFarmId = user.farmId && typeof user.farmId === 'object'
+            ? (user.farmId._id || user.farmId.id)
+            : user.farmId;
+          if (userFarmId && userFarmId !== 'ALL') {
+            return [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
+          }
+        }
+      } catch (e) {}
+    }
+    return list;
+  }, [farmsData]);
+
   const safeRolesList = Array.isArray(rolesList) ? rolesList : [];
 
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -628,9 +655,10 @@ const UserManagementPg = ({ moduleConfig }) => {
 
   return (
     <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
-      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-black text-[#16223F]">👥 User Management</h1>
-
+      <ModulePageHeader
+        title="👥 User Management"
+        description="Manage system users, departments, and permission roles."
+      >
         {hasCRUD('create') && (
           <button
             onClick={() => { setIsEditing(false); setShowForm(true); }}
@@ -639,7 +667,7 @@ const UserManagementPg = ({ moduleConfig }) => {
             Create New User
           </button>
         )}
-      </div>
+      </ModulePageHeader>
 
       {/* SEARCH AND FILTERS */}
       <div className="flex-none flex flex-wrap items-end gap-3.5 mb-6 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm w-full">

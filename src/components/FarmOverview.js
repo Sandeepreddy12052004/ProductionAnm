@@ -83,14 +83,20 @@ export default function FarmOverview({ farmCode }) {
 
         const checkPayload = (res, name) => {
           if (!res) {
-            throw new Error(`Empty response payload received for ${name}.`);
+            return;
           }
           if (typeof res === 'object') {
             if (res.isError) {
               const errMsg = String(res.message || '');
               if (errMsg.includes("Access Forbidden") || errMsg.includes("permissions") || errMsg.includes("Unauthorized")) {
+                if (name === "farms" || name === "sheds") {
+                  return;
+                }
                 authFailed = true;
                 authErrorMsg = errMsg;
+                return;
+              }
+              if (name === "farms" || name === "sheds") {
                 return;
               }
               throw new Error(res.message || `Failed to retrieve ${name} from database.`);
@@ -98,8 +104,14 @@ export default function FarmOverview({ farmCode }) {
             if (res.success === false || res.error) {
               const errMsg = String(res.error || '');
               if (errMsg.includes("Access Forbidden") || errMsg.includes("permissions") || errMsg.includes("Unauthorized") || res.success === false) {
+                if (name === "farms" || name === "sheds") {
+                  return;
+                }
                 authFailed = true;
                 authErrorMsg = errMsg || "Access restricted.";
+                return;
+              }
+              if (name === "farms" || name === "sheds") {
                 return;
               }
               throw new Error(res.error || `Access restricted or failure in fetching ${name}.`);
@@ -188,11 +200,26 @@ export default function FarmOverview({ farmCode }) {
         const milkArray = extractArray(milk);
 
         // 1. Explicit check to ensure we are working with an actual array structure
-        const farmsArray = Array.isArray(farms) 
+        let farmsArray = Array.isArray(farms) 
           ? farms 
           : (farms && Array.isArray(farms.data)) 
             ? farms.data 
             : [];
+
+        if (farmsArray.length === 0) {
+          try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+              const user = JSON.parse(storedUser);
+              const userFarmId = user.farmId && typeof user.farmId === 'object'
+                ? (user.farmId._id || user.farmId.id)
+                : user.farmId;
+              if (userFarmId && userFarmId !== 'ALL') {
+                farmsArray = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
+              }
+            }
+          } catch (e) {}
+        }
 
         // 2. Safe query logic against the guaranteed array fallback
         const currentFarm = farmsArray.find(f => 

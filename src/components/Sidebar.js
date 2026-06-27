@@ -135,9 +135,35 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     let isMounted = true;
     import('../utils/api').then(({ api }) => {
       api.farms.getAll().then(res => {
-        if (isMounted && res && Array.isArray(res)) setFarmsList(res);
-      }).catch(err => console.error("Error fetching farms:", err));
+        if (!isMounted) return;
+        const clean = Array.isArray(res) ? res : (res?.data ?? []);
+        if (Array.isArray(clean) && clean.length > 0) {
+          setFarmsList(clean);
+        } else {
+          triggerFallback();
+        }
+      }).catch(err => {
+        console.error("Error fetching farms in Sidebar:", err);
+        triggerFallback();
+      });
     });
+
+    function triggerFallback() {
+      if (isMounted) {
+        try {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            const user = JSON.parse(storedUser);
+            const userFarmId = user.farmId && typeof user.farmId === 'object'
+              ? (user.farmId._id || user.farmId.id)
+              : user.farmId;
+            if (userFarmId && userFarmId !== 'ALL') {
+              setFarmsList([{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }]);
+            }
+          }
+        } catch (e) {}
+      }
+    }
     return () => { isMounted = false; };
   }, []);
 

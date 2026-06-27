@@ -11,7 +11,12 @@ const Header = ({ toggleSidebar }) => {
   useEffect(() => {
     try {
       const stored = localStorage.getItem("user");
-      if (stored) setUser(JSON.parse(stored));
+      if (stored) {
+        // Defer to microtask to prevent synchronous setState inside useEffect warning
+        Promise.resolve().then(() => {
+          setUser(JSON.parse(stored));
+        });
+      }
     } catch (e) {}
   }, []);
 

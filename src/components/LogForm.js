@@ -256,6 +256,33 @@
       if (formatted.dameBreed && (!formatted.breed || formatted.breed === '' || formatted.breed === '-')) {
         formatted.breed = formatted.dameBreed;
       }
+      let fallbackFarmId = '';
+      try {
+        const activeFarm = localStorage.getItem('__active_farm_id__');
+        if (activeFarm && activeFarm !== 'ALL') {
+          fallbackFarmId = activeFarm;
+        } else {
+          const userJson = localStorage.getItem('user');
+          if (userJson) {
+            const user = JSON.parse(userJson);
+            const rawFarmId = user?.farmId && typeof user.farmId === 'object'
+              ? (user.farmId._id || user.farmId.id)
+              : user?.farmId;
+            if (rawFarmId && rawFarmId !== 'ALL') {
+              fallbackFarmId = String(rawFarmId).trim();
+            }
+          }
+        }
+      } catch (e) {}
+
+      if (fallbackFarmId) {
+        if (fields.some(f => f.name === 'farmId') && (!formatted.farmId || formatted.farmId === '')) {
+          formatted.farmId = fallbackFarmId;
+        }
+        if (fields.some(f => f.name === 'farm') && (!formatted.farm || formatted.farm === '')) {
+          formatted.farm = fallbackFarmId;
+        }
+      }
       return formatted;
     });
     const [tagError, setTagError] = useState("");

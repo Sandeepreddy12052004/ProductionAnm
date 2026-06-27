@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { api } from '../utils/api';
+import ModulePageHeader from "./ModulePageHeader";
+import FarmFilterSelector from "./FarmFilterSelector";
 
 const DashboardContent = () => {
   const router = useRouter();
@@ -188,7 +190,12 @@ const DashboardContent = () => {
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-extrabold text-[#16223F] mb-6 tracking-tight">System Overview</h1>
+      <ModulePageHeader
+        title="System Overview"
+        description="Monitor farm health, breeding cycles, milk yields, and stock levels."
+      >
+        <FarmFilterSelector layout="horizontal" size="sm" />
+      </ModulePageHeader>
 
       {/* SYSTEM CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

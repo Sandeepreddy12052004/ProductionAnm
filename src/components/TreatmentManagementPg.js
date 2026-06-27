@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import ModulePageHeader from "./ModulePageHeader";
+import FarmFilterSelector from "./FarmFilterSelector";
 
 const TreatmentManagementPg = () => {
   const [treatments, setTreatments] = useState([]);
@@ -23,8 +25,8 @@ const TreatmentManagementPg = () => {
     setIsLoading(true);
     try {
       const [treatmentData, medicineData] = await Promise.all([
-        api.treatments.getAll(),
-        api.medicines.getAll(),
+        api.treatments.getAll().catch(() => []),
+        api.medicines.getAll().catch(() => []),
       ]);
       setTreatments(treatmentData || []);
       setMedicines(medicineData || []);
@@ -62,10 +64,32 @@ const TreatmentManagementPg = () => {
 
     setIsLoadingForm(true);
     try {
+      let resolvedFarmId = null;
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          const userFarmId = user.farmId && typeof user.farmId === 'object'
+            ? (user.farmId._id || user.farmId.id)
+            : user.farmId;
+          if (userFarmId && userFarmId !== 'ALL' && String(user.role).toUpperCase() !== 'SUPER_ADMIN') {
+            resolvedFarmId = userFarmId;
+          }
+        }
+      } catch (err) {}
+
+      if (!resolvedFarmId) {
+        const activeFarm = localStorage.getItem("__active_farm_id__");
+        if (activeFarm && activeFarm !== 'ALL') {
+          resolvedFarmId = activeFarm;
+        }
+      }
+
       const payload = {
         symptoms: formData.symptoms.trim(),
         diagnosis: formData.diagnosis.trim(),
         treatment: treatmentString,
+        farmId: resolvedFarmId,
       };
 
       if (formData.id) {
@@ -122,16 +146,10 @@ const TreatmentManagementPg = () => {
   return (
     <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
       {/* HEADER SECTION */}
-      <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[#16223F] tracking-tight">
-            Treatment Management
-          </h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">
-            Dedicated portal to define symptoms, diagnose issues, and configure medical treatments.
-          </p>
-        </div>
-
+      <ModulePageHeader
+        title="Treatment Management"
+        description="Dedicated portal to define symptoms, diagnose issues, and configure medical treatments."
+      >
         <button
           onClick={() => {
             setFormData({
@@ -146,7 +164,7 @@ const TreatmentManagementPg = () => {
         >
           <span>+ Add Treatment Record</span>
         </button>
-      </div>
+      </ModulePageHeader>
 
       {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -169,14 +187,19 @@ const TreatmentManagementPg = () => {
       </div>
 
       {/* SEARCH AND FILTERS */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5">
-        <input
-          type="text"
-          placeholder="Search treatments by symptoms, diagnosis, medicines..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
-        />
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full">
+          <input
+            type="text"
+            placeholder="Search treatments by symptoms, diagnosis, medicines..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-4 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+          />
+        </div>
+        <div className="flex-none w-full md:w-auto flex justify-end">
+          <FarmFilterSelector layout="horizontal" size="md" />
+        </div>
       </div>
 
       {/* CONTENT TABLE */}
