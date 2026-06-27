@@ -14,7 +14,17 @@ import {
 } from "lucide-react";
 
 export default function FeedInventoryPg() {
-  const [activeTab, setActiveTab] = useState("summary"); // "summary" | "log"
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("__active_feed_inventory_tab__") || "summary";
+    }
+    return "summary";
+  });
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem("__active_feed_inventory_tab__", tab);
+  };
   const [logs, setLogs] = useState([]);
   const [feedItems, setFeedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,7 +143,7 @@ export default function FeedInventoryPg() {
       {/* TABS HEADER */}
       <div className="flex border-b border-gray-200 mb-6 gap-6 flex-none">
         <button
-          onClick={() => setActiveTab("summary")}
+          onClick={() => handleTabChange("summary")}
           className={`pb-3 text-sm font-black border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "summary"
               ? "border-[#D1867D] text-[#16223F]"
@@ -144,7 +154,7 @@ export default function FeedInventoryPg() {
           <span>Stock Summary</span>
         </button>
         <button
-          onClick={() => setActiveTab("log")}
+          onClick={() => handleTabChange("log")}
           className={`pb-3 text-sm font-black border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "log"
               ? "border-[#D1867D] text-[#16223F]"
