@@ -45,7 +45,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
 
   const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["health", "vaccine"].includes(router.query.tab));
   const isInventoryActive = ["/feed-inventory", "/medicine-inventory"].includes(router.pathname) || (isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab));
-  const isMilkActive = ["/milk", "/milk-quality"].includes(router.pathname) || (isFarmRoute && ["milk_prod", "components"].includes(router.query.tab));
+  const isMilkActive = ["/milk", "/milk-quality", "/milking-performance"].includes(router.pathname) || (isFarmRoute && ["milk_prod", "components"].includes(router.query.tab));
 
   // Dynamic Farms State
   const [farmsList, setFarmsList] = useState([]);
@@ -610,6 +610,17 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                                 className={`block p-2 rounded border-l-4 ${isLinkActive("/milk-quality") ? activeStyle : normalStyle
                                   }`}>
                                 🔬 Milk QA
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Milking Performance */}
+                          {hasAccess('MILK') && (
+                            <li>
+                              <Link href="/milking-performance" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milking-performance") ? activeStyle : normalStyle
+                                  }`}>
+                                🥛 Milking Performance
                               </Link>
                             </li>
                           )}

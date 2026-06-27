@@ -103,7 +103,7 @@ export function middleware(request) {
     { key: 'INVENTORY', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'med_inv' },
     { key: 'GRASS', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'grass' },
     { key: 'FEEDING', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'feeding' },
-    { key: 'MILK', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod' },
+    { key: 'MILK', match: pathname === '/milk' || pathname === '/milk-quality' || pathname === '/milking-performance' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod') },
     { key: 'MILK', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components' }
   ];
 
