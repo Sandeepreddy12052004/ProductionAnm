@@ -508,7 +508,7 @@ const LineManagementPg = () => {
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-xl">{animalEmoji}</span>
-                            <span className="font-extrabold text-sm text-[#16223F]">#{animal.tag || animal.tag_id}</span>
+                            <span className="font-extrabold text-sm text-[#16223F] break-all">{animal.tag || animal.tag_id}</span>
                           </div>
                           <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/50 uppercase">
                             {animal.breed || 'Unknown'}
@@ -646,11 +646,13 @@ const LineManagementPg = () => {
                         </div>
 
                         {/* Title details */}
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-2xl">{animalEmoji}</span>
-                          <span className="font-extrabold text-base text-[#16223F] tracking-tight">#{animal.tag || animal.tag_id}</span>
+                        <div className="flex items-center gap-2 mb-3 min-w-0">
+                          <span className="text-2xl flex-shrink-0">{animalEmoji}</span>
+                          <span className="font-extrabold text-base text-[#16223F] tracking-tight break-all flex-1 min-w-0" title={animal.tag || animal.tag_id}>
+                            {animal.tag || animal.tag_id}
+                          </span>
                           {isUnsavedPosition && (
-                            <span className="text-[8px] bg-[#D1867D]/10 text-[#D1867D] border border-[#D1867D]/10 px-1.5 py-0.5 rounded font-black animate-pulse">
+                            <span className="text-[8px] bg-[#D1867D]/10 text-[#D1867D] border border-[#D1867D]/10 px-1.5 py-0.5 rounded font-black animate-pulse flex-shrink-0">
                               Unsaved
                             </span>
                           )}
@@ -740,7 +742,7 @@ const LineManagementPg = () => {
                                       }}
                                       className="w-full text-left px-3 py-2 hover:bg-[#D1867D]/10 flex justify-between items-center border-b border-slate-50 last:border-0 text-[10px] font-semibold"
                                     >
-                                      <span className="text-slate-800 font-extrabold">#{item.tag || item.tag_id}</span>
+                                      <span className="text-slate-800 font-extrabold break-all">{item.tag || item.tag_id}</span>
                                       <span className="text-slate-400 text-[8px]">({currentLoc})</span>
                                     </button>
                                   );
@@ -780,7 +782,7 @@ const LineManagementPg = () => {
             </button>
 
             <h2 className="text-xl font-black text-[#16223F] mb-2 pr-10">
-              Replace Animal #{replaceModalData.oldAnimal.tag || replaceModalData.oldAnimal.tag_id}
+              Replace Animal {replaceModalData.oldAnimal.tag || replaceModalData.oldAnimal.tag_id}
             </h2>
             <p className="text-xs text-gray-500 font-semibold mb-6">
               Row {replaceModalData.rowNum}, Position {replaceModalData.slotNum} | Shed {selectedShed.code}
@@ -827,7 +829,7 @@ const LineManagementPg = () => {
                             }}
                             className="w-full text-left px-4 py-3 hover:bg-[#D1867D]/10 flex justify-between items-center border-b border-slate-50 last:border-0 text-xs font-semibold"
                           >
-                            <span className="text-slate-800 font-extrabold">#{animal.tag || animal.tag_id}</span>
+                            <span className="text-slate-800 font-extrabold break-all">{animal.tag || animal.tag_id}</span>
                             <span className="text-slate-400 text-[10px]">({currentLoc})</span>
                           </button>
                         );
@@ -842,7 +844,7 @@ const LineManagementPg = () => {
                 <div className="bg-[#D1867D]/5 border border-[#D1867D]/20 rounded-2xl p-4 flex flex-col gap-1.5">
                   <span className="text-[10px] font-black text-[#D1867D] uppercase tracking-wider">New Selection Details</span>
                   <div className="text-xs font-bold text-slate-700">
-                    Tag ID: <span className="text-slate-900 font-black">#{selectedReplacementAnimal.tag || selectedReplacementAnimal.tag_id}</span>
+                    Tag ID: <span className="text-slate-900 font-black break-all">{selectedReplacementAnimal.tag || selectedReplacementAnimal.tag_id}</span>
                   </div>
                   <div className="text-xs font-bold text-slate-700">
                     Breed: <span className="text-slate-900">{selectedReplacementAnimal.breed || '-'}</span>
