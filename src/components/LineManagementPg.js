@@ -234,7 +234,8 @@ const LineManagementPg = () => {
       String(animal.shed || animal.shedId || '').trim() === String(selectedShed.code || '').trim() &&
       (!animal.lineNo || Number(animal.lineNo) === 0) &&
       !animal.isDeleted &&
-      String(animal.gender || '').trim().toLowerCase() === 'female'
+      String(animal.gender || '').trim().toLowerCase() === 'female' &&
+      String(animal.cattleType || animal.animalType || '').trim().toUpperCase() === 'BUFFALO'
     );
   };
 
@@ -244,7 +245,9 @@ const LineManagementPg = () => {
       String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() && 
       Number(c.lineNo || 0) === Number(rowNum) &&
       Number(c.position || 0) > 0 &&
-      Number(c.position || 0) <= 10
+      Number(c.position || 0) <= 10 &&
+      String(c.gender || '').trim().toLowerCase() === 'female' &&
+      String(c.cattleType || c.animalType || '').trim().toUpperCase() === 'BUFFALO'
     );
     const occupiedPositions = new Set(rowAnimals.map(a => Number(a.position)));
     const emptySlots = [];
@@ -308,6 +311,7 @@ const LineManagementPg = () => {
 
     return cattleData.filter(animal => {
       if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
+      if (String(animal.cattleType || animal.animalType || '').trim().toUpperCase() !== 'BUFFALO') return false;
 
       const animalFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || "";
       if (String(animalFarmId) !== String(selectedShedFarmId)) return false;
@@ -338,6 +342,7 @@ const LineManagementPg = () => {
       if ((animal._id || animal.id) === (oldAnimal._id || oldAnimal.id)) return false;
 
       if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
+      if (String(animal.cattleType || animal.animalType || '').trim().toUpperCase() !== 'BUFFALO') return false;
 
       const animalFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || "";
       if (String(animalFarmId) !== String(selectedShedFarmId)) return false;
@@ -368,7 +373,9 @@ const LineManagementPg = () => {
     // Get all animals currently assigned to the active row
     const rowAnimals = cattleData.filter(c =>
       String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() &&
-      Number(c.lineNo || 0) === selectedRowNum
+      Number(c.lineNo || 0) === selectedRowNum &&
+      String(c.gender || '').trim().toLowerCase() === 'female' &&
+      String(c.cattleType || c.animalType || '').trim().toUpperCase() === 'BUFFALO'
     );
 
     // Filter out unpositioned animals (position === 0 or position > 10)

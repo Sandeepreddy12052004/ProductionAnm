@@ -252,7 +252,8 @@ export default function DailyMilkCollection() {
            String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
           String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
           !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
-          String(a.gender || '').trim().toUpperCase() === 'FEMALE'
+          String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
+          String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
       );
 
       const totalQty = shedAnimals.reduce((sum, a) => {
@@ -305,7 +306,8 @@ export default function DailyMilkCollection() {
          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj._id || '').trim().toUpperCase()) &&
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
         !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
-        String(a.gender || '').trim().toUpperCase() === 'FEMALE'
+        String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
+        String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
     );
   }, [activeShedObj, animals, selectedFarmId]);
 
