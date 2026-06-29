@@ -52,6 +52,7 @@ export default function DailyMilkCollection() {
 
   // Settings / Reordering Modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showUnassignedModal, setShowUnassignedModal] = useState(false);
   const [tempFarmsOrder, setTempFarmsOrder] = useState([]);
 
   const itemsPerPage = 10; // Redesigned layout uses compact paginated slots
@@ -307,6 +308,11 @@ export default function DailyMilkCollection() {
         String(a.gender || '').trim().toUpperCase() === 'FEMALE'
     );
   }, [activeShedObj, animals, selectedFarmId]);
+
+  const unassignedAnimalsInShed = useMemo(() => {
+    if (!activeShedObj || activeShedObj.lineManagement !== "Yes") return [];
+    return activeShedAnimals.filter(a => !a.lineNo || Number(a.lineNo) === 0);
+  }, [activeShedObj, activeShedAnimals]);
 
   // Filtered animals inside active shed based on overlay filters
   const searchedAnimals = useMemo(() => {
@@ -793,6 +799,26 @@ export default function DailyMilkCollection() {
                     </div>
                   </div>
 
+                  {activeShedObj?.lineManagement === "Yes" && unassignedAnimalsInShed.length > 0 && (
+                    <div className="mx-8 mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                          <span className="block text-xs font-black text-amber-800">Unassigned Livestock Detected</span>
+                          <span className="block text-[10px] text-amber-600 mt-0.5 font-medium leading-normal">
+                            There are {unassignedAnimalsInShed.length} animal(s) in this shed that have not been assigned in Line Management.
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setShowUnassignedModal(true)}
+                        className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black shadow-md shadow-amber-600/10 active:scale-95 transition-all duration-200 cursor-pointer"
+                      >
+                        View List
+                      </button>
+                    </div>
+                  )}
+
                   {/* Livestock Grid */}
                   <div className="p-8">
                     {searchedAnimals.length === 0 ? (
@@ -814,12 +840,8 @@ export default function DailyMilkCollection() {
                             >
                               <div className="flex justify-between items-center mb-3">
                                 <span className="text-[9px] font-extrabold">
-                                  {activeShedObj?.lineManagement === "Yes" ? (
-                                    (animal.lineNo && Number(animal.lineNo) > 0) ? (
-                                      <span className="text-slate-500">R{animal.lineNo} - P{animal.position}</span>
-                                    ) : (
-                                      <span className="text-red-500 font-black">Unassigned</span>
-                                    )
+                                  {activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0) ? (
+                                    <span className="text-red-500 font-black">Unassigned</span>
                                   ) : (
                                     <span className="text-slate-300">#{animalIndex}</span>
                                   )}
@@ -1063,6 +1085,46 @@ export default function DailyMilkCollection() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Unassigned Livestock Modal ── */}
+      {showUnassignedModal && activeShedObj && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[250] p-4">
+          <div className="bg-white w-full max-w-md rounded-[30px] shadow-2xl p-6 relative">
+            <button 
+              onClick={() => setShowUnassignedModal(false)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 cursor-pointer"
+            >
+              ✕
+            </button>
+            <h3 className="text-base font-black text-[#16223F] flex items-center gap-2 mb-4">
+              ⚠️ Unassigned in {activeShedId}
+            </h3>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {unassignedAnimalsInShed.map((animal) => (
+                <div key={animal.tag || animal.tag_id} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="block text-xs font-black text-[#16223F] font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm w-fit">
+                      {String(animal.tag || animal.tag_id).toUpperCase()}
+                    </span>
+                    <span className="block text-[10px] text-slate-400 mt-1 font-semibold uppercase">
+                      {animal.breed || 'Unknown Breed'} · {animal.cattleType || animal.animalType || 'COW'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-extrabold uppercase border border-red-100 shrink-0">
+                    Unassigned
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button 
+              onClick={() => setShowUnassignedModal(false)}
+              className="mt-6 w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold text-sm shadow-md transition-colors"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}
