@@ -402,7 +402,56 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         }
         return false;
       });
-      setLogs(filtered);
+
+      let finalLogs = filtered;
+      if (activeTab === 'feeding') {
+        const combinedMap = {};
+        filtered.forEach(log => {
+          const rawDate = log.date || log.entryDate || log.createdAt;
+          let dateStr = '-';
+          if (rawDate) {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) {
+              dateStr = d.toLocaleDateString('en-GB'); // formats to DD/MM/YYYY
+            } else {
+              dateStr = String(rawDate);
+            }
+          }
+          const shedKey = String(log.shedId || '').trim().toUpperCase();
+          const animalKey = String(log.animalId || log.tag_id || '').trim().toUpperCase();
+          const groupKey = `${dateStr}_${shedKey}_${animalKey}`;
+
+          if (!combinedMap[groupKey]) {
+            combinedMap[groupKey] = {
+              ...log,
+              _ids: [log._id || log.id].filter(Boolean),
+              date: dateStr,
+              entryDate: dateStr,
+            };
+          } else {
+            const existing = combinedMap[groupKey];
+            if (log._id || log.id) {
+              existing._ids.push(log._id || log.id);
+            }
+            // Sum all numeric properties that are feed items
+            Object.keys(log).forEach(key => {
+              if (
+                typeof log[key] === 'number' &&
+                !['__v', 'lineNo'].includes(key)
+              ) {
+                existing[key] = (existing[key] || 0) + log[key];
+              }
+            });
+          }
+        });
+        // Sort combined list by date descending
+        finalLogs = Object.values(combinedMap).sort((a, b) => {
+          const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')) : new Date(0);
+          const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+      }
+      setLogs(finalLogs);
     } catch (e) {
       console.error(`Error loading logs for ${activeTab}:`, e);
       setLogs([]);
@@ -641,7 +690,13 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'med_inv') await api.inventory.medicines.delete(entryId);
         else if (activeTab === 'feed_inv') await api.inventory.feed.delete(entryId);
         else if (activeTab === 'grass') await api.operations.grassCollection.delete(entryId);
-        else if (activeTab === 'feeding') await api.operations.dailyFeeding.delete(entryId);
+        else if (activeTab === 'feeding') {
+          if (selectedEntry._ids && selectedEntry._ids.length > 0) {
+            await Promise.all(selectedEntry._ids.map(id => api.operations.dailyFeeding.delete(id)));
+          } else {
+            await api.operations.dailyFeeding.delete(entryId);
+          }
+        }
         else if (activeTab === 'milk_prod') await api.milk.collections.delete(entryId);
         else if (activeTab === 'components') await api.milk.quality.delete(entryId);
         else {
@@ -1290,12 +1345,14 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
 >
   👁️ View Details
 </button>
-              <button 
-                onClick={() => { setIsEditing(true); setShowForm(true); }} 
-                className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
-              >
-                ✏️ Edit Entry
-              </button>
+              {activeTab !== 'feeding' && (
+                <button 
+                  onClick={() => { setIsEditing(true); setShowForm(true); }} 
+                  className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
+                >
+                  ✏️ Edit Entry
+                </button>
+              )}
               <button 
                 onClick={handleDelete} 
                 className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"

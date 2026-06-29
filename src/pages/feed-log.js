@@ -6,6 +6,7 @@ export default function FeedLogPage() {
     name: 'Feed Log',
     icon: '📋',
     fields: [
+      { name: 'farmId',          label: 'Farm',            type: 'text' },
       { name: 'feedType',        label: 'Feed Item',       type: 'select', options: [] },
       { name: 'oldStock',        label: 'Old Stock',       type: 'number' },
       { name: 'bought',          label: 'Bought',          type: 'number' },

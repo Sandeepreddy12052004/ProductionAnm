@@ -232,40 +232,29 @@ export default function DailyFeeding() {
     const targetDateStr = new Date(selectedDate).toDateString();
     
     const activeDayLogs = logs.filter(
-      (c) => new Date(c.date).toDateString() === targetDateStr && c.session === session
+      (c) => new Date(c.date).toDateString() === targetDateStr && 
+             c.session === session &&
+             String(c.shedId || '').trim().toUpperCase() === String(activeShedId || '').trim().toUpperCase()
     );
 
     activeDayLogs.forEach((c) => {
       const tag = String(c.tag_id || c.animalId).toUpperCase();
-      newQuantities[tag] = {
-        greenGrass: c.greenGrass || 0,
-        dryGrass: c.dryGrass || 0,
-        cottonCake: c.cottonCake || 0,
-        chunni: c.chunni || 0,
-        maize: c.maize || 0,
-        wheatBran: c.wheatBran || 0,
-        salt: c.salt || 0,
-        oralCalcium: c.oralCalcium || 0,
-        mineralMixture: c.mineralMixture || 0,
-      };
+      const rowQuantities = {};
+      activeFeedTypes.forEach(feed => {
+        rowQuantities[feed.name] = c[feed.name] || 0;
+      });
+      newQuantities[tag] = rowQuantities;
     });
 
     setQuantities(newQuantities);
-  }, [logs, selectedDate, session]);
+  }, [logs, selectedDate, session, activeShedId, activeFeedTypes]);
 
   // Active Shed Totals calculation
   const activeShedTotals = useMemo(() => {
-    const totals = {
-      greenGrass: 0,
-      dryGrass: 0,
-      cottonCake: 0,
-      chunni: 0,
-      maize: 0,
-      wheatBran: 0,
-      salt: 0,
-      oralCalcium: 0,
-      mineralMixture: 0,
-    };
+    const totals = {};
+    activeFeedTypes.forEach(feed => {
+      totals[feed.name] = 0;
+    });
 
     if (!activeShed) return totals;
 
@@ -279,7 +268,7 @@ export default function DailyFeeding() {
     }
 
     return totals;
-  }, [activeShed, quantities]);
+  }, [activeShed, quantities, activeFeedTypes]);
 
   // Calculations for Side panel & overall stats
   const calculations = useMemo(() => {
@@ -306,16 +295,11 @@ export default function DailyFeeding() {
       const totalShedQty = dayLogs
         .filter((c) => String(c.shedId).trim().toUpperCase() === String(shedKey).trim().toUpperCase())
         .reduce((sum, c) => {
-          return sum + 
-            (c.greenGrass || 0) + 
-            (c.dryGrass || 0) + 
-            (c.cottonCake || 0) + 
-            (c.chunni || 0) + 
-            (c.maize || 0) + 
-            (c.wheatBran || 0) + 
-            (c.salt || 0) + 
-            (c.oralCalcium || 0) + 
-            (c.mineralMixture || 0);
+          let rowSum = 0;
+          activeFeedTypes.forEach(feed => {
+            rowSum += c[feed.name] || 0;
+          });
+          return sum + rowSum;
         }, 0);
 
       return {
@@ -326,23 +310,18 @@ export default function DailyFeeding() {
     });
 
     const sessionTotal = dayLogs.reduce((sum, c) => {
-      return sum + 
-        (c.greenGrass || 0) + 
-        (c.dryGrass || 0) + 
-        (c.cottonCake || 0) + 
-        (c.chunni || 0) + 
-        (c.maize || 0) + 
-        (c.wheatBran || 0) + 
-        (c.salt || 0) + 
-        (c.oralCalcium || 0) + 
-        (c.mineralMixture || 0);
+      let rowSum = 0;
+      activeFeedTypes.forEach(feed => {
+        rowSum += c[feed.name] || 0;
+      });
+      return sum + rowSum;
     }, 0);
 
     return {
       shedsSummary,
       sessionTotal,
     };
-  }, [logs, selectedDate, session, farmSheds, animals, selectedFarmId]);
+  }, [logs, selectedDate, session, farmSheds, animals, selectedFarmId, activeFeedTypes]);
 
   // Handle Input Changes
   const handleQuantityChange = (tag, field, value) => {
@@ -398,18 +377,13 @@ export default function DailyFeeding() {
       for (let r = 1; r <= numRows; r++) {
         const rowKey = `ROW ${r}`;
         const q = quantities[rowKey] || {};
-        feedingPayload.push({
+        const rowPayload = {
           tagId: rowKey,
-          greenGrass: Number(q.greenGrass) || 0,
-          dryGrass: Number(q.dryGrass) || 0,
-          cottonCake: Number(q.cottonCake) || 0,
-          chunni: Number(q.chunni) || 0,
-          maize: Number(q.maize) || 0,
-          wheatBran: Number(q.wheatBran) || 0,
-          salt: Number(q.salt) || 0,
-          oralCalcium: Number(q.oralCalcium) || 0,
-          mineralMixture: Number(q.mineralMixture) || 0,
+        };
+        activeFeedTypes.forEach(feed => {
+          rowPayload[feed.name] = Number(q[feed.name]) || 0;
         });
+        feedingPayload.push(rowPayload);
       }
 
       const payload = {

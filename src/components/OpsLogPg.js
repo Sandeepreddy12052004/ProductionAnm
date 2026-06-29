@@ -245,7 +245,48 @@ const OpsLogPg = ({ moduleConfig }) => {
           entryDate: dateVal ? formatDateToDDMMYYYY(dateVal) : (log.entryDate || '-'),
         };
       });
-      setLogs(normalized);
+
+      let finalList = normalized;
+      if (current.id === 'feed_inv') {
+        const combinedMap = {};
+        normalized.forEach(log => {
+          const dateKey = log.entryDate;
+          const farmKey = log.farmId
+            ? (typeof log.farmId === 'object'
+                ? (log.farmId.code || log.farmId.name || log.farmId._id)
+                : log.farmId)
+            : 'UNKNOWN_FARM';
+          const feedKey = String(log.feedType || '').trim().toUpperCase();
+
+          if (log.usage > 0) {
+            const groupKey = `${dateKey}_${farmKey}_${feedKey}_usage`;
+            if (!combinedMap[groupKey]) {
+              combinedMap[groupKey] = {
+                ...log,
+                _ids: [log._id || log.id].filter(Boolean),
+              };
+            } else {
+              const existing = combinedMap[groupKey];
+              if (log._id || log.id) {
+                existing._ids.push(log._id || log.id);
+              }
+              existing.usage = (existing.usage || 0) + log.usage;
+              existing.remainingStock = Math.min(existing.remainingStock || 0, log.remainingStock || 0);
+              existing.oldStock = Math.max(existing.oldStock || 0, log.oldStock || 0);
+            }
+          } else {
+            const groupKey = log._id || log.id || Math.random().toString();
+            combinedMap[groupKey] = { ...log };
+          }
+        });
+
+        finalList = Object.values(combinedMap).sort((a, b) => {
+          const dateA = a.entryDate ? new Date(a.entryDate.split('/').reverse().join('-')) : new Date(0);
+          const dateB = b.entryDate ? new Date(b.entryDate.split('/').reverse().join('-')) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+      }
+      setLogs(finalList);
     } catch (e) {
       console.error(`[OpsLogPg] fetchLogs error for ${current.id}:`, e);
       setLogs([]);
@@ -417,8 +458,12 @@ const OpsLogPg = ({ moduleConfig }) => {
     setIsLoading(true);
     try {
       const moduleApi = getApiForModule(current.id);
-      const entryId = selectedEntry?.id || selectedEntry?._id;
-      await moduleApi.delete(entryId);
+      if (current.id === 'feed_inv' && selectedEntry?._ids && selectedEntry._ids.length > 0) {
+        await Promise.all(selectedEntry._ids.map(id => moduleApi.delete(id)));
+      } else {
+        const entryId = selectedEntry?.id || selectedEntry?._id;
+        await moduleApi.delete(entryId);
+      }
       swalSuccess('Deleted', `${current.name} record deleted.`);
       await fetchLogs();
       closeAllModals();
@@ -929,6 +974,9 @@ const OpsLogPg = ({ moduleConfig }) => {
                   <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
                   {dynamicFields.map(f => {
                     let cellVal = log[f.name];
+                    if (cellVal && typeof cellVal === 'object') {
+                      cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
+                    }
                     if (f.type === 'date' && cellVal) {
                       cellVal = formatDateToDDMMYYYY(cellVal);
                     }
@@ -976,10 +1024,12 @@ const OpsLogPg = ({ moduleConfig }) => {
                 className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all">
                 👁️ View Details
               </button>
-              <button onClick={() => { setIsEditing(true); setShowForm(true); }}
-                className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all">
-                ✏️ Edit Entry
-              </button>
+              {current.id !== 'feed_inv' && (
+                <button onClick={() => { setIsEditing(true); setShowForm(true); }}
+                  className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all">
+                  ✏️ Edit Entry
+                </button>
+              )}
               <button onClick={handleDelete}
                 className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all">
                 🗑️ Delete Entry
@@ -1009,6 +1059,9 @@ const OpsLogPg = ({ moduleConfig }) => {
               </div>
               {dynamicFields.map(field => {
                 let cellVal = selectedEntry[field.name];
+                if (cellVal && typeof cellVal === 'object') {
+                  cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
+                }
                 if (field.type === 'date' && cellVal) {
                   cellVal = formatDateToDDMMYYYY(cellVal);
                 }
