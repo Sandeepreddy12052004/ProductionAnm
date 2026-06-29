@@ -286,24 +286,27 @@ export default function DailyMilkCollection() {
     };
   }, [collections, selectedDate, session, quantities, selfConsumptions, farmSheds, animals, selectedFarmId]);
 
-  // Active Animals list inside currently selected active shed
-  const activeShedAnimals = useMemo(() => {
-    if (!activeShedId) return [];
-    const activeShed = sheds.find(s => 
+  const activeShedObj = useMemo(() => {
+    if (!activeShedId) return null;
+    return sheds.find(s => 
       String(s.name || s.code || s._id).trim().toUpperCase() === String(activeShedId).trim().toUpperCase()
     );
-    if (!activeShed) return [];
+  }, [activeShedId, sheds]);
+
+  // Active Animals list inside currently selected active shed
+  const activeShedAnimals = useMemo(() => {
+    if (!activeShedObj) return [];
 
     return animals.filter(
       (a) =>
-        (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
-         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase() ||
-         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed._id || '').trim().toUpperCase()) &&
+        (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.code || '').trim().toUpperCase() ||
+         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.name || '').trim().toUpperCase() ||
+         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj._id || '').trim().toUpperCase()) &&
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
         !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
         String(a.gender || '').trim().toUpperCase() === 'FEMALE'
     );
-  }, [activeShedId, animals, selectedFarmId, sheds]);
+  }, [activeShedObj, animals, selectedFarmId]);
 
   // Filtered animals inside active shed based on overlay filters
   const searchedAnimals = useMemo(() => {
@@ -810,7 +813,17 @@ export default function DailyMilkCollection() {
                               className="group bg-slate-50/50 hover:bg-white border border-slate-200/50 hover:border-emerald-500/30 rounded-2xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md transition-all duration-300"
                             >
                               <div className="flex justify-between items-center mb-3">
-                                <span className="text-[9px] font-extrabold text-slate-300">#{animalIndex}</span>
+                                <span className="text-[9px] font-extrabold">
+                                  {activeShedObj?.lineManagement === "Yes" ? (
+                                    (animal.lineNo && Number(animal.lineNo) > 0) ? (
+                                      <span className="text-slate-500">R{animal.lineNo} - P{animal.position}</span>
+                                    ) : (
+                                      <span className="text-red-500 font-black">Unassigned</span>
+                                    )
+                                  ) : (
+                                    <span className="text-slate-300">#{animalIndex}</span>
+                                  )}
+                                </span>
                                 <span className="text-[10px] font-black text-slate-700 font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm">
                                   {tag}
                                 </span>
