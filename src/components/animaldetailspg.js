@@ -137,9 +137,17 @@ const findSmartMatch = (inputVal, allowedMapOrSet, farmCode = '') => {
 };
 
 // Resolve raw shed inputs (e.g., "Tkp-shed 1" or "1") to the standard shed code (number string e.g. "1")
-const resolveShedNumber = (inputVal, shedsList = [], farmCode = '') => {
+const resolveShedNumber = (inputVal, shedsList = [], farmCode = '', farmsList = []) => {
   if (!inputVal) return null;
   const cleanInput = String(inputVal).trim().toUpperCase();
+
+  // Find active farm object to get its ObjectId
+  const activeFarmObj = farmsList.find(f => 
+    String(f.code || '').toUpperCase() === String(farmCode).toUpperCase() ||
+    String(f.name || '').toUpperCase() === String(farmCode).toUpperCase() ||
+    String(f._id || f.id) === String(farmCode)
+  );
+  const activeFarmId = activeFarmObj ? String(activeFarmObj._id || activeFarmObj.id) : '';
 
   // 1. If it's a raw number (e.g. "1"), see if there's a shed with that code
   if (/^\d+$/.test(cleanInput)) {
@@ -148,8 +156,10 @@ const resolveShedNumber = (inputVal, shedsList = [], farmCode = '') => {
       if (farmCode) {
         const farmMatch = matches.find(s => {
           const sName = String(s.name || '').toUpperCase();
-          const sFarmId = String(s.farmId?.code || s.farmId || '').toUpperCase();
-          return sName.includes(farmCode.toUpperCase()) || sFarmId.includes(farmCode.toUpperCase());
+          const sFarmId = String(s.farmId?._id || s.farmId?.id || s.farmId || '').toUpperCase();
+          return sName.includes(farmCode.toUpperCase()) || 
+                 sFarmId === activeFarmId ||
+                 (s.farmId?.code && String(s.farmId.code).toUpperCase() === farmCode.toUpperCase());
         });
         if (farmMatch) return String(farmMatch.code || '');
       }
@@ -170,6 +180,7 @@ const resolveShedNumber = (inputVal, shedsList = [], farmCode = '') => {
   for (const s of (shedsList || [])) {
     const sName = String(s.name || '').trim().toUpperCase();
     const sCode = String(s.code || '').trim().toUpperCase();
+    const sFarmId = String(s.farmId?._id || s.farmId?.id || s.farmId || '').toUpperCase();
     
     const sNameClean = sName.replace(/[^A-Z0-9]/g, '');
     const sCodeClean = sCode.replace(/[^A-Z0-9]/g, '');
@@ -180,7 +191,9 @@ const resolveShedNumber = (inputVal, shedsList = [], farmCode = '') => {
 
     if (extractedNumber && extractedNumber === sCode) {
       if (farmCode) {
-        const matchesFarm = sName.includes(farmCode.toUpperCase()) || String(s.farmId?.code || s.farmId || '').toUpperCase().includes(farmCode.toUpperCase());
+        const matchesFarm = sName.includes(farmCode.toUpperCase()) || 
+                            sFarmId === activeFarmId ||
+                            (s.farmId?.code && String(s.farmId.code).toUpperCase() === farmCode.toUpperCase());
         if (matchesFarm) {
           return sCode;
         }
@@ -194,7 +207,9 @@ const resolveShedNumber = (inputVal, shedsList = [], farmCode = '') => {
     }
 
     let similarity = getSimilarityScore(cleanInput, sName);
-    if (farmCode && (sName.includes(farmCode.toUpperCase()) || String(s.farmId?.code || s.farmId || '').toUpperCase().includes(farmCode.toUpperCase()))) {
+    if (farmCode && (sName.includes(farmCode.toUpperCase()) || 
+                     sFarmId === activeFarmId ||
+                     (s.farmId?.code && String(s.farmId.code).toUpperCase() === farmCode.toUpperCase()))) {
       similarity += 0.1;
     }
     if (similarity > highestScore) {
@@ -692,7 +707,31 @@ const currentFields = current.fields.map(f => {
 
               // AI Smart Matcher checks & auto-corrections
               const activeFarmCode = moduleConfig?.farmCode || router.query.code || '';
-              const matchedShed = resolveShedNumber(rawShed, rawShedsList, activeFarmCode);
+              
+              // Find matching shed object from rawShedsList
+              let matchedShedObj = null;
+              const matchedShed = resolveShedNumber(rawShed, rawShedsList, activeFarmCode, farmsList);
+              if (matchedShed) {
+                const activeFarmObj = farmsList.find(f => 
+                  String(f.code || '').toUpperCase() === String(activeFarmCode).toUpperCase() ||
+                  String(f.name || '').toUpperCase() === String(activeFarmCode).toUpperCase() ||
+                  String(f._id || f.id) === String(activeFarmCode)
+                );
+                const activeFarmId = activeFarmObj ? String(activeFarmObj._id || activeFarmObj.id) : '';
+
+                const matches = (rawShedsList || []).filter(s => String(s.code || '').trim() === matchedShed);
+                if (matches.length > 0) {
+                  if (activeFarmId) {
+                    matchedShedObj = matches.find(s => 
+                      String(s.farmId?._id || s.farmId?.id || s.farmId || '').toUpperCase() === activeFarmId.toUpperCase()
+                    );
+                  }
+                  if (!matchedShedObj) {
+                    matchedShedObj = matches[0];
+                  }
+                }
+              }
+
               const matchedBreed = findSmartMatch(rawBreed, allowedBreeds);
               
               // 1. Resolve Calf Type first if tag contains "calf"
@@ -724,11 +763,15 @@ const currentFields = current.fields.map(f => {
               const isDOBValid = rawDOB !== null && rawDOB !== undefined && !isNaN(rawDOB.getTime());
               const isInvalid = !isDeadOrSold && (!isShedValid || !isBreedValid || !isAnimalValid || !isDOBValid);
 
+              const finalFarmId = matchedShedObj 
+                ? (matchedShedObj.farmId?._id || matchedShedObj.farmId?.id || matchedShedObj.farmId)
+                : (moduleConfig?.farmCode || router.query.code || null);
+
               const payload = {
                 tag: rawTag,
                 tagId: rawTag,
                 code: `CTL-${Date.now()}-${Math.floor(Math.random()*100000)}`,
-                farmId: moduleConfig?.farmCode || router.query.code || null,
+                farmId: finalFarmId,
                 shed: finalShed,
                 shedId: finalShed,
                 cattleType: finalCattle,
