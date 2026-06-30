@@ -152,6 +152,62 @@
       }
     };
 
+    const autoPrefillCrossingAttempt = (tagValue) => {
+      const cleanTag = String(tagValue).trim().toUpperCase();
+      if (!cleanTag) {
+        if (title?.toLowerCase().includes('crossing')) {
+          setFormData(prev => ({
+            ...prev,
+            crossingAttemptNumber: 1
+          }));
+        }
+        return;
+      }
+      if (!title?.toLowerCase().includes('crossing')) return;
+
+      import('../utils/api').then(({ api }) => {
+        api.crossing.getAll().then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          const animalLogs = list.filter(log => log && !log.isDeleted && String(log.tag_id || log.tag || '').trim().toUpperCase() === cleanTag);
+
+          // Find the most recent log with a calving date
+          let lastCalvingDate = null;
+          animalLogs.forEach(log => {
+            if (log.actualCalvingDate) {
+              const d = new Date(log.actualCalvingDate);
+              if (!isNaN(d.getTime())) {
+                if (!lastCalvingDate || d > lastCalvingDate) {
+                  lastCalvingDate = d;
+                }
+              }
+            }
+          });
+
+          // Count crossing logs that happened after the last calving date
+          let attemptsCount = 0;
+          animalLogs.forEach(log => {
+            if (log.crossingDate) {
+              const d = new Date(log.crossingDate);
+              if (!isNaN(d.getTime())) {
+                if (lastCalvingDate) {
+                  if (d > lastCalvingDate) {
+                    attemptsCount++;
+                  }
+                } else {
+                  attemptsCount++;
+                }
+              }
+            }
+          });
+
+          setFormData(prev => ({
+            ...prev,
+            crossingAttemptNumber: attemptsCount + 1
+          }));
+        }).catch(err => console.error('[autoPrefillCrossingAttempt] Error:', err));
+      });
+    };
+
     const getShedObject = (shedValue) => {
       if (!shedValue) return null;
       const cleanValue = String(shedValue).trim().toUpperCase();
@@ -246,6 +302,10 @@
 
       if (formatted.calvings === undefined || formatted.calvings === null || formatted.calvings === "" || formatted.calvings === "-") {
         formatted.calvings = 0;
+      }
+
+      if (formatted.crossingAttemptNumber === undefined || formatted.crossingAttemptNumber === null || formatted.crossingAttemptNumber === "" || formatted.crossingAttemptNumber === "-") {
+        formatted.crossingAttemptNumber = 1;
       }
 
       return formatted;
@@ -1503,6 +1563,9 @@
         }
         return updated;
       });
+      if (fieldName === 'tagId' || fieldName === 'tag' || fieldName === 'animalId') {
+        autoPrefillCrossingAttempt(tagValue);
+      }
     }}
     onValidation={(isValid, message) => {
       setTagError(isValid ? '' : message);
@@ -1542,7 +1605,9 @@
             } catch(e){}
             return "";
           })()
-        : formData[field.name] || ""
+        : (formData[field.name] !== undefined && formData[field.name] !== null && formData[field.name] !== "" && formData[field.name] !== "-")
+        ? formData[field.name]
+        : (field.type === "number" ? (field.name === "crossingAttemptNumber" ? 1 : 0) : "")
     }
     /*  Required Logic */
   

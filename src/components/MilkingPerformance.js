@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { api } from '../utils/api';
 import ExcelJS from 'exceljs';
@@ -67,7 +67,16 @@ export default function MilkingPerformance() {
   };
 
   // Build helper maps
-  const cattleMap = new Map(cattleList.map(c => [String(c._id || c.id || c.tag || c.tag_id).toUpperCase(), c]));
+  const cattleMap = useMemo(() => {
+    const map = new Map();
+    cattleList.forEach(c => {
+      const idKey = String(c._id || c.id || '').toUpperCase();
+      const tagKey = String(c.tag || c.tag_id || '').toUpperCase();
+      if (idKey) map.set(idKey, c);
+      if (tagKey) map.set(tagKey, c);
+    });
+    return map;
+  }, [cattleList]);
 
   // Date range calculation helper
   const getDateRange = () => {

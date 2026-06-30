@@ -452,10 +452,14 @@ export default function DailyFeeding() {
     localStorage.setItem("farm_display_order", JSON.stringify(ids));
     setFarms(tempFarmsOrder);
     if (tempFarmsOrder.length > 0) {
-      setSelectedFarmId(tempFarmsOrder[0]._id || tempFarmsOrder[0].id);
+      const firstFarmId = tempFarmsOrder[0]._id || tempFarmsOrder[0].id;
+      localStorage.setItem('__active_farm_id__', firstFarmId);
+      setSelectedFarmId(firstFarmId);
+      window.location.reload();
+    } else {
+      setShowSettingsModal(false);
+      swalSuccess("Order Updated", "Farm display order has been saved successfully.");
     }
-    setShowSettingsModal(false);
-    swalSuccess("Order Updated", "Farm display order has been saved successfully.");
   };
 
   return (
@@ -496,7 +500,12 @@ export default function DailyFeeding() {
                     <HomeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <select
                       value={selectedFarmId}
-                      onChange={(e) => setSelectedFarmId(e.target.value)}
+                      onChange={(e) => {
+                        const newFarmId = e.target.value;
+                        localStorage.setItem('__active_farm_id__', newFarmId);
+                        setSelectedFarmId(newFarmId);
+                        window.location.reload();
+                      }}
                       className="w-full h-12 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-10 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 appearance-none transition-all duration-300"
                     >
                       {farms.map((f) => (

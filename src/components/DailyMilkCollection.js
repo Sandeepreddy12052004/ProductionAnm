@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError } from "../utils/swal";
+import LivestockTagInput from "./LivestockTagInput";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
 import { 
@@ -177,7 +178,8 @@ export default function DailyMilkCollection() {
              String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
             String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
             !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
-            String(a.gender || '').trim().toUpperCase() === 'FEMALE'
+            String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
+            String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
         ).length;
         return count > 0;
       });
@@ -480,10 +482,14 @@ export default function DailyMilkCollection() {
     localStorage.setItem("farm_display_order", JSON.stringify(ids));
     setFarms(tempFarmsOrder);
     if (tempFarmsOrder.length > 0) {
-      setSelectedFarmId(tempFarmsOrder[0]._id || tempFarmsOrder[0].id);
+      const firstFarmId = tempFarmsOrder[0]._id || tempFarmsOrder[0].id;
+      localStorage.setItem('__active_farm_id__', firstFarmId);
+      setSelectedFarmId(firstFarmId);
+      window.location.reload();
+    } else {
+      setShowSettingsModal(false);
+      swalSuccess("Order Updated", "Farm display order has been saved successfully.");
     }
-    setShowSettingsModal(false);
-    swalSuccess("Order Updated", "Farm display order has been saved successfully.");
   };
 
   return (
@@ -558,7 +564,12 @@ export default function DailyMilkCollection() {
                     <HomeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <select
                       value={selectedFarmId}
-                      onChange={(e) => setSelectedFarmId(e.target.value)}
+                      onChange={(e) => {
+                        const newFarmId = e.target.value;
+                        localStorage.setItem('__active_farm_id__', newFarmId);
+                        setSelectedFarmId(newFarmId);
+                        window.location.reload();
+                      }}
                       className="w-full h-12 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-10 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 appearance-none transition-all duration-300"
                     >
                       {farms.map((f) => (
@@ -731,6 +742,23 @@ export default function DailyMilkCollection() {
                                           );
                                         })}
                                       </div>
+                                    );
+                                  }
+
+                                  // ✏️ AUTOCOMPLETE FOR TAGS
+                                  if (['tag', 'tagId', 'animalId', 'maleTag'].includes(f.field)) {
+                                    return (
+                                      <LivestockTagInput
+                                        name={f.field}
+                                        value={f.value || ""}
+                                        validationMode="none"
+                                        placeholder="Type or select Tag ID..."
+                                        onChange={(name, tagValue) => {
+                                          const updated = [...filters];
+                                          updated[index].value = tagValue;
+                                          setFilters(updated);
+                                        }}
+                                      />
                                     );
                                   }
 

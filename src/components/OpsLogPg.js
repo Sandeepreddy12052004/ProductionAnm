@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LogForm from './LogForm';
+import LivestockTagInput from './LivestockTagInput';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -113,12 +114,14 @@ const OpsLogPg = ({ moduleConfig }) => {
     const hasAnimal = current.fields.some(f => f.name === 'animalId');
     const hasFeedType = current.fields.some(f => f.name === 'feedType');
     const hasMedicineName = current.fields.some(f => f.name === 'medicineName');
+    const hasFarm = current.fields.some(f => ['farmId', 'farm'].includes(f.name));
     const isFeeding = current.id === 'feeding';
 
     let shed_opts = null;
     let animal_opts = null;
     let feed_opts = null;
     let medicine_opts = null;
+    let farm_opts = null;
     let dynamic_feeds = null;
 
     const tryMerge = () => {
@@ -127,6 +130,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         (hasAnimal && !animal_opts) ||
         (hasFeedType && !feed_opts) ||
         (hasMedicineName && !medicine_opts) ||
+        (hasFarm && !farm_opts) ||
         (isFeeding && !dynamic_feeds)
       ) return;
 
@@ -158,6 +162,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           return { ...f, options: feed_opts };
         if (f.name === 'medicineName' && medicine_opts)
           return { ...f, options: medicine_opts };
+        if (['farmId', 'farm'].includes(f.name) && farm_opts)
+          return { ...f, options: farm_opts };
         return f;
       }));
     };
@@ -210,6 +216,33 @@ const OpsLogPg = ({ moduleConfig }) => {
         .catch(console.error);
     }
 
+    if (hasFarm) {
+      api.farms.getAll()
+        .then(res => {
+          let farmList = Array.isArray(res) ? res : (res?.data ?? []);
+          if (farmList.length === 0) {
+            try {
+              const storedUser = localStorage.getItem("user");
+              if (storedUser) {
+                const user = JSON.parse(storedUser);
+                const userFarmId = user.farmId && typeof user.farmId === 'object'
+                  ? (user.farmId._id || user.farmId.id)
+                  : user.farmId;
+                if (userFarmId && userFarmId !== 'ALL') {
+                  farmList = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm" }];
+                }
+              }
+            } catch (e) {}
+          }
+          farm_opts = farmList.map(f => ({
+            label: f.name || f.code,
+            value: f._id || f.id
+          })).filter(o => o.value);
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
     if (isFeeding) {
       api.feedItems.getAll()
         .then(res => {
@@ -225,7 +258,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         });
     }
 
-    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !isFeeding) {
+    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);
@@ -558,8 +591,18 @@ const OpsLogPg = ({ moduleConfig }) => {
         else if (fieldConfig?.type === "select") {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
           if (selectedValues.length > 0) {
-            const recordVal = String(log[f.field] || "").toLowerCase();
-            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            const recordVal = log[f.field];
+            const optionMatched = selectedValues.some(v => {
+              const valStr = String(v).toLowerCase();
+              if (recordVal && typeof recordVal === 'object') {
+                const subId = String(recordVal._id || recordVal.id || "").toLowerCase();
+                const subName = String(recordVal.name || "").toLowerCase();
+                const subCode = String(recordVal.code || "").toLowerCase();
+                return subId === valStr || subName === valStr || subCode === valStr;
+              }
+              const recordValStr = String(recordVal || "").toLowerCase();
+              return recordValStr === valStr || recordValStr.includes(valStr);
+            });
             if (!optionMatched) currentMatch = false;
           }
         }
@@ -876,6 +919,23 @@ const OpsLogPg = ({ moduleConfig }) => {
                             )}
                           </div>
                         </div>
+                      );
+                    }
+
+                    // ✏️ AUTOCOMPLETE FOR TAGS
+                    if (['tag', 'tagId', 'animalId', 'maleTag'].includes(f.field)) {
+                      return (
+                        <LivestockTagInput
+                          name={f.field}
+                          value={f.value || ""}
+                          validationMode="none"
+                          placeholder="Type or select Tag ID..."
+                          onChange={(name, tagValue) => {
+                            const updated = [...filters];
+                            updated[index].value = tagValue;
+                            setFilters(updated);
+                          }}
+                        />
                       );
                     }
 

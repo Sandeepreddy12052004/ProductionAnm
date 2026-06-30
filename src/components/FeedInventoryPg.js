@@ -36,7 +36,7 @@ export default function FeedInventoryPg() {
     icon: '📋',
     showAllOption: false,
     fields: [
-      { name: 'farmId',          label: 'Farm',            type: 'text' },
+      { name: 'farmId',          label: 'Farm',            type: 'select', options: [] },
       { name: 'feedType',        label: 'Feed Item',       type: 'select', options: [] },
       { name: 'oldStock',        label: 'Old Stock',       type: 'number' },
       { name: 'bought',          label: 'Bought',          type: 'number' },

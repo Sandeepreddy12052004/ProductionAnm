@@ -667,7 +667,9 @@ const currentFields = current.fields.map(f => {
               
               let rawCattle = String(row['cattle'] || '').trim().toUpperCase();
               if (rawCattle === 'B.CALF') {
-                rawCattle = 'BUFFALO';
+                rawCattle = 'BUFFALO CALF';
+              } else if (rawCattle === 'C.CALF') {
+                rawCattle = 'COW CALF';
               } else if (rawCattle === 'CATTLE') {
                 rawCattle = 'COW';
               }
@@ -1706,6 +1708,14 @@ const handleSave = async (data) => {
       if (isEditing) {
         if (current.id === 'livestock') {
           const payload = { ...data, tagId: data.tag || data.tagId };
+          if (payload.calvings === undefined || payload.calvings === null || String(payload.calvings).trim() === "" || String(payload.calvings).trim() === "-") {
+            payload.calvings = 0;
+          } else {
+            payload.calvings = Number(payload.calvings);
+            if (isNaN(payload.calvings)) {
+              payload.calvings = 0;
+            }
+          }
           payload.status = resolveStatusFromInfo(payload.tag || payload.tagId || '', payload.remarks || '', payload.status || selectedEntry?.status || 'ACTIVE');
           if (selectedEntry?.isPendingDetails === true || String(selectedEntry?.isPendingDetails) === 'true') {
             payload.isPendingDetails = false;
@@ -1823,6 +1833,14 @@ const handleSave = async (data) => {
             cattleType: resolvedType,
             animalType: resolvedType,
           };
+          if (payload.calvings === undefined || payload.calvings === null || String(payload.calvings).trim() === "" || String(payload.calvings).trim() === "-") {
+            payload.calvings = 0;
+          } else {
+            payload.calvings = Number(payload.calvings);
+            if (isNaN(payload.calvings)) {
+              payload.calvings = 0;
+            }
+          }
           payload.status = resolveStatusFromInfo(payload.tag || payload.tagId || '', payload.remarks || '', payload.status || 'ACTIVE');
           await api.cattle.create(payload);
           swalSuccess("Success", "Cattle registered successfully!");
