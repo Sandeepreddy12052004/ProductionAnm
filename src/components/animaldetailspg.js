@@ -269,7 +269,10 @@ const getStandardHeaderKey = (headerValue) => {
     buyerName: ['buyer', 'buyername', 'buyer name', 'purchaser', 'purchasername', 'purchaser name'],
     buyerPhone: ['contact', 'phone', 'buyerphone', 'buyercontact', 'buyer phone', 'buyer contact', 'contactnumber', 'contact number'],
     salePrice: ['price', 'saleprice', 'amount', 'sale price', 'sale amount'],
-    date: ['saledate', 'date', 'sale date']
+    date: ['saledate', 'date', 'sale date'],
+    shiftingDate: ['shiftingdate', 'shifting date', 'date', 'move date', 'movedate', 'transfer date', 'transferdate'],
+    oldShed: ['oldshed', 'oldshedno', 'oldshednumber', 'old shed', 'old shed no', 'old shed number', 'fromshed', 'from shed'],
+    newShed: ['newshed', 'newshedno', 'newshednumber', 'new shed', 'new shed no', 'new shed number', 'toshed', 'to shed']
   };
 
   for (const [standardKey, list] of Object.entries(aliases)) {
@@ -574,9 +577,15 @@ const currentFields = current.fields.map(f => {
         const seenTags = new Set();
         for (const row of rows) {
           const tag = String(row['tag'] || '').trim();
-          if (tag && !seenTags.has(tag)) {
-            seenTags.add(tag);
-            uniqueParsed.push(row);
+          if (current.id === 'shed') {
+            if (tag) {
+              uniqueParsed.push(row);
+            }
+          } else {
+            if (tag && !seenTags.has(tag)) {
+              seenTags.add(tag);
+              uniqueParsed.push(row);
+            }
           }
         }
 
@@ -648,6 +657,59 @@ const currentFields = current.fields.map(f => {
               successCount++;
             } catch (err) {
               console.error(`Error importing sale log for ${row['tag']}:`, err);
+              errorCount++;
+            }
+          }
+        } else if (current.id === 'shed') {
+          // --- SHED LOG IMPORT PIPELINE ---
+          const cattleList = await api.cattle.getAll();
+          const activeCattle = Array.isArray(cattleList) ? cattleList : (cattleList?.data ?? []);
+
+          for (const row of uniqueParsed) {
+            try {
+              const rawTag = String(row['tag'] || '').trim();
+              const rawOldShed = String(row['oldShed'] || '').trim();
+              const rawNewShed = String(row['newShed'] || '').trim();
+              const rawReason = String(row['reason'] || row['remarks'] || '').trim();
+
+              let rawDate = null;
+              if (row['shiftingDate']) {
+                const parsedDate = parseDateString(row['shiftingDate']);
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                  rawDate = parsedDate;
+                }
+              } else if (row['date']) {
+                const parsedDate = parseDateString(row['date']);
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                  rawDate = parsedDate;
+                }
+              }
+              const finalDate = rawDate || new Date();
+
+              const matchedAnimal = activeCattle.find(a => 
+                String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === rawTag.toUpperCase()
+              );
+
+              let oldShedVal = rawOldShed;
+              if (!oldShedVal && matchedAnimal) {
+                oldShedVal = matchedAnimal.shed || matchedAnimal.shedId || '';
+              }
+
+              const payload = {
+                tag: rawTag,
+                tagId: rawTag,
+                tag_id: rawTag,
+                shiftingDate: finalDate,
+                oldShed: oldShedVal,
+                newShed: rawNewShed,
+                reason: rawReason || 'Excel Import Shed Log',
+                farmId: matchedAnimal ? (matchedAnimal.farmId?._id || matchedAnimal.farmId?.id || matchedAnimal.farmId) : null
+              };
+
+              await api.shed.create(payload);
+              successCount++;
+            } catch (err) {
+              console.error(`Error importing shed log for ${row['tag']}:`, err);
               errorCount++;
             }
           }
@@ -2334,7 +2396,7 @@ const getShedFromLivestock = (tagValue) => {
             <p className="text-black opacity-60 italic">Module: {current.name}</p>
           </div>
           <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
-            {(current.id === 'livestock' || current.id === 'sale') && (
+            {(current.id === 'livestock' || current.id === 'sale' || current.id === 'shed') && (
               <>
                 <input
                   type="file"
