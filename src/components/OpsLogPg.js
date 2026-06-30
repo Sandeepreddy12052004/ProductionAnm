@@ -737,39 +737,72 @@ const OpsLogPg = ({ moduleConfig }) => {
     <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
 
       {/* ── Header ── */}
-      <ModulePageHeader
-        title={`${current.icon || "📋"} ${current.name}`}
-        description={`Module: ${current.name}`}
-      >
-        <div className="flex flex-wrap gap-2 w-full md:w-auto items-end">
-          <FarmFilterSelector layout="horizontal" size="sm" showAllOption={current.showAllOption !== false} />
-          <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all text-sm">
-            📊 Excel
-          </button>
-          <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all text-sm">
-            📄 PDF
-          </button>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`relative px-4 py-2 rounded-lg font-bold border text-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md ${
-              showFilters ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' : 'bg-white border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            🔍 Filters
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => { setIsEditing(false); setShowForm(true); }}
-            className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
-          >
-            + Add Entry
-          </button>
+      {moduleConfig.hideHeader ? (
+        <div className="flex justify-end items-center mb-6 w-full">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto items-end justify-end">
+            <FarmFilterSelector layout="horizontal" size="sm" showAllOption={current.showAllOption !== false} />
+            <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all text-sm">
+              📊 Excel
+            </button>
+            <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all text-sm">
+              📄 PDF
+            </button>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative px-4 py-2 rounded-lg font-bold border text-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md ${
+                showFilters ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' : 'bg-white border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              🔍 Filters
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setIsEditing(false); setShowForm(true); }}
+              className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+            >
+              + Add Entry
+            </button>
+          </div>
         </div>
-      </ModulePageHeader>
+      ) : (
+        <ModulePageHeader
+          title={`${current.icon || "📋"} ${current.name}`}
+          description={`Module: ${current.name}`}
+        >
+          <div className="flex flex-wrap gap-2 w-full md:w-auto items-end">
+            <FarmFilterSelector layout="horizontal" size="sm" showAllOption={current.showAllOption !== false} />
+            <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all text-sm">
+              📊 Excel
+            </button>
+            <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all text-sm">
+              📄 PDF
+            </button>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative px-4 py-2 rounded-lg font-bold border text-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md ${
+                showFilters ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F]' : 'bg-white border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              🔍 Filters
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setIsEditing(false); setShowForm(true); }}
+              className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+            >
+              + Add Entry
+            </button>
+          </div>
+        </ModulePageHeader>
+      )}
 
       {/* ── Filter Modal ── */}
       {showFilters && (

@@ -176,7 +176,7 @@ const LivestockTagInput = ({
 
     if (validationMode === 'must_not_exist') {
       if (match) {
-        const msg = 'Tag already exists in Live Stock records.';
+        const msg = 'animal already exist';
         setValidationState('invalid');
         setValidationMsg(msg);
         onValidation?.(false, msg);
@@ -330,7 +330,7 @@ const LivestockTagInput = ({
       )}
 
       {/* ── Empty state hint when user typed but nothing matches ────────── */}
-      {isOpen && inputValue.length >= 2 && filtered.length === 0 && !isLoading && validationMode !== 'none' && (
+      {isOpen && inputValue.length >= 2 && filtered.length === 0 && !isLoading && validationMode === 'must_exist' && (
         <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-red-200 rounded-2xl shadow-lg z-[200] px-4 py-3 text-xs font-bold text-red-500 flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span>⚠️</span>

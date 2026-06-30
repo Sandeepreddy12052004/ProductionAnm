@@ -1520,7 +1520,7 @@
     required={!field.optional && (field.name !== 'maleTag' || (formData.crossingType || 'Natural') === 'Natural')}
     disabled={false}
     placeholder={`Type or scan ${field.label}...`}
-    validationMode="must_exist"
+    validationMode={title?.toLowerCase().includes('add cattle') ? 'must_not_exist' : 'must_exist'}
     filterFn={
       title?.toLowerCase().includes('crossing')
         ? (field.name === 'maleTag' ? (animal) => animal.gender === 'male' : (animal) => animal.gender === 'female')

@@ -35,6 +35,7 @@ export default function MedicineInventoryPg() {
     name: 'Medicine Log',
     icon: '💊',
     showAllOption: false,
+    hideHeader: true,
     fields: [
       { name: 'medicineName',  label: 'Medicine Name', type: 'select', options: [] },
       { name: 'type',          label: 'Type',          type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'], disabled: true },

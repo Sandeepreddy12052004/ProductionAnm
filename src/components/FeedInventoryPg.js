@@ -35,6 +35,7 @@ export default function FeedInventoryPg() {
     name: 'Feed Log',
     icon: '📋',
     showAllOption: false,
+    hideHeader: true,
     fields: [
       { name: 'farmId',          label: 'Farm',            type: 'select', options: [] },
       { name: 'feedType',        label: 'Feed Item',       type: 'select', options: [] },

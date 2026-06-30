@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import LogForm from "@/components/LogForm";
-import { swalSuccess, swalError, swalConfirm } from "@/utils/swal";
+import swalInstance, { swalSuccess, swalError, swalConfirm } from "@/utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import { api } from "@/utils/api";
 import ModulePageHeader from "./ModulePageHeader";
@@ -69,6 +70,7 @@ const getFilterAgeInDays = (y, m, d) => {
 export default function CattleManagementPg({
   moduleConfig,
 }) {
+  const router = useRouter();
   const [dynamicFields, setDynamicFields] = useState(moduleConfig?.fields || []);
   const [cattleData, setCattleData] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
@@ -190,12 +192,24 @@ export default function CattleManagementPg({
         shedId: resolvedShed,
         cattleType: resolvedType,
         animalType: resolvedType,
+        isPendingDetails: true,
       };
 
       await api.cattle.create(payload);
-      swalSuccess("Success", "Cattle added successfully!");
       setShowAddModal(false);
       fetchCattleData();
+
+      const result = await swalInstance.fire({
+        title: "Cattle Added",
+        text: "Animal registered successfully. Do you want to go to Live Stock to complete its profile?",
+        icon: "success",
+        showCancelButton: true,
+        confirmButtonText: "Go to Live Stock",
+        cancelButtonText: "Stay Here"
+      });
+      if (result.isConfirmed) {
+        router.push("/animals");
+      }
     } catch (err) {
       console.error(err);
       swalError("Error", typeof err === 'string' ? err : "Failed to add cattle record.");
