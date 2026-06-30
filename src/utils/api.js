@@ -307,6 +307,18 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
       // Filter by farmId if user has a restricted farmId OR if they are global and have selected an active farm
       const userObj = getSessionUser();
       if (userObj && method === 'GET') {
+        // Bypass active farm filtering if the user is on a specific farm's dashboard page
+        let isFarmDashboard = false;
+        try {
+          if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+            isFarmDashboard = window.location.pathname.startsWith('/farm/');
+          }
+        } catch (e) {}
+
+        if (isFarmDashboard) {
+          return finalData; // skip filtering completely
+        }
+
         const rawFarmId = userObj.farmId && typeof userObj.farmId === 'object'
           ? (userObj.farmId._id || userObj.farmId.id)
           : userObj.farmId;
