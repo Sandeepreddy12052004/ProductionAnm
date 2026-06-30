@@ -34,7 +34,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/operations/daily-feeding':     ['FEEDING', 'INCHARGE', 'FARM_ADMIN'],
   '/api/milk/collections':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
   '/api/milk/quality':                 ['MILK', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'FARM_ADMIN'],
+  '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'TAG_MANAGEMENT', 'FARM_ADMIN'],
   '/api/feed-items':                   ['FEED_ITEMS', 'FARM_ADMIN'],
   '/api/medicines':                    ['HEALTH', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
   '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
@@ -147,6 +147,21 @@ function sessionHasAccess(userObj, moduleKeyOrKeys) {
 function evaluateFirewall(endpoint) {
   // Strip query string, then find the longest matching prefix in the map
   const cleanPath = endpoint.split('?')[0];
+
+  // Allow read-only (GET) requests for essential lookup tables to all authenticated users (mirrors backend authGuard)
+  const isLookupPath =
+    cleanPath === '/api/farms' || cleanPath.startsWith('/api/farms/') ||
+    cleanPath === '/api/sheds' || cleanPath.startsWith('/api/sheds/') ||
+    cleanPath === '/api/cattle' || cleanPath.startsWith('/api/cattle/') ||
+    cleanPath === '/api/breeds' || cleanPath.startsWith('/api/breeds/') ||
+    cleanPath === '/api/feed-items' || cleanPath.startsWith('/api/feed-items/') ||
+    cleanPath === '/api/medicines' || cleanPath.startsWith('/api/medicines/') ||
+    cleanPath === '/api/animals' || cleanPath.startsWith('/api/animals/') ||
+    cleanPath === '/api/tags' || cleanPath.startsWith('/api/tags/');
+
+  if (isLookupPath) {
+    return null; // permitted -> pass-through
+  }
 
   const matchedPrefix = Object.keys(ROUTE_PERMISSION_MAP).find((prefix) =>
     cleanPath === prefix || cleanPath.startsWith(prefix + '/')
