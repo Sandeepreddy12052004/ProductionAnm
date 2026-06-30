@@ -339,13 +339,27 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
           if (activeFarmId && activeFarmId !== 'ALL') {
             restrictedFarmId = String(activeFarmId).trim();
           }
-          // Global user must NOT have farms or auth endpoints filtered
+          // Global user must NOT have administrative, auth, or global catalog endpoints filtered
           isBypassedEndpoint =
             cleanPath === '/api/farms' ||
             cleanPath.startsWith('/api/farms/') ||
             cleanPath.startsWith('/api/auth') ||
             cleanPath === '/api/feed-items' ||
-            cleanPath.startsWith('/api/feed-items/');
+            cleanPath.startsWith('/api/feed-items/') ||
+            cleanPath === '/api/users' ||
+            cleanPath.startsWith('/api/users/') ||
+            cleanPath === '/api/roles' ||
+            cleanPath.startsWith('/api/roles/') ||
+            cleanPath === '/api/departments' ||
+            cleanPath.startsWith('/api/departments/') ||
+            cleanPath === '/api/breeds' ||
+            cleanPath.startsWith('/api/breeds/') ||
+            cleanPath === '/api/animals' ||
+            cleanPath.startsWith('/api/animals/') ||
+            cleanPath === '/api/medicines' ||
+            cleanPath.startsWith('/api/medicines/') ||
+            cleanPath === '/api/tags' ||
+            cleanPath.startsWith('/api/tags/');
         }
 
         if (restrictedFarmId && !isBypassedEndpoint) {
