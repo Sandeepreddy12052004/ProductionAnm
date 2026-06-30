@@ -32,7 +32,7 @@ export default function MedicineInventoryPg() {
 
   const config = {
     id: 'med_inv',
-    name: 'Medicine Inventory',
+    name: 'Medicine Log',
     icon: '💊',
     showAllOption: false,
     fields: [
