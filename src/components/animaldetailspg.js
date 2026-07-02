@@ -713,6 +713,202 @@ const currentFields = current.fields.map(f => {
               errorCount++;
             }
           }
+
+          // === NEW LOGIC TO UPDATE CATTLE REGISTRY AFTER SHED LOG IMPORT ===
+          try {
+            const uniqueTags = Array.from(new Set(uniqueParsed.map(row => String(row['tag'] || '').trim().toUpperCase()))).filter(Boolean);
+            
+            if (uniqueTags.length > 0) {
+              const [crossingRes, cattleListRes] = await Promise.all([
+                api.crossing.getAll().catch(() => []),
+                api.cattle.getAll().catch(() => [])
+              ]);
+              const crossingLogs = Array.isArray(crossingRes) ? crossingRes : (crossingRes?.data ?? []);
+              const latestCattle = Array.isArray(cattleListRes) ? cattleListRes : (cattleListRes?.data ?? []);
+
+              for (const tag of uniqueTags) {
+                const tagRows = uniqueParsed.filter(row => String(row['tag'] || '').trim().toUpperCase() === tag);
+                if (tagRows.length === 0) continue;
+
+                // Sort ascending by date to find the most recent one
+                tagRows.sort((a, b) => {
+                  const dateA = parseDateString(a['shiftingDate'] || a['date']) || new Date(0);
+                  const dateB = parseDateString(b['shiftingDate'] || b['date']) || new Date(0);
+                  return dateA.getTime() - dateB.getTime();
+                });
+                const mostRecentRow = tagRows[tagRows.length - 1];
+
+                const oldShedVal = String(mostRecentRow['oldShed'] || '').trim();
+                const newShedVal = String(mostRecentRow['newShed'] || '').trim();
+
+                let resolvedFarmId = null;
+                let resolvedShedCode = null;
+
+                if (newShedVal) {
+                  // Case 1: Has new shed number -> belongs to the farm of that new shed
+                  const matchedShed = rawShedsList.find(s => 
+                    String(s.code || '').trim().toUpperCase() === newShedVal.toUpperCase() ||
+                    String(s.name || '').trim().toUpperCase() === newShedVal.toUpperCase()
+                  );
+                  if (matchedShed) {
+                    resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || null;
+                    resolvedShedCode = matchedShed.code || matchedShed.name || newShedVal;
+                  } else {
+                    resolvedShedCode = newShedVal;
+                  }
+                } else if (oldShedVal) {
+                  // Case 2: Has old shed number and empty new shed number
+                  const matchedShed = rawShedsList.find(s => 
+                    String(s.code || '').trim().toUpperCase() === oldShedVal.toUpperCase() ||
+                    String(s.name || '').trim().toUpperCase() === oldShedVal.toUpperCase()
+                  );
+                  if (matchedShed) {
+                    resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || null;
+                    resolvedShedCode = matchedShed.code || matchedShed.name || oldShedVal;
+                  }
+                } else {
+                  // Case 3: Both old and new sheds numbers empty -> check mother tag in crossing log
+                  const matchingCrossing = crossingLogs.find(c => 
+                    String(c.calfTag || '').trim().toUpperCase() === tag
+                  );
+                  if (matchingCrossing) {
+                    const motherTag = String(matchingCrossing.tag_id || matchingCrossing.tag || '').trim().toUpperCase();
+                    if (motherTag) {
+                      const motherAnimal = latestCattle.find(a => 
+                        String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === motherTag
+                      );
+                      if (motherAnimal) {
+                        resolvedFarmId = motherAnimal.farmId?._id || motherAnimal.farmId?.id || motherAnimal.farmId || null;
+                        resolvedShedCode = motherAnimal.shed || motherAnimal.shedId || null;
+                      }
+                    }
+                  }
+                }
+
+                // Update the matching cattle record with resolved farm/shed
+                const matchedAnimal = latestCattle.find(a => 
+                  String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === tag
+                );
+                if (matchedAnimal && resolvedFarmId) {
+                  const animalId = matchedAnimal.id || matchedAnimal._id;
+                  const updatePayload = {
+                    tagId: matchedAnimal.tag || matchedAnimal.tagId || matchedAnimal.tag_id || tag,
+                    farmId: resolvedFarmId
+                  };
+                  if (resolvedShedCode) {
+                    updatePayload.shed = resolvedShedCode;
+                    updatePayload.shedId = resolvedShedCode;
+                  }
+                  await api.cattle.update(animalId, updatePayload);
+                }
+              }
+            }
+          } catch (updateErr) {
+            console.error("Failed to update cattle registry after shed log import:", updateErr);
+          }
+        } else if (current.id === 'crossing') {
+          // --- CROSSING LOG IMPORT PIPELINE ---
+          for (const row of uniqueParsed) {
+            try {
+              const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
+              if (!rawTag) continue;
+
+              const rawCrossingType = String(row['crossingType'] || row['crossing_type'] || 'Natural').trim();
+              const rawMaleTag = String(row['maleTag'] || row['male_tag'] || '').trim();
+              const rawBatchNumber = String(row['batchNumber'] || row['batch_number'] || '').trim();
+              
+              let rawCrossingDate = null;
+              if (row['crossingDate'] || row['crossing_date']) {
+                const parsedDate = parseDateString(row['crossingDate'] || row['crossing_date']);
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                  rawCrossingDate = parsedDate;
+                }
+              }
+              const finalCrossingDate = rawCrossingDate || new Date();
+
+              const rawAttempt = Number(row['crossingAttemptNumber'] || row['crossing_attempt_number'] || 1);
+              const rawPdDate = parseDateString(row['pdDate'] || row['pd_date'] || row['pdDate ']);
+              const rawPregnancyStatus = String(row['pregnancyStatus'] || row['pregnancy_status'] || 'Pending').trim();
+              const rawPregnancyConfirmedDate = parseDateString(row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date']);
+              const rawEstimatedCalvingDate = parseDateString(row['estimatedCalvingDate'] || row['estimated_calving_date']);
+              const rawPregnantAge = String(row['pregnantAge'] || row['pregnant_age'] || '').trim();
+              const rawActualCalvingDate = parseDateString(row['actualCalvingDate'] || row['actual_calving_date']);
+              const rawCalvingStatus = String(row['calvingStatus'] || row['calving_status'] || 'pending').trim();
+              const rawCalfTag = String(row['calfTag'] || row['calf_tag'] || '').trim();
+              const rawBreedType = String(row['breedType'] || row['breed_type'] || '').trim();
+              
+              const rawHeat1 = parseDateString(row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification']);
+              const rawHeat2 = parseDateString(row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification']);
+              const rawRemarks = String(row['remarks'] || '').trim();
+
+              const payload = {
+                tag: rawTag,
+                tagId: rawTag,
+                crossingType: rawCrossingType,
+                maleTag: rawMaleTag,
+                batchNumber: rawBatchNumber,
+                crossingDate: finalCrossingDate,
+                crossingAttemptNumber: rawAttempt,
+                pdDate: rawPdDate,
+                pregnancyStatus: rawPregnancyStatus,
+                pregnancyConfirmedDate: rawPregnancyConfirmedDate,
+                estimatedCalvingDate: rawEstimatedCalvingDate,
+                pregnantAge: rawPregnantAge,
+                actualCalvingDate: rawActualCalvingDate,
+                calvingStatus: rawCalvingStatus,
+                calfTag: rawCalfTag,
+                breedType: rawBreedType,
+                heatMonitoring1stNotification: rawHeat1,
+                heatMonitoring2ndNotification: rawHeat2,
+                remarks: rawRemarks || 'Excel Import Crossing Log'
+              };
+
+              await api.crossing.create(payload);
+              successCount++;
+            } catch (err) {
+              console.error(`Error importing crossing log for ${row['tag']}:`, err);
+              errorCount++;
+            }
+          }
+        } else if (current.id === 'purchase') {
+          // --- PURCHASE LOG IMPORT PIPELINE ---
+          for (const row of uniqueParsed) {
+            try {
+              const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
+              if (!rawTag) continue;
+
+              const rawSeller = String(row['purchaseFrom'] || row['sellerName'] || row['seller'] || '').trim();
+              const rawContact = String(row['sellerContact'] || row['contact'] || '').trim();
+              const rawPrice = Number(row['purchasePrice'] || row['price'] || 0);
+              
+              let rawPurchaseDate = null;
+              if (row['purchaseDate'] || row['purchase_date'] || row['date']) {
+                const parsedDate = parseDateString(row['purchaseDate'] || row['purchase_date'] || row['date']);
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                  rawPurchaseDate = parsedDate;
+                }
+              }
+              const finalPurchaseDate = rawPurchaseDate || new Date();
+
+              const rawFarmId = String(row['farmId'] || row['farm'] || '').trim();
+
+              const payload = {
+                tag: rawTag,
+                tagId: rawTag,
+                purchaseFrom: rawSeller || 'Unknown Seller',
+                sellerContact: rawContact,
+                purchasePrice: rawPrice,
+                purchaseDate: finalPurchaseDate,
+                farmId: rawFarmId || null,
+              };
+
+              await api.purchase.create(payload);
+              successCount++;
+            } catch (err) {
+              console.error(`Error importing purchase log for ${row['tag']}:`, err);
+              errorCount++;
+            }
+          }
         } else {
           // --- LIVE STOCK IMPORT PIPELINE ---
           const [suffixRulesRes, cattleListRes] = await Promise.all([
@@ -2396,7 +2592,7 @@ const getShedFromLivestock = (tagValue) => {
             <p className="text-black opacity-60 italic">Module: {current.name}</p>
           </div>
           <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
-            {(current.id === 'livestock' || current.id === 'sale' || current.id === 'shed') && (
+            {(current.id === 'livestock' || current.id === 'sale' || current.id === 'shed' || current.id === 'crossing' || current.id === 'purchase') && (
               <>
                 <input
                   type="file"

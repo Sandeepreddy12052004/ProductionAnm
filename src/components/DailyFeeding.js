@@ -190,6 +190,19 @@ export default function DailyFeeding() {
     );
   }, [activeShedId, sheds]);
 
+  // Count animals in the active shed
+  const activeShedAnimalsCount = useMemo(() => {
+    if (!activeShed || !selectedFarmId) return 0;
+    return animals.filter(
+      (a) =>
+        (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
+         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase() ||
+         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed._id || '').trim().toUpperCase()) &&
+        String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
+        !["SOLD", "DECEASED", "DEAD"].includes(a.status)
+    ).length;
+  }, [activeShed, animals, selectedFarmId]);
+
   // Helper to determine camelCase field key from feed item name, matching legacy fields precisely
   const getFeedFieldKey = (name) => {
     const clean = name.trim().toLowerCase();
@@ -364,6 +377,10 @@ export default function DailyFeeding() {
     }
     if (!activeShedId) {
       swalError("Error", "Please select an active shed first.");
+      return;
+    }
+    if (activeShedAnimalsCount === 0) {
+      swalError("Validation Error", "Cannot save feeding data for a shed with no active animals.");
       return;
     }
     setIsSaving(true);
@@ -615,6 +632,11 @@ export default function DailyFeeding() {
 
                   {/* Row Cards List */}
                   <div className="p-8 space-y-8 max-h-[65vh] overflow-y-auto">
+                    {activeShedAnimalsCount === 0 && (
+                      <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                        <span>⚠️ This shed has no active animals. Save action is disabled.</span>
+                      </div>
+                    )}
                     {activeFeedTypes.length === 0 ? (
                       <div className="text-center py-12 text-slate-400 text-xs font-black">
                         ⚠️ No active feed items defined for this farm. Configure them in Feed Items first.
@@ -697,7 +719,7 @@ export default function DailyFeeding() {
                     {/* Save this specific shed */}
                     <button
                       onClick={handleSaveActiveShed}
-                      disabled={isSaving || activeFeedTypes.length === 0}
+                      disabled={isSaving || activeFeedTypes.length === 0 || activeShedAnimalsCount === 0}
                       className="px-6 h-12 bg-slate-800 hover:bg-slate-900 text-white font-extrabold rounded-2xl shadow-lg shadow-slate-600/10 hover:shadow-slate-600/20 active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
