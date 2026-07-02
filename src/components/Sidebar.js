@@ -112,11 +112,22 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
       }
       // Case 2: permission is a string (e.g. 'USERS', 'USER_MANAGEMENT_VIEW')
       if (typeof p === 'string') {
-        const lowerP = p.trim().toLowerCase();
-        const lowerModKey = moduleKey.trim().toLowerCase();
-        return lowerP === lowerModKey ||
-          lowerP.startsWith(lowerModKey + '_') ||
-          lowerP.includes(lowerModKey);
+        const upperP = p.trim().toUpperCase();
+        const upperModKey = moduleKey.trim().toUpperCase();
+        
+        const getBaseModule = (perm) => {
+          const upper = perm.toUpperCase();
+          const suffixes = ['_VIEW', '_CREATE', '_EDIT', '_DELETE'];
+          for (const s of suffixes) {
+            if (upper.endsWith(s)) {
+              return upper.substring(0, upper.length - s.length);
+            }
+          }
+          return upper;
+        };
+
+        const userModule = getBaseModule(upperP);
+        return userModule === upperModKey;
       }
       return false;
     });
