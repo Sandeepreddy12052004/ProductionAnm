@@ -324,7 +324,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                 )}
 
                 {/* CORE MODULES GROUP */}
-                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT') || hasAccess('GRASS_MANAGEMENT')) && (
+                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT') || hasAccess('GRASS_MANAGEMENT') || hasAccess('LABOR_MANAGEMENT')) && (
                   <li className="mt-4">
                     <button
                       onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
@@ -462,6 +462,15 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                               <Link href="/grass-management" onClick={handleCloseSidebar}
                                 className={`block p-2 rounded border-l-4 ${isLinkActive("/grass-management") ? activeStyle : normalStyle}`}>
                                 🌿 Grass Management
+                              </Link>
+                            </li>
+                          )}
+
+                          {hasAccess('LABOR_MANAGEMENT') && (
+                            <li>
+                              <Link href="/labor-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/labor-management") ? activeStyle : normalStyle}`}>
+                                💼 Labor Management
                               </Link>
                             </li>
                           )}

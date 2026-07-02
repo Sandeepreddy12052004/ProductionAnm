@@ -682,4 +682,20 @@ export const api = {
     update:              (id, data) => apiRequest(`/api/treatments/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/treatments/${id}`, 'DELETE'),
   },
+
+  // Designation Management Configuration
+  designations: {
+    getAll:              ()         => apiRequest('/api/designations'),
+    create:              (data)     => apiRequest('/api/designations', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/designations/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/designations/${id}`, 'DELETE'),
+  },
+
+  // Labor Management Configuration
+  labors: {
+    getAll:              ()         => apiRequest('/api/labors'),
+    create:              (data)     => apiRequest('/api/labors', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/labors/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/labors/${id}`, 'DELETE'),
+  },
 };
