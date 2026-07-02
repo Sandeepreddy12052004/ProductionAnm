@@ -93,6 +93,7 @@
     });
     const [livestockList, setLivestockList] = useState([]);
     const [grassFarmsList, setGrassFarmsList] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isFieldRequired = (field) => {
       if (field.name === "calvingStatus") {
@@ -1088,24 +1089,50 @@
 
           <h2 className="text-xl font-extrabold mb-5 text-[#16223F] tracking-tight flex-shrink-0 pr-10">{title}</h2>
           <form 
-            onSubmit={(e) => { 
+            onSubmit={async (e) => { 
               e.preventDefault(); 
-              if (tagError || dobError || userIdError) return;
+              if (tagError || dobError || userIdError || isSubmitting) return;
 
-              const isFeeding = fields.some(f => f.name === 'animalId' && f.label?.includes("Animal"));
-              if (isFeeding) {
-                if (!selectedRow) {
-                  swalError("Validation Error", "Please select a row.");
-                  return;
+              // Custom validations for Grass Sourcing Collection fields
+              const loadsVal = Number(formData.noOfLoads);
+              const weightVal = Number(formData.weight);
+              const workersVal = Number(formData.noOfWorkers);
+
+              if (fields.some(f => f.name === 'noOfLoads') && (isNaN(loadsVal) || loadsVal <= 0)) {
+                swalError("Validation Error", "Number of Loads must be greater than zero.");
+                return;
+              }
+              if (fields.some(f => f.name === 'weight') && (isNaN(weightVal) || weightVal <= 0)) {
+                swalError("Validation Error", "Weight (KG) must be greater than zero.");
+                return;
+              }
+              if (fields.some(f => f.name === 'noOfWorkers') && (isNaN(workersVal) || workersVal <= 0)) {
+                swalError("Validation Error", "Number of Workers must be greater than zero.");
+                return;
+              }
+
+              setIsSubmitting(true);
+              try {
+                const isFeeding = fields.some(f => f.name === 'animalId' && f.label?.includes("Animal"));
+                if (isFeeding) {
+                  if (!selectedRow) {
+                    swalError("Validation Error", "Please select a row.");
+                    setIsSubmitting(false);
+                    return;
+                  }
+                  const finalData = {
+                    ...formData,
+                    animalId: `Row ${selectedRow}`,
+                    tag_id: `Row ${selectedRow}`
+                  };
+                  await onSubmit(finalData);
+                } else {
+                  await onSubmit(formData); 
                 }
-                const finalData = {
-                  ...formData,
-                  animalId: `Row ${selectedRow}`,
-                  tag_id: `Row ${selectedRow}`
-                };
-                onSubmit(finalData);
-              } else {
-                onSubmit(formData); 
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setIsSubmitting(false);
               }
             }} 
             className="space-y-4 overflow-y-auto pr-2 custom-scrollbar"
@@ -1831,14 +1858,19 @@
 
   <button
     type="submit"
-    disabled={tagError !== "" || dobError !== "" || userIdError !== ""}
+    disabled={tagError !== "" || dobError !== "" || userIdError !== "" || isSubmitting}
     className={`flex-1 py-3 rounded-xl font-bold shadow-sm transition-all flex items-center justify-center gap-2
-    ${(tagError || dobError || userIdError)
+    ${(tagError || dobError || userIdError || isSubmitting)
       ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
       : "bg-[#16223F] hover:bg-[#2a3f75] text-white hover:-translate-y-0.5 active:scale-95"
     }`}
   >
-    Save
+    {isSubmitting ? (
+      <>
+        <span className="animate-spin inline-block w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full" />
+        Saving...
+      </>
+    ) : "Save"}
   </button>
 
   <button
