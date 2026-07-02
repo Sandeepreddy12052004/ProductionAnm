@@ -228,8 +228,11 @@
 
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
-      fields.forEach(field => {
+      (fields || []).forEach(field => {
         const fieldName = field.name;
+        if (formatted[fieldName] && typeof formatted[fieldName] === 'object' && !Array.isArray(formatted[fieldName])) {
+          formatted[fieldName] = formatted[fieldName]._id || formatted[fieldName].id || String(formatted[fieldName]);
+        }
         if ((field.type === 'date' || fieldName === 'dateOfBirth' || fieldName === 'dob') && formatted[fieldName]) {
           const rawVal = formatted[fieldName];
           if (typeof rawVal === 'string' && rawVal.includes("/")) {
