@@ -235,24 +235,23 @@ export default function LaborManagementPg() {
       <ModulePageHeader
         title="Labor & Designation"
         description="Configure staff roles, register employees, and track workforce placement across active dairy farms."
-        actionButton={
-          <button
-            onClick={() => {
-              if (activeTab === "labors") {
-                setLaborForm({ id: null, name: "", designationId: "", farmId: "", phone: "", status: "ACTIVE" });
-                setShowLaborForm(true);
-              } else {
-                setDesignationForm({ id: null, name: "", description: "", status: "ACTIVE" });
-                setShowDesignationForm(true);
-              }
-            }}
-            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-sm transition-all duration-200 active:scale-95 cursor-pointer text-sm"
-          >
-            <Plus className="w-5 h-5" />
-            {activeTab === "labors" ? "Register Employee" : "Add Designation"}
-          </button>
-        }
-      />
+      >
+        <button
+          onClick={() => {
+            if (activeTab === "labors") {
+              setLaborForm({ id: null, name: "", designationId: "", farmId: "", phone: "", status: "ACTIVE" });
+              setShowLaborForm(true);
+            } else {
+              setDesignationForm({ id: null, name: "", description: "", status: "ACTIVE" });
+              setShowDesignationForm(true);
+            }
+          }}
+          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-sm transition-all duration-200 active:scale-95 cursor-pointer text-sm"
+        >
+          <Plus className="w-5 h-5" />
+          {activeTab === "labors" ? "Register Employee" : "Add Designation"}
+        </button>
+      </ModulePageHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
