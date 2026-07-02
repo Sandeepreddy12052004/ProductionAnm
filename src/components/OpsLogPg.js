@@ -369,7 +369,9 @@ const OpsLogPg = ({ moduleConfig }) => {
       if (!moduleApi) throw new Error('Unsupported module');
 
       const now = new Date();
-      const formattedDate = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+      const dateStr = data.date || now.toISOString();
+      const d = parseDateString(dateStr);
+      const formattedDate = d ? formatDateToDDMMYYYY(d) : `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
 
       const activeFarm = getActiveFarmId();
       const originalFarmId = selectedEntry?.farmId && typeof selectedEntry.farmId === 'object'
@@ -431,10 +433,8 @@ const OpsLogPg = ({ moduleConfig }) => {
               }
             });
           }
-          if (!isEditing) {
-            itemPayload.entryDate = formattedDate;
-            itemPayload.date = now.toISOString();
-          }
+          itemPayload.entryDate = formattedDate;
+          itemPayload.date = d ? d.toISOString() : now.toISOString();
           const itemFarmId = resolveItemFarmId(item);
           if (itemFarmId) {
             itemPayload.farmId = itemFarmId;
@@ -454,10 +454,8 @@ const OpsLogPg = ({ moduleConfig }) => {
             }
           });
         }
-        if (!isEditing) {
-          payload.entryDate = formattedDate;
-          payload.date = now.toISOString();
-        }
+        payload.entryDate = formattedDate;
+        payload.date = d ? d.toISOString() : now.toISOString();
         const itemFarmId = resolveItemFarmId(data);
         if (itemFarmId) {
           payload.farmId = itemFarmId;
@@ -1044,7 +1042,7 @@ const OpsLogPg = ({ moduleConfig }) => {
           <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
             <tr>
               <th className="p-4 border-b">Date</th>
-              {dynamicFields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
+              {dynamicFields.filter(f => f.name !== 'date').map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
               <th className="p-4 border-b w-10 text-center"></th>
             </tr>
           </thead>
@@ -1065,10 +1063,15 @@ const OpsLogPg = ({ moduleConfig }) => {
                   onClick={() => setSelectedEntry(log)}
                 >
                   <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
-                  {dynamicFields.map(f => {
+                  {dynamicFields.filter(f => f.name !== 'date').map(f => {
                     let cellVal = log[f.name];
                     if (cellVal && typeof cellVal === 'object') {
-                      cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
+                      if (f.name === 'sourcingFarmId') {
+                        const destinationName = cellVal.sourcingTo?.name || cellVal.sourcingTo?.code || '';
+                        cellVal = cellVal.name + (destinationName ? ` (${destinationName})` : '');
+                      } else {
+                        cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
+                      }
                     }
                     if (f.type === 'date' && cellVal) {
                       cellVal = formatDateToDDMMYYYY(cellVal);

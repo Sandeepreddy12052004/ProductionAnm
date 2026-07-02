@@ -31,7 +31,8 @@ const MODULE_GROUPS = {
       { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS', icon: '🌾' },
       { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT', icon: '🏷️' },
       { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT', icon: '🧬' },
-      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏' }
+      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏' },
+      { name: 'Grass Management', baseToken: 'GRASS_MANAGEMENT', prefix: 'GRASS_MANAGEMENT', icon: '🌿' }
     ]
   },
   MODULES: {

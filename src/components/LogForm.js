@@ -92,6 +92,7 @@
       return "";
     });
     const [livestockList, setLivestockList] = useState([]);
+    const [grassFarmsList, setGrassFarmsList] = useState([]);
 
     const isFieldRequired = (field) => {
       if (field.name === "calvingStatus") {
@@ -488,6 +489,65 @@
         });
       }
     }, [fields]);
+
+    React.useEffect(() => {
+      const needsGrassFarms = (fields || []).some(f => f.name === 'sourcingFarmId');
+      if (needsGrassFarms) {
+        import('../utils/api').then(({ api }) => {
+          api.grassManagement.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            setGrassFarmsList(raw.filter(item => item.status === 'ACTIVE'));
+          }).catch(err => console.error("Failed to load grass sourcing farms in LogForm:", err));
+        });
+      }
+    }, [fields]);
+
+    React.useEffect(() => {
+      // 1. Pre-populate procuredBy
+      if (fields.some(f => f.name === 'procuredBy') && !formData.procuredBy) {
+        try {
+          const userJson = localStorage.getItem('user');
+          if (userJson) {
+            const user = JSON.parse(userJson);
+            const resolvedName = user.name || user.username || user.email || '';
+            if (resolvedName) {
+              setFormData(prev => ({ ...prev, procuredBy: resolvedName }));
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 2. Pre-populate farmId / farm
+      const hasFarmField = fields.some(f => f.name === 'farmId' || f.name === 'farm');
+      if (hasFarmField && (!formData.farmId && !formData.farm)) {
+        try {
+          let fallbackFarmId = '';
+          const activeFarm = localStorage.getItem('__active_farm_id__');
+          if (activeFarm && activeFarm !== 'ALL') {
+            fallbackFarmId = activeFarm;
+          } else {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+              const user = JSON.parse(userJson);
+              const rawFarmId = user?.farmId && typeof user.farmId === 'object'
+                ? (user.farmId._id || user.farmId.id)
+                : user?.farmId;
+              if (rawFarmId && rawFarmId !== 'ALL') {
+                fallbackFarmId = String(rawFarmId).trim();
+              }
+            }
+          }
+          if (fallbackFarmId) {
+            setFormData(prev => {
+              const next = { ...prev };
+              if (fields.some(f => f.name === 'farmId') && !next.farmId) next.farmId = fallbackFarmId;
+              if (fields.some(f => f.name === 'farm') && !next.farm) next.farm = fallbackFarmId;
+              return next;
+            });
+          }
+        } catch (e) {}
+      }
+    }, [fields, formData.procuredBy, formData.farmId, formData.farm]);
 
 
   const getShedFromLivestock = (tagValue) => {
@@ -1048,6 +1108,10 @@
           >
             {fields.map((originalField) => {
               const field = { ...originalField };
+              if (field.name === 'sourcingFarmId') {
+                field.type = 'select';
+                field.options = grassFarmsList.map(g => ({ value: g._id || g.id, label: g.name }));
+              }
               if (field.name === 'medicineName') {
                 field.type = 'select';
                 field.options = medicinesList.map(m => m.name);
@@ -1616,7 +1680,7 @@
 
 
     /*  Updated Disabled Logic: 1st Notification remains enabled if status is Negative */
-  disabled={
+    disabled={
       field.disabled === true ||
       (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
       (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
@@ -1624,19 +1688,21 @@
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       field.name === "age" || 
-      field.name === "pregnantAge"
+      field.name === "pregnantAge" ||
+      field.name === "procuredBy"
     }
 
     /*  Added Whole Number protection */
     min={field.type === "number" ? "0" : undefined}
     step={field.type === "number" ? "1" : undefined}
     
-    readOnly={field.name === "age" || field.name === "pregnantAge"}
+    readOnly={field.name === "age" || field.name === "pregnantAge" || field.name === "procuredBy"}
     
     className={`mt-1 block w-full border rounded-xl p-2.5 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 outline-none transition-all duration-200 ${
       field.disabled === true ||
       field.name === "age" || 
       field.name === "pregnantAge" || 
+      field.name === "procuredBy" ||
       (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
       (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||

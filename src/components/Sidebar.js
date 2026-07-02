@@ -36,7 +36,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/health-management",
     "/feed-items",
     "/tag-management",
-    "/breed-management"
+    "/breed-management",
+    "/grass-management"
   ].includes(router.pathname) && !router.query.tab;
 
   const isNormalRoute =
@@ -312,7 +313,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                 )}
 
                 {/* CORE MODULES GROUP */}
-                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT')) && (
+                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT') || hasAccess('GRASS_MANAGEMENT')) && (
                   <li className="mt-4">
                     <button
                       onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
@@ -441,6 +442,15 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                               <Link href="/animal-management" onClick={handleCloseSidebar}
                                 className={`block p-2 rounded border-l-4 ${isLinkActive("/animal-management") ? activeStyle : normalStyle}`}>
                                 🐏 Animal Management
+                              </Link>
+                            </li>
+                          )}
+
+                          {hasAccess('GRASS_MANAGEMENT') && (
+                            <li>
+                              <Link href="/grass-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/grass-management") ? activeStyle : normalStyle}`}>
+                                🌿 Grass Management
                               </Link>
                             </li>
                           )}

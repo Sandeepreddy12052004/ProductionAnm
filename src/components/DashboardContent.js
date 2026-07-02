@@ -230,7 +230,7 @@ const DashboardContent = () => {
 
       {/* CATTLE CATEGORIES */}
       <h2 className="text-lg font-extrabold text-[#16223F] mb-4 tracking-tight">Cattle Categories</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-3 gap-3 mb-8">
         {/* Pregnant */}
         <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/40 hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/5 transition duration-300 cursor-pointer">
           <div className="text-3xl mb-1.5">🐄</div>
@@ -250,13 +250,6 @@ const DashboardContent = () => {
           <div className="text-3xl mb-1.5">🌙</div>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dry</p>
           <p className="text-xl font-black text-slate-700 mt-0.5">{mounted ? stats.dryCount : 0}</p>
-        </div>
-
-        {/* Issues */}
-        <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl border border-brand-rose/30 bg-brand-rose/5 hover:scale-105 hover:shadow-lg hover:shadow-brand-rose/5 transition duration-300 cursor-pointer">
-          <div className="text-3xl mb-1.5">⚠️</div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Issues</p>
-          <p className="text-xl font-black text-brand-rose mt-0.5">{mounted ? stats.issuesCount : 0}</p>
         </div>
       </div>
 
