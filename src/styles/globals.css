@@ -59,3 +59,20 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
 }
+
+/* Global cursor pointers for interactive elements */
+button, 
+a, 
+input[type="submit"], 
+input[type="button"], 
+select, 
+[role="button"] {
+  cursor: pointer !important;
+}
+
+button:disabled, 
+input:disabled, 
+select:disabled,
+.cursor-not-allowed {
+  cursor: not-allowed !important;
+}
