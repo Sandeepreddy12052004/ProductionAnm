@@ -80,7 +80,7 @@
     return null;
   };
 
-  const LogForm = ({ title, fields, onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
+  const LogForm = ({ title, fields = [], onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
     const [checkedRows, setCheckedRows] = useState({});
     const [medicinesList, setMedicinesList] = useState([]);
     const [vaccinesList, setVaccinesList] = useState([]);
@@ -503,8 +503,9 @@
     }, [fields]);
 
     React.useEffect(() => {
+      const safeFields = fields || [];
       // 1. Pre-populate procuredBy
-      if (fields.some(f => f.name === 'procuredBy') && !formData.procuredBy) {
+      if (safeFields.some(f => f.name === 'procuredBy') && !formData?.procuredBy) {
         try {
           const userJson = localStorage.getItem('user');
           if (userJson) {
@@ -518,8 +519,8 @@
       }
 
       // 2. Pre-populate farmId / farm
-      const hasFarmField = fields.some(f => f.name === 'farmId' || f.name === 'farm');
-      if (hasFarmField && (!formData.farmId && !formData.farm)) {
+      const hasFarmField = safeFields.some(f => f.name === 'farmId' || f.name === 'farm');
+      if (hasFarmField && (!formData?.farmId && !formData?.farm)) {
         try {
           let fallbackFarmId = '';
           const activeFarm = localStorage.getItem('__active_farm_id__');
@@ -540,14 +541,14 @@
           if (fallbackFarmId) {
             setFormData(prev => {
               const next = { ...prev };
-              if (fields.some(f => f.name === 'farmId') && !next.farmId) next.farmId = fallbackFarmId;
-              if (fields.some(f => f.name === 'farm') && !next.farm) next.farm = fallbackFarmId;
+              if (safeFields.some(f => f.name === 'farmId') && !next.farmId) next.farmId = fallbackFarmId;
+              if (safeFields.some(f => f.name === 'farm') && !next.farm) next.farm = fallbackFarmId;
               return next;
             });
           }
         } catch (e) {}
       }
-    }, [fields, formData.procuredBy, formData.farmId, formData.farm]);
+    }, [fields, formData?.procuredBy, formData?.farmId, formData?.farm]);
 
 
   const getShedFromLivestock = (tagValue) => {

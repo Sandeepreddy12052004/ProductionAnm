@@ -1067,8 +1067,9 @@ const OpsLogPg = ({ moduleConfig }) => {
                     let cellVal = log[f.name];
                     if (cellVal && typeof cellVal === 'object') {
                       if (f.name === 'sourcingFarmId') {
+                        const farmName = cellVal.name || '';
                         const destinationName = cellVal.sourcingTo?.name || cellVal.sourcingTo?.code || '';
-                        cellVal = cellVal.name + (destinationName ? ` (${destinationName})` : '');
+                        cellVal = farmName + (destinationName ? ` (${destinationName})` : '');
                       } else {
                         cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
                       }
