@@ -360,7 +360,11 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             cleanPath === '/api/departments' ||
             cleanPath.startsWith('/api/departments/') ||
             cleanPath === '/api/feed-items' ||
-            cleanPath.startsWith('/api/feed-items/');
+            cleanPath.startsWith('/api/feed-items/') ||
+            cleanPath === '/api/labors' ||
+            cleanPath.startsWith('/api/labors/') ||
+            cleanPath === '/api/designations' ||
+            cleanPath.startsWith('/api/designations/');
         } else {
           // Global user: filter by the selected active farm if set (and not 'ALL')
           const activeFarmId = localStorage.getItem('__active_farm_id__');
@@ -387,7 +391,11 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             cleanPath === '/api/medicines' ||
             cleanPath.startsWith('/api/medicines/') ||
             cleanPath === '/api/tags' ||
-            cleanPath.startsWith('/api/tags/');
+            cleanPath.startsWith('/api/tags/') ||
+            cleanPath === '/api/labors' ||
+            cleanPath.startsWith('/api/labors/') ||
+            cleanPath === '/api/designations' ||
+            cleanPath.startsWith('/api/designations/');
         }
 
         if (restrictedFarmId && !isBypassedEndpoint) {

@@ -20,6 +20,7 @@ export default function GrassManagementPg() {
     location: "",
     status: "ACTIVE",
     notes: "",
+    area: "",
   });
 
   const fetchRecords = async () => {
@@ -77,6 +78,7 @@ export default function GrassManagementPg() {
         location: formData.location.trim(),
         status: formData.status,
         notes: formData.notes.trim(),
+        area: formData.area ? Number(formData.area) : null,
       };
 
       if (formData.id) {
@@ -104,6 +106,7 @@ export default function GrassManagementPg() {
       location: rec.location || "",
       status: rec.status || "ACTIVE",
       notes: rec.notes || "",
+      area: rec.area || "",
     });
     setShowForm(true);
   };
@@ -133,6 +136,7 @@ export default function GrassManagementPg() {
       location: "",
       status: "ACTIVE",
       notes: "",
+      area: "",
     });
     setShowForm(true);
   };
@@ -245,6 +249,7 @@ export default function GrassManagementPg() {
               <tr>
                 <th className="p-4 pl-6">Grass Sourcing Farm / Area</th>
                 <th className="p-4">Sourcing To (Destination)</th>
+                <th className="p-4">Area (Acres)</th>
                 <th className="p-4">Location</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Notes</th>
@@ -254,7 +259,7 @@ export default function GrassManagementPg() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="flex justify-center items-center py-6">
                       <div className="w-8 h-8 rounded-full border-4 border-[#16223F]/10 border-t-[#16223F] animate-spin"></div>
                     </div>
@@ -270,6 +275,9 @@ export default function GrassManagementPg() {
                     </td>
                     <td className="p-4 text-xs font-bold text-slate-600">
                       {rec.sourcingTo?.name ? `${rec.sourcingTo.name} (${rec.sourcingTo.code})` : "-"}
+                    </td>
+                    <td className="p-4 text-xs font-semibold text-slate-600">
+                      {rec.area !== undefined && rec.area !== null ? `${rec.area} Acres` : "-"}
                     </td>
                     <td className="p-4 text-xs font-semibold text-slate-600">
                       {rec.location || "-"}
@@ -310,7 +318,7 @@ export default function GrassManagementPg() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+                  <td colSpan={7} className="p-12 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
                     No grass sourcing farms defined. Click "Define Sourcing Farm" to add one.
                   </td>
                 </tr>
@@ -374,6 +382,22 @@ export default function GrassManagementPg() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Area */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Total Area (Acres)
+                </label>
+                <input
+                  type="number"
+                  name="area"
+                  value={formData.area}
+                  onChange={handleChange}
+                  placeholder="E.g. 5, 10"
+                  step="any"
+                  className="w-full h-11 px-3.5 border border-slate-200 rounded-xl text-sm font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D] transition-all"
+                />
               </div>
 
               {/* Location */}

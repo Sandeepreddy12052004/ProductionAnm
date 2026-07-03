@@ -93,6 +93,7 @@
     });
     const [livestockList, setLivestockList] = useState([]);
     const [grassFarmsList, setGrassFarmsList] = useState([]);
+    const [laborsList, setLaborsList] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isFieldRequired = (field) => {
@@ -507,6 +508,18 @@
     }, [fields]);
 
     React.useEffect(() => {
+      const needsLabors = (fields || []).some(f => f.name === 'laborId');
+      if (needsLabors) {
+        import('../utils/api').then(({ api }) => {
+          api.labors.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            setLaborsList(raw.filter(item => item.status === 'ACTIVE' && item.isDeleted !== true));
+          }).catch(err => console.error("Failed to load labors in LogForm:", err));
+        });
+      }
+    }, [fields]);
+
+    React.useEffect(() => {
       const safeFields = fields || [];
       // 1. Pre-populate procuredBy
       if (safeFields.some(f => f.name === 'procuredBy') && !formData?.procuredBy) {
@@ -678,6 +691,12 @@
 
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+
+      if (name === "weight" || name === "harvestedArea") {
+        const w = name === "weight" ? Number(value) : Number(updated.weight || 0);
+        const a = name === "harvestedArea" ? Number(value) : Number(updated.harvestedArea || 0);
+        updated["yield"] = (w && a) ? Number((w / a).toFixed(2)) : "";
+      }
 
 
       if (name === "dameBreed" && value) {
@@ -1142,6 +1161,10 @@
               if (field.name === 'sourcingFarmId') {
                 field.type = 'select';
                 field.options = grassFarmsList.map(g => ({ value: g._id || g.id, label: g.name }));
+              }
+              if (field.name === 'laborId') {
+                field.type = 'select';
+                field.options = laborsList.map(l => ({ value: l._id || l.id, label: l.name }));
               }
               if (field.name === 'medicineName') {
                 field.type = 'select';

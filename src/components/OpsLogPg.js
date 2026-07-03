@@ -74,6 +74,7 @@ const OpsLogPg = ({ moduleConfig }) => {
   const [rawAnimals, setRawAnimals] = useState([]);
   const [rawFeedItems, setRawFeedItems] = useState([]);
   const [rawMedicines, setRawMedicines] = useState([]);
+  const [rawLabors, setRawLabors] = useState([]);
 
   const [filters, setFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: 'entryDate', value: '', from: '', to: '' }]);
@@ -115,6 +116,7 @@ const OpsLogPg = ({ moduleConfig }) => {
     const hasFeedType = current.fields.some(f => f.name === 'feedType');
     const hasMedicineName = current.fields.some(f => f.name === 'medicineName');
     const hasFarm = current.fields.some(f => ['farmId', 'farm'].includes(f.name));
+    const hasLabor = current.fields.some(f => f.name === 'laborId');
     const isFeeding = current.id === 'feeding';
 
     let shed_opts = null;
@@ -122,6 +124,7 @@ const OpsLogPg = ({ moduleConfig }) => {
     let feed_opts = null;
     let medicine_opts = null;
     let farm_opts = null;
+    let labor_opts = null;
     let dynamic_feeds = null;
 
     const tryMerge = () => {
@@ -131,6 +134,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         (hasFeedType && !feed_opts) ||
         (hasMedicineName && !medicine_opts) ||
         (hasFarm && !farm_opts) ||
+        (hasLabor && !labor_opts) ||
         (isFeeding && !dynamic_feeds)
       ) return;
 
@@ -164,6 +168,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           return { ...f, options: medicine_opts };
         if (['farmId', 'farm'].includes(f.name) && farm_opts)
           return { ...f, options: farm_opts };
+        if (f.name === 'laborId' && labor_opts)
+          return { ...f, options: labor_opts };
         return f;
       }));
     };
@@ -258,7 +264,21 @@ const OpsLogPg = ({ moduleConfig }) => {
         });
     }
 
-    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding) {
+    if (hasLabor) {
+      api.labors.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          setRawLabors(list);
+          labor_opts = list.filter(item => item.status === 'ACTIVE' && item.isDeleted !== true).map(l => ({
+            label: l.name,
+            value: l._id || l.id
+          }));
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
+    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding && !hasLabor) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);
