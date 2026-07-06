@@ -37,7 +37,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/feed-items",
     "/tag-management",
     "/breed-management",
-    "/grass-management"
+    "/grass-management",
+    "/bmc-management"
   ].includes(router.pathname) && !router.query.tab;
 
   const isNormalRoute =
@@ -324,7 +325,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                 )}
 
                 {/* CORE MODULES GROUP */}
-                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT') || hasAccess('GRASS_MANAGEMENT') || hasAccess('LABOR_MANAGEMENT')) && (
+                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('LAND') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT') || hasAccess('GRASS_MANAGEMENT') || hasAccess('LABOR_MANAGEMENT') || hasAccess('BMC') || hasAccess('CROSSING_LOG')) && (
                   <li className="mt-4">
                     <button
                       onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
@@ -379,6 +380,26 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                               <Link href="/farms" onClick={handleCloseSidebar}
                                 className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
                                 🏠 Farm Management
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* Land Management Navigation */}
+                          {hasAccess('LAND') && (
+                            <li>
+                              <Link href="/land-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${router.pathname === "/land-management" ? activeStyle : normalStyle}`}>
+                                🗺️ Land Management
+                              </Link>
+                            </li>
+                          )}
+
+                          {/* BMC Management Navigation */}
+                          {hasAccess('BMC') && (
+                            <li>
+                              <Link href="/bmc-management" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${router.pathname === "/bmc-management" ? activeStyle : normalStyle}`}>
+                                ❄️ BMC Management
                               </Link>
                             </li>
                           )}
@@ -471,6 +492,15 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                               <Link href="/labor-management" onClick={handleCloseSidebar}
                                 className={`block p-2 rounded border-l-4 ${isLinkActive("/labor-management") ? activeStyle : normalStyle}`}>
                                 💼 Labor Management
+                              </Link>
+                            </li>
+                          )}
+
+                          {hasAccess('CROSSING_LOG') && (
+                            <li>
+                              <Link href="/insemination" onClick={handleCloseSidebar}
+                                className={`block p-2 rounded border-l-4 ${isLinkActive("/insemination") ? activeStyle : normalStyle}`}>
+                                🧬 Insemination Management
                               </Link>
                             </li>
                           )}

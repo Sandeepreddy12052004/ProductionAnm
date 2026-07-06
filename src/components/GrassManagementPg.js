@@ -128,6 +128,23 @@ export default function GrassManagementPg() {
     }
   };
 
+  const handleRegrow = async (id, name) => {
+    const confirmed = await swalConfirm(
+      "Regrow Grass?",
+      `Are you sure you want to mark "${name}" for regrowth? This will reset the utilized acreage back to 0 for the next harvest cycle.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.grassManagement.update(id, { lastRegrownAt: new Date().toISOString() });
+      swalSuccess("Success", `Grass sourcing farm "${name}" is now marked for regrowth. Utilized acres reset to 0.`);
+      fetchRecords();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", "Failed to mark farm for regrowth.");
+    }
+  };
+
   const handleResetForm = () => {
     setFormData({
       id: null,
@@ -277,7 +294,16 @@ export default function GrassManagementPg() {
                       {rec.sourcingTo?.name ? `${rec.sourcingTo.name} (${rec.sourcingTo.code})` : "-"}
                     </td>
                     <td className="p-4 text-xs font-semibold text-slate-600">
-                      {rec.area !== undefined && rec.area !== null ? `${rec.area} Acres` : "-"}
+                      {rec.area !== undefined && rec.area !== null ? (
+                        <>
+                          <div className="font-extrabold text-[#16223F]">
+                            {Math.max(0, rec.area - (rec.utilizedArea || 0)).toFixed(2)} Acres available
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            Total: {rec.area} Acres · Utilized: {(rec.utilizedArea || 0).toFixed(2)} Acres
+                          </div>
+                        </>
+                      ) : "-"}
                     </td>
                     <td className="p-4 text-xs font-semibold text-slate-600">
                       {rec.location || "-"}
@@ -298,6 +324,15 @@ export default function GrassManagementPg() {
                     </td>
                     <td className="p-4 pr-6">
                       <div className="flex justify-center items-center gap-2">
+                        {rec.utilizedArea > 0 && (
+                          <button
+                            onClick={() => handleRegrow(rec._id || rec.id, rec.name)}
+                            className="px-2.5 py-1 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1 font-bold text-[10px] tracking-wide"
+                            title="Regrow / Reharvest Grass"
+                          >
+                            🌿 Regrow
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(rec)}
                           className="p-2 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"

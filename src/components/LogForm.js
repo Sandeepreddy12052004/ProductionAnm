@@ -94,6 +94,7 @@
     const [livestockList, setLivestockList] = useState([]);
     const [grassFarmsList, setGrassFarmsList] = useState([]);
     const [laborsList, setLaborsList] = useState([]);
+    const [semenStrawsList, setSemenStrawsList] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isFieldRequired = (field) => {
@@ -499,10 +500,22 @@
       const needsGrassFarms = (fields || []).some(f => f.name === 'sourcingFarmId');
       if (needsGrassFarms) {
         import('../utils/api').then(({ api }) => {
-          api.grassManagement.getAll().then(res => {
+          api.lands.getAll().then(res => {
             const raw = Array.isArray(res) ? res : (res?.data ?? []);
-            setGrassFarmsList(raw.filter(item => item.status === 'ACTIVE'));
-          }).catch(err => console.error("Failed to load grass sourcing farms in LogForm:", err));
+            setGrassFarmsList(raw.filter(item => item.status !== 'MAINTENANCE' && item.isDeleted !== true));
+          }).catch(err => console.error("Failed to load lands in LogForm:", err));
+        });
+      }
+    }, [fields]);
+
+    React.useEffect(() => {
+      const needsSemenStraws = (fields || []).some(f => f.name === 'batchNumber');
+      if (needsSemenStraws) {
+        import('../utils/api').then(({ api }) => {
+          api.semenStraws.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            setSemenStrawsList(raw.filter(item => item.status === 'ACTIVE' && item.isDeleted !== true));
+          }).catch(err => console.error("Failed to load semen straws in LogForm:", err));
         });
       }
     }, [fields]);
@@ -1130,6 +1143,45 @@
                 return;
               }
 
+              const sourcingFarmIdVal = formData.sourcingFarmId;
+              const harvestedAreaVal = Number(formData.harvestedArea);
+              if (fields.some(f => f.name === 'harvestedArea') && sourcingFarmIdVal && !isNaN(harvestedAreaVal) && harvestedAreaVal > 0) {
+                const selectedGrassFarmObj = grassFarmsList.find(g => (g._id || g.id) === sourcingFarmIdVal);
+                if (selectedGrassFarmObj) {
+                  let total = selectedGrassFarmObj.totalArea || 0;
+                  if (selectedGrassFarmObj.unit === 'Hectares') total = total * 2.47105;
+                  if (selectedGrassFarmObj.unit === 'Sq Meters') total = total * 0.000247105;
+
+                  const backendUtilized = selectedGrassFarmObj.utilizedArea || 0;
+                  const currentRecordHarvested = initialData?.harvestedArea || 0;
+                  const utilizedOtherThanCurrent = Math.max(0, backendUtilized - currentRecordHarvested);
+                  const availableAreaVal = Math.max(0, total - utilizedOtherThanCurrent);
+                  if (harvestedAreaVal > availableAreaVal) {
+                    swalError("Validation Error", `Harvested Area (${harvestedAreaVal} Acres) exceeds the available area (${availableAreaVal.toFixed(2)} Acres) for this land.`);
+                    return;
+                  }
+                }
+              }
+
+              const batchNoVal = formData.batchNumber;
+              if (fields.some(f => f.name === 'batchNumber') && (formData.crossingType || 'Natural') === 'Artificial' && batchNoVal) {
+                const selectedStrawObj = semenStrawsList.find(s => s.batchNo === batchNoVal);
+                if (selectedStrawObj) {
+                  const rem = selectedStrawObj.noOfStraws - selectedStrawObj.usedStraws;
+                  const currentRecordBatch = initialData?.batchNumber;
+                  const isCurrentRecordArtificial = initialData?.crossingType === 'Artificial';
+                  const isSameBatch = currentRecordBatch === batchNoVal;
+                  const adjustedRem = (isCurrentRecordArtificial && isSameBatch) ? rem + 1 : rem;
+                  if (adjustedRem <= 0) {
+                    swalError("Validation Error", `Semen straw batch ${batchNoVal} has no straws available.`);
+                    return;
+                  }
+                } else {
+                  swalError("Validation Error", `Selected semen straw batch ${batchNoVal} does not exist or is inactive.`);
+                  return;
+                }
+              }
+
               setIsSubmitting(true);
               try {
                 const isFeeding = fields.some(f => f.name === 'animalId' && f.label?.includes("Animal"));
@@ -1161,6 +1213,10 @@
               if (field.name === 'sourcingFarmId') {
                 field.type = 'select';
                 field.options = grassFarmsList.map(g => ({ value: g._id || g.id, label: g.name }));
+              }
+              if (field.name === 'batchNumber') {
+                field.type = 'select';
+                field.options = semenStrawsList.map(s => ({ value: s.batchNo, label: `${s.batchNo} (${s.breed} - Bal: ${s.noOfStraws - s.usedStraws})` }));
               }
               if (field.name === 'laborId') {
                 field.type = 'select';
@@ -1599,35 +1655,72 @@
                       }
 
                       return (
-                        <select
-                          name={field.name}
-                          value={
-                            ((field.name === "shed" || field.name === "shedId") && formData[field.name] === "-") ||
-                            ((field.name === "cattleType" || field.name === "animalType") && String(formData[field.name]).toUpperCase() === "PENDING")
-                              ? ""
-                              : (formData[field.name] || "")
-                          }
-                          required={isFieldRequired(field)}
-                          disabled={field.name === "oldShed" || field.disabled}
-                          className={`mt-1 block w-full border rounded-xl p-2.5 outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 ${
-                            field.name === 'oldShed' || field.disabled
-                              ? 'bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400 font-semibold'
-                              : 'bg-white text-black border-slate-200'
-                          }`}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select {field.label}</option>
-                          {optionsToRender.map((opt) => {
-                            const isObj = typeof opt === 'object' && opt !== null;
-                            const val = isObj ? opt.value : opt;
-                            const label = isObj ? opt.label : opt;
-                            return (
-                              <option key={val} value={val}>
-                                {label}
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <>
+                          <select
+                            name={field.name}
+                            value={
+                              ((field.name === "shed" || field.name === "shedId") && formData[field.name] === "-") ||
+                              ((field.name === "cattleType" || field.name === "animalType") && String(formData[field.name]).toUpperCase() === "PENDING")
+                                ? ""
+                                : (formData[field.name] || "")
+                            }
+                            required={isFieldRequired(field)}
+                            disabled={field.name === "oldShed" || field.disabled}
+                            className={`mt-1 block w-full border rounded-xl p-2.5 outline-none transition-all duration-200 focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 ${
+                              field.name === 'oldShed' || field.disabled
+                                ? 'bg-slate-50 border-slate-100 cursor-not-allowed text-slate-400 font-semibold'
+                                : 'bg-white text-black border-slate-200'
+                            }`}
+                            onChange={handleChange}
+                          >
+                            <option value="">Select {field.label}</option>
+                            {optionsToRender.map((opt) => {
+                              const isObj = typeof opt === 'object' && opt !== null;
+                              const val = isObj ? opt.value : opt;
+                              const label = isObj ? opt.label : opt;
+                              return (
+                                <option key={val} value={val}>
+                                  {label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {field.name === 'sourcingFarmId' && (() => {
+                            const selectedGrassFarmObj = grassFarmsList.find(g => (g._id || g.id) === formData.sourcingFarmId);
+                            if (selectedGrassFarmObj) {
+                              let total = selectedGrassFarmObj.totalArea || 0;
+                              if (selectedGrassFarmObj.unit === 'Hectares') total = total * 2.47105;
+                              if (selectedGrassFarmObj.unit === 'Sq Meters') total = total * 0.000247105;
+
+                              const backendUtilized = selectedGrassFarmObj.utilizedArea || 0;
+                              const currentRecordHarvested = initialData?.harvestedArea || 0;
+                              const utilizedOtherThanCurrent = Math.max(0, backendUtilized - currentRecordHarvested);
+                              const availableAreaVal = Math.max(0, total - utilizedOtherThanCurrent);
+                              return (
+                                <p className="text-xs font-bold text-slate-500 mt-1.5 ml-0.5">
+                                  🌾 Available: <span className="text-[#071437]">{availableAreaVal.toFixed(2)}</span> / {total.toFixed(2)} Acres (Utilized: {utilizedOtherThanCurrent.toFixed(2)} Acres)
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                          {field.name === 'batchNumber' && (() => {
+                            const selectedStrawObj = semenStrawsList.find(s => s.batchNo === formData.batchNumber);
+                            if (selectedStrawObj) {
+                              const rem = selectedStrawObj.noOfStraws - selectedStrawObj.usedStraws;
+                              const currentRecordBatch = initialData?.batchNumber;
+                              const isCurrentRecordArtificial = initialData?.crossingType === 'Artificial';
+                              const isSameBatch = currentRecordBatch === formData.batchNumber;
+                              const adjustedRem = (isCurrentRecordArtificial && isSameBatch) ? rem + 1 : rem;
+                              return (
+                                <p className={`text-xs font-bold mt-1.5 ml-0.5 ${adjustedRem <= 5 ? 'text-rose-500 animate-pulse' : 'text-slate-500'}`}>
+                                  🧬 Straws Available: <span className="text-[#071437]">{adjustedRem}</span> / {selectedStrawObj.noOfStraws} (Breed: {selectedStrawObj.breed})
+                                </p>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </>
                       );
                     })()
                   )
@@ -1857,6 +1950,31 @@
   {field.name === "tag" && tagError && (
         <p className="text-red-500 text-xs mt-1">{tagError}</p>
       )}
+  {field.name === 'harvestedArea' && (() => {
+    const sourcingFarmIdVal = formData.sourcingFarmId;
+    const harvestedAreaVal = Number(formData.harvestedArea);
+    if (sourcingFarmIdVal && !isNaN(harvestedAreaVal) && harvestedAreaVal > 0) {
+      const selectedGrassFarmObj = grassFarmsList.find(g => (g._id || g.id) === sourcingFarmIdVal);
+      if (selectedGrassFarmObj) {
+        let total = selectedGrassFarmObj.totalArea || 0;
+        if (selectedGrassFarmObj.unit === 'Hectares') total = total * 2.47105;
+        if (selectedGrassFarmObj.unit === 'Sq Meters') total = total * 0.000247105;
+
+        const backendUtilized = selectedGrassFarmObj.utilizedArea || 0;
+        const currentRecordHarvested = initialData?.harvestedArea || 0;
+        const utilizedOtherThanCurrent = Math.max(0, backendUtilized - currentRecordHarvested);
+        const availableAreaVal = Math.max(0, total - utilizedOtherThanCurrent);
+        if (harvestedAreaVal > availableAreaVal) {
+          return (
+            <p className="text-red-500 text-xs font-bold mt-1.5 ml-0.5 animate-pulse">
+              ⚠️ Warning: Input ({harvestedAreaVal} Acres) exceeds available area ({availableAreaVal.toFixed(2)} Acres)!
+            </p>
+          );
+        }
+      }
+    }
+    return null;
+  })()}
     </>
 
       )}

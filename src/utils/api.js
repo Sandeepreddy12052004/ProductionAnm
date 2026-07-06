@@ -39,11 +39,14 @@ const ROUTE_PERMISSION_MAP = {
   '/api/medicines':                    ['HEALTH', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
   '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
   '/api/animals':                      ['ANIMAL_MANAGEMENT', 'FARM_ADMIN', 'CATTLE'],
+  '/api/lands':                        ['LAND', 'LAND_MANAGEMENT', 'FARM_ADMIN'],
   '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
   '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],
   '/api/logs/purchase':                ['PURCHASE_LOG', 'PURCHASE', 'FARM_ADMIN'],
   '/api/grass-management':             ['GRASS_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/bmcs':                         ['BMC', 'FARM_ADMIN', 'INCHARGE'],
+  '/api/semen-straws':                 ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
 };
 
 // ---------------------------------------------------------------------------
@@ -158,6 +161,7 @@ function evaluateFirewall(endpoint) {
     cleanPath === '/api/feed-items' || cleanPath.startsWith('/api/feed-items/') ||
     cleanPath === '/api/medicines' || cleanPath.startsWith('/api/medicines/') ||
     cleanPath === '/api/animals' || cleanPath.startsWith('/api/animals/') ||
+    cleanPath === '/api/bmcs' || cleanPath.startsWith('/api/bmcs/') ||
     cleanPath === '/api/tags' || cleanPath.startsWith('/api/tags/');
 
   if (isLookupPath) {
@@ -705,5 +709,30 @@ export const api = {
     create:              (data)     => apiRequest('/api/labors', 'POST', data),
     update:              (id, data) => apiRequest(`/api/labors/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/labors/${id}`, 'DELETE'),
+  },
+
+  // Land Management Configuration
+  lands: {
+    getAll:              ()         => apiRequest('/api/lands'),
+    create:              (data)     => apiRequest('/api/lands', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/lands/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/lands/${id}`, 'DELETE'),
+  },
+
+  // Bulk Milk Cooler Configuration
+  bmcs: {
+    getAll:              ()         => apiRequest('/api/bmcs'),
+    create:              (data)     => apiRequest('/api/bmcs', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/bmcs/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/bmcs/${id}`, 'DELETE'),
+  },
+
+  // Insemination Straw Configuration
+  semenStraws: {
+    getAll:              ()         => apiRequest('/api/semen-straws'),
+    get:                 (id)       => apiRequest(`/api/semen-straws/${id}`),
+    create:              (data)     => apiRequest('/api/semen-straws', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/semen-straws/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/semen-straws/${id}`, 'DELETE'),
   },
 };

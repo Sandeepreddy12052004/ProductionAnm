@@ -13,6 +13,7 @@ export default function GrassCollectionPage() {
       { name: 'noOfLoads',      label: 'No. of Loads',     type: 'number' },
       { name: 'weight',         label: 'Weight (KG)',      type: 'number' },
       { name: 'harvestedArea',  label: 'Harvested Area (Acres)', type: 'number' },
+      { name: 'grassAge',       label: 'Grass Age (Days)', type: 'number' },
       { name: 'yield',          label: 'Yield (KG/Acre)',  type: 'number', disabled: true, readOnly: true },
       { name: 'noOfWorkers',    label: 'No. of Workers',   type: 'number' },
       { name: 'laborId',        label: 'Labor',            type: 'select', options: [] },

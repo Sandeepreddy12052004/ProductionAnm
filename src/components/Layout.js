@@ -56,6 +56,18 @@ const Layout = ({ children }) => {
 
   }, []);
 
+  useEffect(() => {
+    const preventNumberScroll = (e) => {
+      if (document.activeElement && document.activeElement.type === 'number') {
+        document.activeElement.blur();
+      }
+    };
+    document.addEventListener('wheel', preventNumberScroll);
+    return () => {
+      document.removeEventListener('wheel', preventNumberScroll);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden bg-transparent">
 
