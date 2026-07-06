@@ -93,10 +93,10 @@ export default function InseminationManagementPg() {
     setEditingStraw(null);
     setFormData({
       batchNo: '',
-      breed: breeds.length > 0 ? breeds[0].name : '',
+      breed: '',
       noOfStraws: '',
       expiryDate: '',
-      purchaseDate: new Date().toISOString().split('T')[0],
+      purchaseDate: '',
       price: '',
       farmId: userRole !== 'SUPER_ADMIN' && userFarmId ? userFarmId : (farms[0]?._id || ''),
       status: 'ACTIVE'
@@ -428,9 +428,11 @@ export default function InseminationManagementPg() {
                   </label>
                   <select
                     value={formData.breed}
+                    required
                     onChange={(e) => setFormData(prev => ({ ...prev, breed: e.target.value }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   >
+                    <option value="" disabled>Select Breed</option>
                     {breeds.map(b => (
                       <option key={b._id} value={b.name}>{b.name}</option>
                     ))}
