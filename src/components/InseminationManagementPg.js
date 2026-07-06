@@ -195,7 +195,7 @@ export default function InseminationManagementPg() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <span className="p-2 bg-brand-rose/10 text-brand-rose rounded-xl">
+            <span className="p-2 bg-[#16223F]/10 text-[#16223F] rounded-xl">
               <Dna className="w-6 h-6 animate-pulse" />
             </span>
             Insemination Management
@@ -206,7 +206,7 @@ export default function InseminationManagementPg() {
         </div>
         <button
           onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 px-5 py-3 bg-brand-rose hover:bg-brand-rose/90 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 text-sm"
+          className="flex items-center gap-2 px-5 py-3 bg-[#16223F] hover:bg-[#2a3f75] text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 text-sm"
         >
           <Plus className="w-5 h-5" />
           Add Semen Straw Batch
@@ -238,9 +238,9 @@ export default function InseminationManagementPg() {
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Available Straws</p>
-            <h3 className="text-3xl font-black text-brand-rose">{totalAvailable}</h3>
+            <h3 className="text-3xl font-black text-[#16223F]">{totalAvailable}</h3>
           </div>
-          <div className="p-3 bg-brand-rose/10 text-brand-rose rounded-xl">
+          <div className="p-3 bg-[#16223F]/10 text-[#16223F] rounded-xl">
             <Dna className="w-6 h-6" />
           </div>
         </div>
@@ -255,7 +255,7 @@ export default function InseminationManagementPg() {
             placeholder="Search by Batch or Breed..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose text-slate-700 font-medium"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] text-slate-700 font-medium"
           />
         </div>
 
@@ -264,7 +264,7 @@ export default function InseminationManagementPg() {
           <select
             value={breedFilter}
             onChange={(e) => setBreedFilter(e.target.value)}
-            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose text-slate-700 font-medium"
+            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] text-slate-700 font-medium"
           >
             <option value="ALL">All Breeds</option>
             {uniqueBreeds.map(b => (
@@ -277,7 +277,7 @@ export default function InseminationManagementPg() {
             <select
               value={farmFilter}
               onChange={(e) => setFarmFilter(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose text-slate-700 font-medium"
+              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] text-slate-700 font-medium"
             >
               <option value="ALL">All Farms</option>
               {farms.map(f => (
@@ -295,7 +295,7 @@ export default function InseminationManagementPg() {
         </div>
       ) : filteredStraws.length === 0 ? (
         <div className="bg-white py-12 px-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-          <div className="p-4 bg-brand-rose/10 text-brand-rose rounded-full w-fit mx-auto">
+          <div className="p-4 bg-[#16223F]/10 text-[#16223F] rounded-full w-fit mx-auto">
             <Dna className="w-8 h-8" />
           </div>
           <h4 className="text-lg font-bold text-slate-800 mt-4">No Semen Straw Batches found</h4>
@@ -367,7 +367,7 @@ export default function InseminationManagementPg() {
                         <div className="flex justify-center items-center gap-2">
                           <button
                             onClick={() => handleOpenEditModal(s)}
-                            className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-brand-rose rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-[#16223F] rounded-lg transition-colors"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
@@ -392,7 +392,7 @@ export default function InseminationManagementPg() {
       {showStrawForm && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden transform transition-all duration-300 my-8">
-            <div className="bg-brand-navy px-6 py-4 flex justify-between items-center text-white">
+            <div className="bg-[#16223F] px-6 py-4 flex justify-between items-center text-white">
               <h3 className="font-black text-lg tracking-tight flex items-center gap-2">
                 <Dna className="w-5 h-5" />
                 {editingStraw ? 'Edit Semen Straw Batch' : 'Add Semen Straw Batch'}
@@ -418,7 +418,7 @@ export default function InseminationManagementPg() {
                     disabled={!!editingStraw}
                     onChange={(e) => setFormData(prev => ({ ...prev, batchNo: e.target.value }))}
                     placeholder="e.g. BATCH-A20"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold disabled:bg-slate-100 disabled:text-slate-400 uppercase"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold disabled:bg-slate-100 disabled:text-slate-400 uppercase"
                   />
                 </div>
 
@@ -429,7 +429,7 @@ export default function InseminationManagementPg() {
                   <select
                     value={formData.breed}
                     onChange={(e) => setFormData(prev => ({ ...prev, breed: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   >
                     {breeds.map(b => (
                       <option key={b._id} value={b.name}>{b.name}</option>
@@ -449,7 +449,7 @@ export default function InseminationManagementPg() {
                     value={formData.noOfStraws}
                     onChange={(e) => setFormData(prev => ({ ...prev, noOfStraws: e.target.value }))}
                     placeholder="e.g. 50"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   />
                 </div>
 
@@ -462,7 +462,7 @@ export default function InseminationManagementPg() {
                     required
                     value={formData.purchaseDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   />
                 </div>
 
@@ -474,7 +474,7 @@ export default function InseminationManagementPg() {
                     type="date"
                     value={formData.expiryDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   />
                 </div>
 
@@ -488,7 +488,7 @@ export default function InseminationManagementPg() {
                     value={formData.price}
                     onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                     placeholder="e.g. 150"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   />
                 </div>
 
@@ -499,7 +499,7 @@ export default function InseminationManagementPg() {
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="INACTIVE">INACTIVE</option>
@@ -514,7 +514,7 @@ export default function InseminationManagementPg() {
                     <select
                       value={formData.farmId}
                       onChange={(e) => setFormData(prev => ({ ...prev, farmId: e.target.value }))}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-rose/20 focus:border-brand-rose font-semibold"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
                     >
                       {farms.map(f => (
                         <option key={f._id} value={f._id}>{f.name}</option>
@@ -536,7 +536,7 @@ export default function InseminationManagementPg() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-brand-rose hover:bg-brand-rose/90 disabled:bg-brand-rose/40 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all duration-300 text-sm"
+                  className="px-5 py-2.5 bg-[#16223F] hover:bg-[#2a3f75] disabled:bg-[#16223F]/40 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all duration-300 text-sm"
                 >
                   {isSubmitting ? 'Saving...' : editingStraw ? 'Update Batch' : 'Add Batch'}
                 </button>
