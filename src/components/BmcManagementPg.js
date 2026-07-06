@@ -90,10 +90,24 @@ export default function BmcManagementPg() {
 
   const handleOpenCreateModal = () => {
     setEditingBmc(null);
+    let resolvedFarmId = '';
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      const role = u.role || '';
+      const fId = u.farmId && typeof u.farmId === 'object' ? (u.farmId._id || u.farmId.id) : u.farmId;
+      if (role !== 'SUPER_ADMIN' && fId) {
+        resolvedFarmId = fId;
+      }
+    }
+    if (!resolvedFarmId && farms.length > 0) {
+      resolvedFarmId = farms[0]._id;
+    }
+
     setBmcFormData({
       name: '',
       code: '',
-      farmId: userRole !== 'SUPER_ADMIN' && userFarmId ? userFarmId : (farms[0]?._id || ''),
+      farmId: resolvedFarmId,
       capacity: '',
       location: '',
       description: '',
@@ -116,18 +130,29 @@ export default function BmcManagementPg() {
     setShowBmcModal(true);
   };
 
-
-
   const handleSaveBmc = async (e) => {
     e.preventDefault();
-    if (!bmcFormData.name.trim() || !bmcFormData.code.trim() || !bmcFormData.capacity) {
-      swalError('Validation Error', 'Please fill in all required fields.');
+    
+    let resolvedFarmId = bmcFormData.farmId;
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      const role = u.role || '';
+      const fId = u.farmId && typeof u.farmId === 'object' ? (u.farmId._id || u.farmId.id) : u.farmId;
+      if (role !== 'SUPER_ADMIN' && fId) {
+        resolvedFarmId = fId;
+      }
+    }
+
+    if (!bmcFormData.name.trim() || !bmcFormData.code.trim() || !bmcFormData.capacity || !resolvedFarmId) {
+      swalError('Validation Error', 'Please fill in all required fields (including Enterprise Farm).');
       return;
     }
 
     setIsSubmitting(true);
     const payload = {
       ...bmcFormData,
+      farmId: resolvedFarmId,
       capacity: parseFloat(bmcFormData.capacity)
     };
 
