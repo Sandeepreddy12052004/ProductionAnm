@@ -13,7 +13,6 @@ import {
   MapPin,
   FileText,
   AlertTriangle,
-  Activity,
   Droplet
 } from 'lucide-react';
 
@@ -28,11 +27,7 @@ export default function BmcManagementPg() {
   const [showBmcModal, setShowBmcModal] = useState(false);
   const [editingBmc, setEditingBmc] = useState(null);
   
-  // Quick status update modal state
-  const [showQuickUpdateModal, setShowQuickUpdateModal] = useState(false);
-  const [quickUpdateBmc, setQuickUpdateBmc] = useState(null);
-  const [quickVolume, setQuickVolume] = useState('');
-  const [quickTemp, setQuickTemp] = useState('');
+
 
   // Search & filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,12 +116,7 @@ export default function BmcManagementPg() {
     setShowBmcModal(true);
   };
 
-  const handleOpenQuickUpdate = (bmc) => {
-    setQuickUpdateBmc(bmc);
-    setQuickVolume(bmc.currentVolume?.toString() || '0');
-    setQuickTemp(bmc.temperature?.toString() || '');
-    setShowQuickUpdateModal(true);
-  };
+
 
   const handleSaveBmc = async (e) => {
     e.preventDefault();
@@ -159,35 +149,7 @@ export default function BmcManagementPg() {
     }
   };
 
-  const handleSaveQuickUpdate = async (e) => {
-    e.preventDefault();
-    if (!quickUpdateBmc) return;
 
-    setIsSubmitting(true);
-    const volumeVal = parseFloat(quickVolume);
-    const capacityVal = quickUpdateBmc.capacity;
-
-    if (volumeVal > capacityVal) {
-      swalError('Validation Error', `Stored volume cannot exceed cooling capacity of ${capacityVal} L.`);
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      await api.bmcs.update(quickUpdateBmc._id, {
-        currentVolume: volumeVal,
-        temperature: quickTemp !== '' ? parseFloat(quickTemp) : null
-      });
-      swalSuccess('Success', 'Storage log updated successfully.');
-      setShowQuickUpdateModal(false);
-      fetchData();
-    } catch (error) {
-      console.error(error);
-      swalError('Error', 'Failed to log cooler data.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleDeleteBmc = async (id) => {
     const confirmed = await swalConfirm('Delete Cooler?', 'Are you sure you want to remove this Bulk Milk Cooler?');
@@ -473,13 +435,6 @@ export default function BmcManagementPg() {
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleOpenQuickUpdate(bmc)}
-                        className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1"
-                      >
-                        <Activity className="w-3.5 h-3.5" />
-                        Log Stored Volume
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -630,70 +585,7 @@ export default function BmcManagementPg() {
         </div>
       )}
 
-      {/* Quick Storage Update Modal (Volume / Temp sensor data) */}
-      {showQuickUpdateModal && quickUpdateBmc && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 rounded-[28px] w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
-            <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div>
-                <h3 className="text-lg font-black text-[#16223F]">Log Cooler Stored Volume</h3>
-                <p className="text-xs text-slate-400 font-semibold">{quickUpdateBmc.name} ({quickUpdateBmc.code})</p>
-              </div>
-              <button 
-                onClick={() => setShowQuickUpdateModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSaveQuickUpdate} className="p-8 space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Current Milk Volume (Liters)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  value={quickVolume}
-                  onChange={(e) => setQuickVolume(e.target.value)}
-                  placeholder={`Max capacity: ${quickUpdateBmc.capacity} L`}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Cooler Temperature Reading (°C)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={quickTemp}
-                  onChange={(e) => setQuickTemp(e.target.value)}
-                  placeholder="e.g. 3.5"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
-                />
-                <p className="text-[10px] text-slate-400 font-medium">Standard targets: 2°C to 4°C</p>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowQuickUpdateModal(false)}
-                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50 transition-all"
-                >
-                  {isSubmitting ? 'Logging...' : 'Save Storage Log'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
