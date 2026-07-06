@@ -215,8 +215,8 @@ export default function BmcManagementPg() {
 
     const matchesStatus = statusFilter === 'ALL' || bmc.status === statusFilter;
     
-    const bmcFarmId = bmc.farmId?._id || bmc.farmId;
-    const matchesFarm = farmFilter === 'ALL' || bmcFarmId === farmFilter;
+    const bmcFarmId = bmc.farmId && typeof bmc.farmId === 'object' ? (bmc.farmId._id || bmc.farmId.id) : bmc.farmId;
+    const matchesFarm = farmFilter === 'ALL' || String(bmcFarmId) === String(farmFilter);
 
     return matchesSearch && matchesStatus && matchesFarm;
   });
@@ -347,7 +347,7 @@ export default function BmcManagementPg() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredBmcs.map((bmc) => {
               const bmcFarm = farms.find(f => f._id === (bmc.farmId?._id || bmc.farmId));
-              const fillPercentage = Math.min(((bmc.currentVolume || 0) / bmc.capacity) * 100, 100);
+              const fillPercentage = bmc.capacity > 0 ? Math.min(((bmc.currentVolume || 0) / bmc.capacity) * 100, 100) : 0;
               
               // Temperature warning: Standard milk cooling target is 2°C - 4°C. Highlight if > 4°C.
               const isTempWarning = bmc.temperature !== undefined && bmc.temperature !== null && bmc.temperature > 4;
