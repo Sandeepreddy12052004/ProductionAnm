@@ -250,11 +250,16 @@ export default function DailyFeeding() {
     const newQuantities = {};
     const targetDateStr = new Date(selectedDate).toDateString();
     
-    const activeDayLogs = logs.filter(
-      (c) => new Date(c.date).toDateString() === targetDateStr && 
-             c.session === session &&
-             String(c.shedId || '').trim().toUpperCase() === String(activeShedId || '').trim().toUpperCase()
-    );
+    const activeDayLogs = logs.filter((c) => {
+      const dateMatches = new Date(c.date).toDateString() === targetDateStr;
+      const sessionMatches = c.session === session;
+      if (!dateMatches || !sessionMatches) return false;
+      
+      const logShed = String(c.shedId || '').trim().toUpperCase();
+      return logShed === String(activeShed?.code || '').trim().toUpperCase() ||
+             logShed === String(activeShed?.name || '').trim().toUpperCase() ||
+             logShed === String(activeShed?._id || '').trim().toUpperCase();
+    });
 
     activeDayLogs.forEach((c) => {
       const tag = String(c.tag_id || c.animalId).toUpperCase();
@@ -266,7 +271,7 @@ export default function DailyFeeding() {
     });
 
     setQuantities(newQuantities);
-  }, [logs, selectedDate, session, activeShedId, activeFeedTypes]);
+  }, [logs, selectedDate, session, activeShedId, activeShed, activeFeedTypes]);
 
   // Calculations for Side panel & overall stats
   const calculations = useMemo(() => {
@@ -294,7 +299,12 @@ export default function DailyFeeding() {
       );
 
       // Filter logs for this specific shed
-      const shedLogs = dayLogs.filter((c) => String(c.shedId).trim().toUpperCase() === String(shedKey).trim().toUpperCase());
+      const shedLogs = dayLogs.filter((c) => {
+        const logShed = String(c.shedId || '').trim().toUpperCase();
+        return logShed === String(s.code || '').trim().toUpperCase() ||
+               logShed === String(s.name || '').trim().toUpperCase() ||
+               logShed === String(s._id || '').trim().toUpperCase();
+      });
 
       // Calculate total for each active feed type in this shed
       const feedsBreakdown = [];
@@ -768,7 +778,7 @@ export default function DailyFeeding() {
                     <tr className="border-b border-slate-100 text-slate-400 uppercase font-black tracking-widest text-[9px]">
                       <th className="pb-3.5 font-bold">Shed No</th>
                       <th className="pb-3.5 font-bold text-right">No. of Animals</th>
-                      <th className="pb-3.5 font-bold text-right">Types of Feeds</th>
+                      <th className="pb-3.5 font-bold text-right">Types of Feeds & Quantity</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold">
