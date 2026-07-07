@@ -283,7 +283,7 @@
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-400 font-bold">Available Quantity:</span>
             <span className="text-emerald-600 font-black">
-              {availableMilk.toLocaleString()} L
+              {Math.max(0, availableMilk - totalEntered).toLocaleString()} L
             </span>
           </div>
           {totalEntered > availableMilk && (
