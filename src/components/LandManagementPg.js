@@ -208,6 +208,13 @@ export default function LandManagementPg() {
   };
 
   const handleUpdateStatus = async (land, status) => {
+    const statusLabel = status === 'AVAILABLE' ? 'Activate / Make Available' : (status === 'INACTIVE' ? 'Deactivate / Make Inactive' : 'Set to Maintenance');
+    const confirmed = await swalConfirm(
+      `${statusLabel}?`,
+      `Are you sure you want to change the status of "${land.name}" to ${status.toLowerCase()}?`
+    );
+    if (!confirmed) return;
+
     try {
       await api.lands.update(land._id, { status });
       swalSuccess('Status Updated', `Land status changed to ${status}.`);
@@ -232,12 +239,20 @@ export default function LandManagementPg() {
     return daysLeft <= 30; // Expired or expiring within 30 days
   });
 
-  const totalAreaAcres = lands.reduce((sum, land) => {
+  const activeLands = lands.filter(l => l.status !== 'INACTIVE');
+
+  const totalAreaAcres = activeLands.reduce((sum, land) => {
     let area = land.totalArea;
     if (land.unit === 'Hectares') area = land.totalArea * 2.47105;
     if (land.unit === 'Sq Meters') area = land.totalArea * 0.000247105;
     return sum + area;
   }, 0);
+
+  const totalUtilizedAcres = activeLands.reduce((sum, land) => {
+    return sum + (land.utilizedArea || 0);
+  }, 0);
+
+  const totalAvailableAcres = Math.max(0, totalAreaAcres - totalUtilizedAcres);
 
   // Filters logic
   const filteredLands = lands.filter((land) => {
@@ -295,11 +310,11 @@ export default function LandManagementPg() {
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Area Cultivated</span>
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Cultivable Area</span>
               <h3 className="text-2xl font-black text-[#16223F] leading-none">
                 {totalAreaAcres.toFixed(1)} <span className="text-xs font-bold text-slate-500">Acres</span>
               </h3>
-              <p className="text-[11px] text-slate-400 font-semibold">Across {totalLandCount} lands</p>
+              <p className="text-[11px] text-emerald-600 font-bold">🌾 {totalAvailableAcres.toFixed(1)} Acres empty (unharvested)</p>
             </div>
             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
               <Layers className="w-5 h-5" />
