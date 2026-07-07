@@ -45,6 +45,7 @@ export default function LandManagementPg() {
     location: '',
     description: '',
     ownershipType: 'OWNED',
+    status: 'AVAILABLE',
     landownerName: '',
     landownerPhone: '',
     rentAmount: '',
@@ -107,6 +108,7 @@ export default function LandManagementPg() {
       location: '',
       description: '',
       ownershipType: 'OWNED',
+      status: 'AVAILABLE',
       landownerName: '',
       landownerPhone: '',
       rentAmount: '',
@@ -128,6 +130,7 @@ export default function LandManagementPg() {
       location: land.location || '',
       description: land.description || '',
       ownershipType: land.ownershipType || 'OWNED',
+      status: land.status || 'AVAILABLE',
       landownerName: land.landownerName || '',
       landownerPhone: land.landownerPhone || '',
       rentAmount: land.rentAmount ? land.rentAmount.toString() : '',
@@ -380,9 +383,9 @@ export default function LandManagementPg() {
                     >
                       ✏️ Extend Lease
                     </button>
-                    {land.status !== 'MAINTENANCE' && (
+                    {land.status !== 'INACTIVE' && (
                       <button
-                        onClick={() => handleUpdateStatus(land, 'MAINTENANCE')}
+                        onClick={() => handleUpdateStatus(land, 'INACTIVE')}
                         className="flex-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold py-2 rounded-xl text-center transition-all active:scale-95"
                       >
                         🚫 Make Inactive
@@ -497,6 +500,8 @@ export default function LandManagementPg() {
                         <span className={`text-[9px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full border ${
                           land.status === 'AVAILABLE' 
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                            : land.status === 'INACTIVE'
+                            ? 'bg-rose-50 text-rose-600 border-rose-100'
                             : 'bg-amber-50 text-amber-600 border-amber-100'
                         }`}>
                           {land.status}
@@ -593,18 +598,26 @@ export default function LandManagementPg() {
                         </button>
                       )}
                       {land.status === 'AVAILABLE' ? (
-                        <button
-                          onClick={() => handleUpdateStatus(land, 'MAINTENANCE')}
-                          className="border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
-                        >
-                          Set Maint.
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleUpdateStatus(land, 'INACTIVE')}
+                            className="border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-rose-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
+                          >
+                            Set Inactive
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(land, 'MAINTENANCE')}
+                            className="border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
+                          >
+                            Set Maint.
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => handleUpdateStatus(land, 'AVAILABLE')}
                           className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
                         >
-                          Make Available
+                          Activate
                         </button>
                       )}
                     </div>
@@ -834,15 +847,28 @@ export default function LandManagementPg() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Location / GPS</label>
-                  <input
-                    type="text"
-                    value={landFormData.location}
-                    onChange={(e) => setLandFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="e.g. GPS section or coordinates"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
-                  />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Land Status</label>
+                  <select
+                    value={landFormData.status}
+                    onChange={(e) => setLandFormData(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
+                  >
+                    <option value="AVAILABLE">Active (Available)</option>
+                    <option value="INACTIVE">Inactive (Deactivated)</option>
+                    <option value="MAINTENANCE">Maintenance (Resting)</option>
+                  </select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Location / GPS</label>
+                <input
+                  type="text"
+                  value={landFormData.location}
+                  onChange={(e) => setLandFormData(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="e.g. GPS section or coordinates"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
+                />
               </div>
 
               {/* Lease Details section - dynamically shown if LEASED */}
