@@ -1085,10 +1085,17 @@ const OpsLogPg = ({ moduleConfig }) => {
                   <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
                   {dynamicFields.filter(f => f.name !== 'date').map(f => {
                     let cellVal = log[f.name];
-                    if (cellVal && typeof cellVal === 'object') {
+                    if (cellVal && Array.isArray(cellVal)) {
+                      cellVal = cellVal.map(item => {
+                        if (item && typeof item === 'object' && item.name && item.liters !== undefined) {
+                          return `${item.name} (${item.liters} L)`;
+                        }
+                        return String(item);
+                      }).join(', ');
+                    } else if (cellVal && typeof cellVal === 'object') {
                       if (f.name === 'sourcingFarmId') {
                         const farmName = cellVal.name || '';
-                        const destinationName = cellVal.sourcingTo?.name || cellVal.sourcingTo?.code || '';
+                        const destinationName = cellVal.farmId?.name || cellVal.farmId?.code || '';
                         cellVal = farmName + (destinationName ? ` (${destinationName})` : '');
                       } else {
                         cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
@@ -1176,7 +1183,14 @@ const OpsLogPg = ({ moduleConfig }) => {
               </div>
               {dynamicFields.map(field => {
                 let cellVal = selectedEntry[field.name];
-                if (cellVal && typeof cellVal === 'object') {
+                if (cellVal && Array.isArray(cellVal)) {
+                  cellVal = cellVal.map(item => {
+                    if (item && typeof item === 'object' && item.name && item.liters !== undefined) {
+                      return `${item.name} (${item.liters} L)`;
+                    }
+                    return String(item);
+                  }).join(', ');
+                } else if (cellVal && typeof cellVal === 'object') {
                   cellVal = cellVal.name || cellVal.code || cellVal.title || cellVal.id || cellVal._id || String(cellVal);
                 }
                 if (field.type === 'date' && cellVal) {

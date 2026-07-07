@@ -314,7 +314,7 @@ export default function LandManagementPg() {
               <h3 className="text-2xl font-black text-[#16223F] leading-none">
                 {totalAreaAcres.toFixed(1)} <span className="text-xs font-bold text-slate-500">Acres</span>
               </h3>
-              <p className="text-[11px] text-emerald-600 font-bold">🌾 {totalAvailableAcres.toFixed(1)} Acres empty (unharvested)</p>
+              <p className="text-[11px] text-emerald-600 font-bold">🌾 {totalAvailableAcres.toFixed(1)} Acres unharvested </p>
             </div>
             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
               <Layers className="w-5 h-5" />

@@ -24,6 +24,11 @@ export default function DailyFeeding() {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [session, setSession] = useState("MORNING");
   const [activeShedId, setActiveShedId] = useState("");
+  const [summarySession, setSummarySession] = useState("MORNING");
+
+  useEffect(() => {
+    setSummarySession(session);
+  }, [session]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -262,35 +267,17 @@ export default function DailyFeeding() {
     setQuantities(newQuantities);
   }, [logs, selectedDate, session, activeShedId, activeFeedTypes]);
 
-  // Active Shed Totals calculation
-  const activeShedTotals = useMemo(() => {
-    const totals = {};
-    activeFeedTypes.forEach(feed => {
-      totals[feed.name] = 0;
-    });
-
-    if (!activeShed) return totals;
-
-    const numRows = activeShed.lines || 1;
-    for (let r = 1; r <= numRows; r++) {
-      const rowKey = `ROW ${r}`;
-      const q = quantities[rowKey] || {};
-      Object.keys(totals).forEach((f) => {
-        totals[f] += Number(q[f]) || 0;
-      });
-    }
-
-    return totals;
-  }, [activeShed, quantities, activeFeedTypes]);
-
   // Calculations for Side panel & overall stats
   const calculations = useMemo(() => {
     const targetDateStr = new Date(selectedDate).toDateString();
     
-    // Logs for selected date and session
-    const dayLogs = logs.filter(
-      (c) => new Date(c.date).toDateString() === targetDateStr && c.session === session
-    );
+    // Logs for selected date and summarySession (Morning, Evening, or All Day)
+    const dayLogs = logs.filter((c) => {
+      const dateMatches = new Date(c.date).toDateString() === targetDateStr;
+      if (!dateMatches) return false;
+      if (summarySession === "ALL_DAY") return true;
+      return c.session === summarySession;
+    });
 
     // Summary of all sheds for active session
     const shedsSummary = farmSheds.map((s) => {
@@ -305,36 +292,50 @@ export default function DailyFeeding() {
           !["SOLD", "DECEASED", "DEAD"].includes(a.status)
       );
 
-      const totalShedQty = dayLogs
-        .filter((c) => String(c.shedId).trim().toUpperCase() === String(shedKey).trim().toUpperCase())
-        .reduce((sum, c) => {
-          let rowSum = 0;
-          activeFeedTypes.forEach(feed => {
-            rowSum += c[feed.name] || 0;
+      // Filter logs for this specific shed
+      const shedLogs = dayLogs.filter((c) => String(c.shedId).trim().toUpperCase() === String(shedKey).trim().toUpperCase());
+
+      // Calculate total for each active feed type in this shed
+      const feedsBreakdown = [];
+      activeFeedTypes.forEach(feed => {
+        const totalFeedVal = shedLogs.reduce((sum, c) => sum + (Number(c[feed.name]) || 0), 0);
+        if (totalFeedVal > 0) {
+          feedsBreakdown.push({
+            name: feed.label,
+            amount: totalFeedVal,
+            unit: feed.unit
           });
-          return sum + rowSum;
-        }, 0);
+        }
+      });
 
       return {
         name: shedKey,
-        totalQty: totalShedQty,
-        animalCount: shedAnimals.length
+        animalCount: shedAnimals.length,
+        feedsBreakdown
       };
     });
 
-    const sessionTotal = dayLogs.reduce((sum, c) => {
-      let rowSum = 0;
-      activeFeedTypes.forEach(feed => {
-        rowSum += c[feed.name] || 0;
-      });
-      return sum + rowSum;
-    }, 0);
+    const totalAnimals = shedsSummary.reduce((sum, s) => sum + s.animalCount, 0);
+
+    // Grand total per feed type across all sheds
+    const grandTotalFeeds = [];
+    activeFeedTypes.forEach(feed => {
+      const totalFeedVal = dayLogs.reduce((sum, c) => sum + (Number(c[feed.name]) || 0), 0);
+      if (totalFeedVal > 0) {
+        grandTotalFeeds.push({
+          name: feed.label,
+          amount: totalFeedVal,
+          unit: feed.unit
+        });
+      }
+    });
 
     return {
       shedsSummary,
-      sessionTotal,
+      totalAnimals,
+      grandTotalFeeds
     };
-  }, [logs, selectedDate, session, farmSheds, animals, selectedFarmId, activeFeedTypes]);
+  }, [logs, selectedDate, summarySession, farmSheds, animals, selectedFarmId, activeFeedTypes]);
 
   // Handle Input Changes
   const handleQuantityChange = (tag, field, value) => {
@@ -499,10 +500,10 @@ export default function DailyFeeding() {
       {isLoading ? (
         <SkeletonLoader type="table" columns={4} />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        <div className="flex flex-col gap-8 w-full">
           
           {/* LEFT COLUMN: Configuration Panel, Overall Stats, & Workspace */}
-          <div className="xl:col-span-8 flex flex-col gap-6 w-full">
+          <div className="flex flex-col gap-6 w-full">
             
             {/* 1. Global Setup Filters */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] p-6">
@@ -709,13 +710,7 @@ export default function DailyFeeding() {
                   </div>
 
                   {/* Form Footer: Save Inline Shed Action */}
-                  <div className="p-8 border-t border-slate-100 flex justify-between items-center bg-slate-50/20">
-                    <div className="text-xs text-slate-400 font-bold">
-                      Shed Total Feed: <span className="text-sm font-black text-slate-800 ml-1">
-                        {Object.values(activeShedTotals).reduce((sum, val) => sum + (Number(val) || 0), 0).toLocaleString()} units
-                      </span>
-                    </div>
-
+                  <div className="p-8 border-t border-slate-100 flex justify-end items-center bg-slate-50/20">
                     {/* Save this specific shed */}
                     <button
                       onClick={handleSaveActiveShed}
@@ -738,27 +733,41 @@ export default function DailyFeeding() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Real-Time Sheds Summary */}
-          <div className="xl:col-span-4 flex flex-col gap-6 w-full">
+          {/* LOWER SECTION: Real-Time Sheds Summary */}
+          <div className="w-full">
             
             {/* Sheds Summary Board */}
             <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
-              <div className="flex flex-col gap-1 mb-6">
-                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-[0.15em]">
-                  REAL-TIME OVERVIEW
-                </span>
-                <h3 className="text-sm font-black text-slate-900">
-                  Sheds Summary ({session === "MORNING" ? "Morning" : "Evening"})
-                </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-50 pb-5">
+                <div>
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-[0.15em] block">
+                    REAL-TIME OVERVIEW
+                  </span>
+                  <h3 className="text-sm font-black text-slate-900 mt-1">
+                    Sheds Summary
+                  </h3>
+                </div>
+                <div className="w-48 relative">
+                  <select
+                    value={summarySession}
+                    onChange={(e) => setSummarySession(e.target.value)}
+                    className="w-full h-9 bg-slate-50 border border-slate-200/80 rounded-xl px-3 pr-8 text-xs font-black text-slate-700 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 appearance-none transition-all duration-300 cursor-pointer"
+                  >
+                    <option value="MORNING">☀️ Morning Session</option>
+                    <option value="EVENING">🌙 Evening Session</option>
+                    <option value="ALL_DAY">📅 All Day</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
               </div>
 
               <div className="overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 uppercase font-black tracking-widest text-[9px]">
-                      <th className="pb-3.5 font-bold">Shed</th>
-                      <th className="pb-3.5 font-bold text-right">Animals</th>
-                      <th className="pb-3.5 font-bold text-right">Total Feed</th>
+                      <th className="pb-3.5 font-bold">Shed No</th>
+                      <th className="pb-3.5 font-bold text-right">No. of Animals</th>
+                      <th className="pb-3.5 font-bold text-right">Types of Feeds</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold">
@@ -769,7 +778,19 @@ export default function DailyFeeding() {
                           <span>{s.name}</span>
                         </td>
                         <td className="py-3.5 text-right text-slate-600 font-bold">{s.animalCount}</td>
-                        <td className="py-3.5 text-right text-[#16223F] font-bold">{s.totalQty.toLocaleString()} units</td>
+                        <td className="py-3.5 text-right font-medium">
+                          {s.feedsBreakdown.length === 0 ? (
+                            <span className="text-slate-400 text-[10px]">No feed logged</span>
+                          ) : (
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              {s.feedsBreakdown.map((f, i) => (
+                                <span key={i} className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200/50">
+                                  {f.name.split(" (")[0]}: {f.amount.toLocaleString()} {f.unit}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {calculations.shedsSummary.length === 0 && (
@@ -783,9 +804,23 @@ export default function DailyFeeding() {
                 </table>
               </div>
 
-              <div className="mt-6 pt-5 border-t border-slate-100/80 flex justify-between items-center text-xs font-black">
-                <span className="text-slate-400 uppercase tracking-wider text-[9px]">Grand Total</span>
-                <span className="text-sm text-slate-800">{calculations.sessionTotal.toLocaleString()} units</span>
+              <div className="mt-6 pt-5 border-t border-slate-100/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-black">
+                <div>
+                  <span className="text-slate-400 uppercase tracking-wider text-[9px]">Grand Total Animals</span>
+                  <div className="text-sm text-slate-800 mt-0.5">{calculations.totalAnimals.toLocaleString()}</div>
+                </div>
+                {calculations.grandTotalFeeds.length > 0 && (
+                  <div className="text-right">
+                    <span className="text-slate-400 uppercase tracking-wider text-[9px] block">Grand Total Feeds</span>
+                    <div className="flex flex-wrap gap-1.5 mt-1 justify-end">
+                      {calculations.grandTotalFeeds.map((f, i) => (
+                        <span key={i} className="inline-flex items-center px-2.5 py-0.75 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm">
+                          {f.name.split(" (")[0]}: {f.amount.toLocaleString()} {f.unit}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -94,7 +94,8 @@ export default function FeedInventoryPg() {
         remainingStock: remainingStock,
         lastUpdated: lastUpdated,
         lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
-        lastUsage: lastUsageLog ? (Number(lastUsageLog.usage) || 0) : 0
+        lastUsage: lastUsageLog ? (Number(lastUsageLog.usage) || 0) : 0,
+        unit: item.type || "KG"
       });
     }
     
@@ -114,12 +115,14 @@ export default function FeedInventoryPg() {
   const lastRefilledItem = useMemo(() => {
     const refilledLog = logs.find(log => Number(log.bought) > 0);
     if (!refilledLog) return null;
+    const feedItemObj = feedItems.find(item => String(item.name || "").trim().toUpperCase() === String(refilledLog.feedType || "").trim().toUpperCase());
     return {
       name: refilledLog.feedType,
       amount: Number(refilledLog.bought),
-      date: refilledLog.purchaseDate || refilledLog.createdAt || refilledLog.date
+      date: refilledLog.purchaseDate || refilledLog.createdAt || refilledLog.date,
+      unit: feedItemObj?.type || "KG"
     };
-  }, [logs]);
+  }, [logs, feedItems]);
 
   const lowStockItemsCount = useMemo(() => {
     return currentStockItems.filter(item => item.remainingStock < 100).length;
@@ -182,7 +185,7 @@ export default function FeedInventoryPg() {
                   <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Last Stock Refill</p>
                   <h2 className="text-2xl font-black text-[#16223F] mt-1">
                     {lastRefilledItem 
-                      ? `+${lastRefilledItem.amount.toLocaleString()} KG`
+                      ? `+${lastRefilledItem.amount.toLocaleString()} ${lastRefilledItem.unit}`
                       : "No refill logs"
                     }
                   </h2>
@@ -279,7 +282,7 @@ export default function FeedInventoryPg() {
                             🌾 {item.name}
                           </td>
                           <td className="p-4 text-sm font-extrabold text-[#16223F]">
-                            {item.remainingStock.toLocaleString()} KG
+                            {item.remainingStock.toLocaleString()} {item.unit}
                           </td>
                           <td className="p-4 text-center">
                             <span
@@ -294,9 +297,9 @@ export default function FeedInventoryPg() {
                           </td>
                           <td className="p-4 text-xs font-semibold text-slate-500">
                             {item.lastBought > 0 ? (
-                              <span className="text-emerald-600">+{item.lastBought} KG bought</span>
+                              <span className="text-emerald-600">+{item.lastBought} {item.unit} bought</span>
                             ) : item.lastUsage > 0 ? (
-                              <span className="text-amber-600">-{item.lastUsage} KG used</span>
+                              <span className="text-amber-600">-{item.lastUsage} {item.unit} used</span>
                             ) : (
                               "No transactions logged"
                             )}

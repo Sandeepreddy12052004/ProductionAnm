@@ -80,7 +80,7 @@
     return null;
   };
 
-  const LaborSelector = ({ laborsList = [], value, onChange }) => {
+  const LaborSelector = ({ laborsList = [], value, onChange, maxSelectable }) => {
     const [searchTerm, setSearchTerm] = useState("");
     
     const selectedIds = React.useMemo(() => {
@@ -94,6 +94,15 @@
       if (selectedIds.includes(id)) {
         nextIds = selectedIds.filter(x => x !== id);
       } else {
+        const limit = Number(maxSelectable);
+        if (isNaN(limit) || limit <= 0) {
+          swalError("Validation Error", "Please enter the 'No. of Workers' before selecting laborers.");
+          return;
+        }
+        if (selectedIds.length >= limit) {
+          swalError("Limit Reached", `You cannot select more than ${limit} laborers as specified in 'No. of Workers'.`);
+          return;
+        }
         nextIds = [...selectedIds, id];
       }
       onChange(nextIds);
@@ -176,8 +185,121 @@
     );
   };
 
+  const BmcLitersSelector = ({ bmcsList = [], value, onChange, availableMilk }) => {
+    const selectedBmcs = React.useMemo(() => {
+      if (Array.isArray(value)) return value;
+      return [];
+    }, [value]);
+
+    const handleSelectBmc = (bmcId) => {
+      if (!bmcId) return;
+      const bmc = bmcsList.find(b => (b._id || b.id) === bmcId);
+      if (!bmc) return;
+
+      if (selectedBmcs.some(b => b.bmcId === bmcId)) return;
+
+      const next = [...selectedBmcs, { bmcId, name: bmc.name || bmc.code, liters: 0 }];
+      onChange(next);
+    };
+
+    const handleRemoveBmc = (bmcId) => {
+      const next = selectedBmcs.filter(b => b.bmcId !== bmcId);
+      onChange(next);
+    };
+
+    const handleLitersChange = (bmcId, litersVal) => {
+      const liters = litersVal === "" ? "" : Number(litersVal);
+      const next = selectedBmcs.map(b => {
+        if (b.bmcId === bmcId) {
+          return { ...b, liters };
+        }
+        return b;
+      });
+      onChange(next);
+    };
+
+    const totalEntered = selectedBmcs.reduce((sum, b) => sum + (Number(b.liters) || 0), 0);
+
+    return (
+      <div className="space-y-4 mt-2 w-full">
+        <div>
+          <select
+            className="w-full h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs font-semibold outline-none focus:border-[#D1867D] transition-all"
+            onChange={(e) => {
+              handleSelectBmc(e.target.value);
+              e.target.value = "";
+            }}
+          >
+            <option value="">Select BMC to add...</option>
+            {bmcsList
+              .filter(b => !selectedBmcs.some(sb => sb.bmcId === (b._id || b.id)))
+              .map(b => (
+                <option key={b._id || b.id} value={b._id || b.id}>
+                  ❄️ {b.name || b.code} (Cap: {b.capacity} L)
+                </option>
+              ))
+            }
+          </select>
+        </div>
+
+        {selectedBmcs.length > 0 && (
+          <div className="space-y-3">
+            {selectedBmcs.map(b => (
+              <div key={b.bmcId} className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] animate-fadeIn">
+                <div className="flex-1">
+                  <span className="text-xs font-bold text-slate-800">❄️ {b.name}</span>
+                </div>
+                <div className="w-32 relative flex items-center">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="Liters"
+                    value={b.liters}
+                    onChange={(e) => handleLitersChange(b.bmcId, e.target.value)}
+                    className="w-full h-9 px-3 pr-8 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D]"
+                  />
+                  <span className="absolute right-3 text-[10px] font-black text-slate-400">L</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveBmc(b.bmcId)}
+                  className="text-red-500 hover:text-red-700 font-bold p-1 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-2">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-400 font-bold">Total Liters Entered:</span>
+            <span className={`font-black ${totalEntered > availableMilk ? 'text-red-600' : 'text-slate-800'}`}>
+              {totalEntered.toLocaleString()} L
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-400 font-bold">Available Quantity:</span>
+            <span className="text-emerald-600 font-black">
+              {availableMilk.toLocaleString()} L
+            </span>
+          </div>
+          {totalEntered > availableMilk && (
+            <p className="text-[10px] text-red-500 font-bold mt-1">
+              ⚠️ Entered quantity exceeds available milk.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const LogForm = ({ title, fields = [], onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
     const [checkedRows, setCheckedRows] = useState({});
+    const [bmcsList, setBmcsList] = useState([]);
+    const [availableMilk, setAvailableMilk] = useState(0);
     const [medicinesList, setMedicinesList] = useState([]);
     const [vaccinesList, setVaccinesList] = useState([]);
     const [feedItemsList, setFeedItemsList] = useState([]);
@@ -627,6 +749,71 @@
         });
       }
     }, [fields]);
+
+    React.useEffect(() => {
+      const needsBmcs = (fields || []).some(f => f.name === 'bmcs');
+      if (needsBmcs) {
+        import('../utils/api').then(({ api }) => {
+          api.bmcs.getAll().then(res => {
+            const raw = Array.isArray(res) ? res : (res?.data ?? []);
+            setBmcsList(raw.filter(item => item.status === 'ACTIVE' && item.isDeleted !== true));
+          }).catch(console.error);
+        });
+      }
+    }, [fields]);
+
+    React.useEffect(() => {
+      const needsBmcs = (fields || []).some(f => f.name === 'bmcs');
+      if (needsBmcs && formData.date) {
+        import('../utils/api').then(({ api }) => {
+          Promise.all([
+            api.milk.collections.getAll().catch(() => []),
+            api.milk.quality.getAll().catch(() => [])
+          ]).then(([collectionsRes, qaRes]) => {
+            const collectionsList = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes?.data ?? []);
+            const qaLogsList = Array.isArray(qaRes) ? qaRes : (qaRes?.data ?? []);
+            
+            const targetDateStr = new Date(formData.date).toDateString();
+            
+            const dayCollections = collectionsList.filter(
+              (c) => new Date(c.date).toDateString() === targetDateStr && !c.isDeleted
+            );
+            
+            const groups = {};
+            dayCollections.forEach(c => {
+              const groupKey = `${c.shedId}_${c.session}`;
+              if (!groups[groupKey]) {
+                groups[groupKey] = {
+                  quantity: 0,
+                  selfConsumption: c.selfConsumption || 0
+                };
+              }
+              groups[groupKey].quantity += c.quantity || 0;
+            });
+            
+            let totalNet = 0;
+            Object.values(groups).forEach(g => {
+              totalNet += Math.max(0, g.quantity - g.selfConsumption);
+            });
+
+            let usedInOtherQa = 0;
+            qaLogsList.forEach(qa => {
+              const isSameRecord = qa._id === initialData?._id || qa.id === initialData?.id;
+              if (!isSameRecord && new Date(qa.date).toDateString() === targetDateStr && !qa.isDeleted) {
+                if (Array.isArray(qa.bmcs)) {
+                  qa.bmcs.forEach(b => {
+                    usedInOtherQa += Number(b.liters) || 0;
+                  });
+                }
+              }
+            });
+
+            const remaining = Math.max(0, totalNet - usedInOtherQa);
+            setAvailableMilk(remaining);
+          }).catch(console.error);
+        });
+      }
+    }, [fields, formData.date, initialData]);
 
     React.useEffect(() => {
       const safeFields = fields || [];
@@ -1239,6 +1426,19 @@
                 return;
               }
 
+              if (fields.some(f => f.name === 'bmcs')) {
+                const bmcList = formData.bmcs || [];
+                const totalLiters = bmcList.reduce((sum, b) => sum + (Number(b.liters) || 0), 0);
+                if (totalLiters > availableMilk) {
+                  swalError("Validation Error", `Total liters entered (${totalLiters} L) cannot exceed the available milk (${availableMilk} L) from collections.`);
+                  return;
+                }
+                if (bmcList.some(b => Number(b.liters) <= 0)) {
+                  swalError("Validation Error", "Please specify a positive number of liters for all selected BMCs.");
+                  return;
+                }
+              }
+
               const sourcingFarmIdVal = formData.sourcingFarmId;
               const harvestedAreaVal = Number(formData.harvestedArea);
               if (fields.some(f => f.name === 'harvestedArea') && sourcingFarmIdVal && !isNaN(harvestedAreaVal) && harvestedAreaVal > 0) {
@@ -1424,17 +1624,31 @@
                     <LaborSelector
                       laborsList={laborsList}
                       value={formData.laborId}
+                      maxSelectable={formData.noOfWorkers}
                       onChange={(newValue) => {
                         setFormData(prev => {
                           const updated = { ...prev, laborId: newValue };
                           if (fields.some(f => f.name === 'noOfWorkers')) {
                             const count = Array.isArray(newValue) ? newValue.length : (newValue ? 1 : 0);
-                            if (count > 0) {
+                            const currentWorkers = Number(prev.noOfWorkers) || 0;
+                            if (currentWorkers === 0 && count > 0) {
                               updated.noOfWorkers = count;
                             }
                           }
                           return updated;
                         });
+                      }}
+                    />
+                  ) : field.name === "bmcs" ? (
+                    <BmcLitersSelector
+                      bmcsList={bmcsList}
+                      value={formData.bmcs}
+                      availableMilk={availableMilk}
+                      onChange={(newValue) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          bmcs: newValue
+                        }));
                       }}
                     />
                   ) : ["symptoms", "diagnosis", "treatment"].includes(field.name) && (title?.toLowerCase().includes("treatment") || title?.toLowerCase().includes("health") || title?.toLowerCase().includes("symptom")) ? (
