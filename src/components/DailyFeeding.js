@@ -642,10 +642,10 @@ export default function DailyFeeding() {
                     </div>
                   </div>
 
-                  {/* Table Workspace */}
-                  <div className="p-8 overflow-x-auto">
+                  {/* Row Cards List */}
+                  <div className="p-8 space-y-8 max-h-[65vh] overflow-y-auto">
                     {activeShedAnimalsCount === 0 && (
-                      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                      <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold flex items-center gap-2">
                         <span>⚠️ This shed has no active animals. Save action is disabled.</span>
                       </div>
                     )}
@@ -654,69 +654,69 @@ export default function DailyFeeding() {
                         ⚠️ No active feed items defined for this farm. Configure them in Feed Items first.
                       </div>
                     ) : (
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="border-b border-slate-200 text-slate-400 uppercase font-black tracking-widest text-[9px]">
-                            <th className="pb-3.5 font-bold pl-2">Row No</th>
-                            <th className="pb-3.5 font-bold text-center">Animals</th>
-                            {activeFeedTypes.map(feed => (
-                              <th key={feed.name} className="pb-3.5 font-bold text-right pr-4">
-                                {feed.label.split(" (")[0]} ({feed.unit})
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-bold">
-                          {Array.from({ length: activeShed?.lines || 1 }).map((_, index) => {
-                            const r = index + 1;
-                            const rowKey = `ROW ${r}`;
-                            const q = quantities[rowKey] || {};
+                      Array.from({ length: activeShed?.lines || 1 }).map((_, index) => {
+                        const r = index + 1;
+                        const rowKey = `ROW ${r}`;
+                        const q = quantities[rowKey] || {};
 
-                            // Count animals in this specific line/row
-                            const rowAnimalsCount = animals.filter(
-                              (a) =>
-                                (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
-                                 String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase()) &&
-                                String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-                                !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
-                                Number(a.lineNo) === r
-                            ).length;
+                        // Count animals in this specific line/row
+                        const rowAnimalsCount = animals.filter(
+                          (a) =>
+                            (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
+                             String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase()) &&
+                            String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
+                            !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
+                            Number(a.lineNo) === r
+                        ).length;
 
-                            return (
-                              <tr key={rowKey} className="text-slate-700 hover:bg-slate-50/50 transition-colors">
-                                <td className="py-4 pl-2 font-extrabold text-slate-800">
-                                  🏡 Row {r}
-                                </td>
-                                <td className="py-4 text-center">
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-100 text-slate-600">
-                                    🐄 {rowAnimalsCount}
-                                  </span>
-                                </td>
-                                {activeFeedTypes.map((feed, feedIndex) => {
-                                  const val = q[feed.name] !== undefined ? q[feed.name] : "";
-                                  return (
-                                    <td key={feed.name} className="py-4 text-right pr-2">
-                                      <div className="relative inline-flex items-center w-28">
-                                        <input
-                                          id={`feed-input-${r}-${feed.name}`}
-                                          type="number"
-                                          min="0"
-                                          step="any"
-                                          value={val}
-                                          onChange={(e) => handleQuantityChange(rowKey, feed.name, e.target.value)}
-                                          onKeyDown={(e) => handleKeyDown(e, r, feedIndex)}
-                                          placeholder="0.0"
-                                          className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-800 text-right outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all duration-200"
-                                        />
-                                      </div>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                        return (
+                          <div 
+                            key={rowKey}
+                            className="bg-slate-50/40 border border-slate-200/60 rounded-3xl p-6 shadow-[0_4px_16px_rgba(0,0,0,0.01)] hover:shadow-md transition-all duration-300"
+                          >
+                            {/* Row Card Header */}
+                            <div className="flex justify-between items-center pb-4 mb-6 border-b border-slate-100">
+                              <span className="text-sm font-black text-slate-800 flex items-center gap-2">
+                                🏡 Row {r}
+                              </span>
+                              <span className="text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg">
+                                🐄 {rowAnimalsCount} Animals
+                              </span>
+                            </div>
+
+                            {/* Inputs Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                              {activeFeedTypes.map((feed, feedIndex) => {
+                                const val = q[feed.name] !== undefined ? q[feed.name] : "";
+                                const unit = feed.unit;
+
+                                return (
+                                  <div key={feed.name} className="flex flex-col gap-1.5">
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-0.5">
+                                      {feed.label.split(" (")[0]}
+                                    </label>
+                                    <div className="relative flex items-center">
+                                      <input
+                                        id={`feed-input-${r}-${feed.name}`}
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        value={val}
+                                        onChange={(e) => handleQuantityChange(rowKey, feed.name, e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(e, r, feedIndex)}
+                                        placeholder="0.0"
+                                        className="w-full h-11 px-4 pr-12 bg-white border border-slate-200/80 rounded-xl text-xs font-black text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all duration-200"
+                                      />
+                                      <span className="absolute right-4 text-[9px] font-extrabold text-slate-400 pointer-events-none">{unit}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                          </div>
+                        );
+                      })
                     )}
                   </div>
 
@@ -772,13 +772,17 @@ export default function DailyFeeding() {
                 </div>
               </div>
 
-              <div className="overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse min-w-[700px]">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 uppercase font-black tracking-widest text-[9px]">
                       <th className="pb-3.5 font-bold">Shed No</th>
                       <th className="pb-3.5 font-bold text-right">No. of Animals</th>
-                      <th className="pb-3.5 font-bold text-right">Types of Feeds & Quantity</th>
+                      {activeFeedTypes.map((feed) => (
+                        <th key={feed.name} className="pb-3.5 font-bold text-right">
+                          {feed.label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold">
@@ -789,49 +793,46 @@ export default function DailyFeeding() {
                           <span>{s.name}</span>
                         </td>
                         <td className="py-3.5 text-right text-slate-600 font-bold">{s.animalCount}</td>
-                        <td className="py-3.5 text-right font-medium">
-                          {s.feedsBreakdown.length === 0 ? (
-                            <span className="text-slate-400 text-[10px]">No feed logged</span>
-                          ) : (
-                            <div className="flex flex-wrap justify-end gap-1.5">
-                              {s.feedsBreakdown.map((f, i) => (
-                                <span key={i} className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200/50">
-                                  {f.name.split(" (")[0]}: {f.amount.toLocaleString()} {f.unit}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </td>
+                        {activeFeedTypes.map((feed) => {
+                          const feedVal = s.feedsBreakdown.find((f) => f.name === feed.label)?.amount || 0;
+                          return (
+                            <td key={feed.name} className="py-3.5 text-right text-slate-600 font-bold">
+                              {feedVal > 0 ? `${feedVal.toLocaleString()} ${feed.unit}` : "-"}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                     {calculations.shedsSummary.length === 0 && (
                       <tr>
-                        <td className="py-6 text-center text-slate-400" colSpan={3}>
+                        <td className="py-6 text-center text-slate-400" colSpan={activeFeedTypes.length + 2}>
                           No sheds tracked yet.
                         </td>
                       </tr>
                     )}
                   </tbody>
+                  {calculations.shedsSummary.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t-2 border-slate-200 text-slate-800 font-extrabold bg-slate-50/40 text-[10px]">
+                        <td className="py-4 font-black flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                          <span>Grand Total</span>
+                        </td>
+                        <td className="py-4 text-right text-slate-800 font-black">
+                          {calculations.totalAnimals.toLocaleString()}
+                        </td>
+                        {activeFeedTypes.map((feed) => {
+                          const grandVal = calculations.grandTotalFeeds.find((f) => f.name === feed.label)?.amount || 0;
+                          return (
+                            <td key={feed.name} className="py-4 text-right text-slate-800 font-black">
+                              {grandVal > 0 ? `${grandVal.toLocaleString()} ${feed.unit}` : "-"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
-              </div>
-
-              <div className="mt-6 pt-5 border-t border-slate-100/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-black">
-                <div>
-                  <span className="text-slate-400 uppercase tracking-wider text-[9px]">Grand Total Animals</span>
-                  <div className="text-sm text-slate-800 mt-0.5">{calculations.totalAnimals.toLocaleString()}</div>
-                </div>
-                {calculations.grandTotalFeeds.length > 0 && (
-                  <div className="text-right">
-                    <span className="text-slate-400 uppercase tracking-wider text-[9px] block">Grand Total Feeds</span>
-                    <div className="flex flex-wrap gap-1.5 mt-1 justify-end">
-                      {calculations.grandTotalFeeds.map((f, i) => (
-                        <span key={i} className="inline-flex items-center px-2.5 py-0.75 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm">
-                          {f.name.split(" (")[0]}: {f.amount.toLocaleString()} {f.unit}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
