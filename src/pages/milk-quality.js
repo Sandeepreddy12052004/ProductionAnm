@@ -8,11 +8,11 @@ export default function MilkQualityPage() {
     showAllOption: false,
     fields: [
       { name: 'date',    label: 'Date',          type: 'date' },
+      { name: 'bmcs',    label: 'BMCs & Liters', type: 'select', options: [] },
       { name: 'fat',     label: 'Fat %',        type: 'number' },
       { name: 'snf',     label: 'SNF %',        type: 'number' },
       { name: 'density', label: 'CLR / Density', type: 'number' },
       { name: 'water',   label: 'Water %',      type: 'number' },
-      { name: 'bmcs',    label: 'BMCs & Liters', type: 'select', options: [] },
     ]
   };
 
