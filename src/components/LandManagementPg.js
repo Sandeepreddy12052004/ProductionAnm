@@ -183,7 +183,7 @@ export default function LandManagementPg() {
 
     try {
       await api.lands.delete(id);
-      swalSuccess('Deleted', 'Land parcel removed successfully.');
+      swalSuccess('Deleted', 'Leased land removed successfully.');
       fetchData();
     } catch (error) {
       console.error(error);
@@ -220,6 +220,15 @@ export default function LandManagementPg() {
   const availableLandsCount = lands.filter(l => l.status === 'AVAILABLE').length;
   const leasedLandsCount = lands.filter(l => l.ownershipType === 'LEASED').length;
   
+  const dueLands = lands.filter((land) => {
+    if (land.ownershipType !== 'LEASED' || !land.leaseEndDate) return false;
+    const now = new Date();
+    const end = new Date(land.leaseEndDate);
+    const diffTime = end.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return daysLeft <= 30; // Expired or expiring within 30 days
+  });
+
   const totalAreaAcres = lands.reduce((sum, land) => {
     let area = land.totalArea;
     if (land.unit === 'Hectares') area = land.totalArea * 2.47105;
@@ -287,7 +296,7 @@ export default function LandManagementPg() {
               <h3 className="text-2xl font-black text-[#16223F] leading-none">
                 {totalAreaAcres.toFixed(1)} <span className="text-xs font-bold text-slate-500">Acres</span>
               </h3>
-              <p className="text-[11px] text-slate-400 font-semibold">Across {totalLandCount} parcels</p>
+              <p className="text-[11px] text-slate-400 font-semibold">Across {totalLandCount} lands</p>
             </div>
             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
               <Layers className="w-5 h-5" />
@@ -300,7 +309,7 @@ export default function LandManagementPg() {
             <div className="space-y-1">
               <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Available Areas</span>
               <h3 className="text-2xl font-black text-emerald-600 leading-none">
-                {availableLandsCount} <span className="text-xs font-bold text-emerald-400">units</span>
+                {availableLandsCount} <span className="text-xs font-bold text-emerald-400">available lands</span>
               </h3>
               <p className="text-[11px] text-slate-400 font-semibold">Ready for grass cultivation</p>
             </div>
@@ -313,9 +322,9 @@ export default function LandManagementPg() {
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Leased Parcels</span>
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Leased Lands</span>
               <h3 className="text-2xl font-black text-blue-600 leading-none">
-                {leasedLandsCount} <span className="text-xs font-bold text-blue-400">units</span>
+                {leasedLandsCount} <span className="text-xs font-bold text-blue-400">leased lands</span>
               </h3>
               <p className="text-[11px] text-slate-400 font-semibold">Acquired from landowners</p>
             </div>
@@ -326,13 +335,74 @@ export default function LandManagementPg() {
         </div>
       </div>
 
+      {/* LEASES DUE ALERTS SECTION */}
+      {dueLands.length > 0 && (
+        <div className="mb-6 flex-none bg-[#fffbeb] border border-amber-200/80 rounded-3xl p-5 shadow-sm space-y-3.5">
+          <div className="flex items-center gap-2 text-amber-800 font-extrabold text-sm uppercase tracking-wider">
+            <span className="text-lg">⚠️</span> Action Required: Leased Lands Expired or Expiring Soon
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dueLands.map(land => {
+              const now = new Date();
+              const end = land.leaseEndDate ? new Date(land.leaseEndDate) : null;
+              let daysLeft = 0;
+              if (end) {
+                const diffTime = end.getTime() - now.getTime();
+                daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              }
+
+              const isExpired = daysLeft <= 0;
+
+              return (
+                <div key={land._id} className="bg-white border border-amber-100/70 rounded-2xl p-4 flex flex-col justify-between shadow-[0_2px_8px_rgba(245,158,11,0.03)] hover:shadow-md transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-extrabold text-slate-800 text-sm truncate pr-1">{land.name}</h4>
+                      <span className={`text-[9px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        isExpired 
+                          ? 'bg-rose-50 text-rose-600 border border-rose-100' 
+                          : 'bg-amber-50 text-amber-600 border border-amber-100'
+                      }`}>
+                        {isExpired ? 'Expired' : `${daysLeft} Days Left`}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-semibold space-y-0.5">
+                      <p>Code: <span className="font-bold text-slate-700">{land.code}</span></p>
+                      <p>Landowner: <span className="font-bold text-slate-700">{land.landownerName || 'N/A'}</span></p>
+                      <p>Lease End: <span className="font-bold text-slate-700">{end ? end.toLocaleDateString() : 'N/A'}</span></p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => handleOpenEditModal(land)}
+                      className="flex-1 bg-[#16223F] hover:bg-[#253966] text-white text-[11px] font-bold py-2 rounded-xl text-center transition-all shadow-[0_2px_6px_rgba(22,34,63,0.15)] active:scale-95"
+                    >
+                      ✏️ Extend Lease
+                    </button>
+                    {land.status !== 'MAINTENANCE' && (
+                      <button
+                        onClick={() => handleUpdateStatus(land, 'MAINTENANCE')}
+                        className="flex-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold py-2 rounded-xl text-center transition-all active:scale-95"
+                      >
+                        🚫 Make Inactive
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* TABS */}
       <div className="flex border-b border-slate-200 mb-5 flex-none">
         <button
           onClick={() => setActiveTab('all')}
           className={`px-4 py-3 text-sm transition-all ${activeTab === 'all' ? activeStyle : normalStyle}`}
         >
-          All Land Parcels
+          All Leased Lands
         </button>
         <button
           onClick={() => setActiveTab('leases')}
@@ -549,7 +619,7 @@ export default function LandManagementPg() {
                   <Map className="w-7 h-7 text-slate-300" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">No Land Areas Defined</h3>
-                <p className="text-slate-400 text-xs font-semibold mt-1 max-w-sm mx-auto">Define land parcels to manage locations and lease registries.</p>
+                <p className="text-slate-400 text-xs font-semibold mt-1 max-w-sm mx-auto">Define leased lands to manage locations and lease registries.</p>
               </div>
             )}
           </div>
@@ -560,7 +630,7 @@ export default function LandManagementPg() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Land Parcel</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Leased Land</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Landowner Details</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Lease Term</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-wider">Rent Cost / Interval</th>

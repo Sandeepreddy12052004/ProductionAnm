@@ -9,7 +9,7 @@ export default function DynamicFarmPage() {
   if (!code) return null;
 
   return (
-    <div className="p-4 md:p-3 w-full">
+    <div className="w-full">
       <FarmDashboard farmCode={typeof code === 'string' ? code.toUpperCase() : ''} />
     </div>
   );

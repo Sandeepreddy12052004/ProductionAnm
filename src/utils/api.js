@@ -44,7 +44,6 @@ const ROUTE_PERMISSION_MAP = {
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
   '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],
   '/api/logs/purchase':                ['PURCHASE_LOG', 'PURCHASE', 'FARM_ADMIN'],
-  '/api/grass-management':             ['GRASS_MANAGEMENT', 'FARM_ADMIN'],
   '/api/bmcs':                         ['BMC', 'FARM_ADMIN', 'INCHARGE'],
   '/api/semen-straws':                 ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
 };
@@ -627,13 +626,7 @@ export const api = {
     delete:              (id)       => apiRequest(`/api/roles/${id}`, 'DELETE'),
   },
 
-  // Grass Management Configuration
-  grassManagement: {
-    getAll:              ()         => apiRequest('/api/grass-management'),
-    create:              (data)     => apiRequest('/api/grass-management', 'POST', data),
-    update:              (id, data) => apiRequest(`/api/grass-management/${id}`, 'PUT', data),
-    delete:              (id)       => apiRequest(`/api/grass-management/${id}`, 'DELETE'),
-  },
+
 
   // Operational logs (stored in database)
   shed: {

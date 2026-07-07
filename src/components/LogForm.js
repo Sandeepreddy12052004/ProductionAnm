@@ -80,6 +80,102 @@
     return null;
   };
 
+  const LaborSelector = ({ laborsList = [], value, onChange }) => {
+    const [searchTerm, setSearchTerm] = useState("");
+    
+    const selectedIds = React.useMemo(() => {
+      if (Array.isArray(value)) return value;
+      if (!value) return [];
+      return String(value).split(',').map(s => s.trim()).filter(Boolean);
+    }, [value]);
+
+    const handleToggle = (id) => {
+      let nextIds;
+      if (selectedIds.includes(id)) {
+        nextIds = selectedIds.filter(x => x !== id);
+      } else {
+        nextIds = [...selectedIds, id];
+      }
+      onChange(nextIds);
+    };
+
+    const filtered = laborsList.filter(l => 
+      String(l.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+      <div className="space-y-3 mt-1.5 w-full">
+        {/* Search Input */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search laborers by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-11 border border-slate-200 rounded-xl pl-10 pr-4 text-xs bg-slate-50/50 text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all duration-300 font-semibold"
+          />
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+        </div>
+
+        {/* Checkbox List */}
+        <div className="border border-slate-200/80 rounded-2xl p-4 bg-slate-50/20 max-h-[180px] overflow-y-auto space-y-2.5 custom-scrollbar">
+          {filtered.length === 0 ? (
+            <p className="text-[11px] text-slate-400 font-medium text-center py-2">No laborers found matching search term.</p>
+          ) : (
+            filtered.map(l => {
+              const idVal = l._id || l.id;
+              const isChecked = selectedIds.includes(idVal);
+              return (
+                <label 
+                  key={idVal}
+                  className="flex items-center gap-3 px-3 py-2 bg-white border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => handleToggle(idVal)}
+                    className="w-4 h-4 rounded border-slate-300 text-slate-800 focus:ring-[#D1867D]"
+                  />
+                  <div className="flex-1 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-800">{l.name}</span>
+                    <span className="text-[9px] font-black uppercase text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">
+                      Active
+                    </span>
+                  </div>
+                </label>
+              );
+            })
+          )}
+        </div>
+
+        {/* Selected Summary Badge */}
+        {selectedIds.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 p-1">
+            {selectedIds.map(id => {
+              const labor = laborsList.find(l => (l._id || l.id) === id);
+              if (!labor) return null;
+              return (
+                <span 
+                  key={id} 
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-[#16223F] text-white animate-fadeIn"
+                >
+                  {labor.name}
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(id)}
+                    className="hover:text-red-400 font-bold focus:outline-none ml-1 text-[9px]"
+                  >
+                    ✕
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const LogForm = ({ title, fields = [], onSubmit, onClose, onDelete, initialData = {}, existingRecords = [] }) => {
     const [checkedRows, setCheckedRows] = useState({});
     const [medicinesList, setMedicinesList] = useState([]);
@@ -1324,7 +1420,24 @@
                   {(field.name === 'animalId' && field.label?.includes("Animal") && !initialData?.id && !initialData?._id) ? "Rows" : field.label}
                 </label>
                 {field.type === "select" ? (
-                  ["symptoms", "diagnosis", "treatment"].includes(field.name) && (title?.toLowerCase().includes("treatment") || title?.toLowerCase().includes("health") || title?.toLowerCase().includes("symptom")) ? (
+                  field.name === "laborId" ? (
+                    <LaborSelector
+                      laborsList={laborsList}
+                      value={formData.laborId}
+                      onChange={(newValue) => {
+                        setFormData(prev => {
+                          const updated = { ...prev, laborId: newValue };
+                          if (fields.some(f => f.name === 'noOfWorkers')) {
+                            const count = Array.isArray(newValue) ? newValue.length : (newValue ? 1 : 0);
+                            if (count > 0) {
+                              updated.noOfWorkers = count;
+                            }
+                          }
+                          return updated;
+                        });
+                      }}
+                    />
+                  ) : ["symptoms", "diagnosis", "treatment"].includes(field.name) && (title?.toLowerCase().includes("treatment") || title?.toLowerCase().includes("health") || title?.toLowerCase().includes("symptom")) ? (
                     (() => {
                       const currentVal = formData[field.name] || "";
                       const selectedItems = currentVal ? currentVal.split(", ").map(s => s.trim()).filter(Boolean) : [];

@@ -37,7 +37,6 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/feed-items",
     "/tag-management",
     "/breed-management",
-    "/grass-management",
     "/bmc-management"
   ].includes(router.pathname) && !router.query.tab;
 
@@ -478,14 +477,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                             </li>
                           )}
 
-                          {hasAccess('GRASS_MANAGEMENT') && (
-                            <li>
-                              <Link href="/grass-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/grass-management") ? activeStyle : normalStyle}`}>
-                                🌿 Grass Management
-                              </Link>
-                            </li>
-                          )}
+
 
                           {hasAccess('LABOR_MANAGEMENT') && (
                             <li>

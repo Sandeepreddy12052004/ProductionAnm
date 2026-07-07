@@ -16,19 +16,8 @@ export default function DashboardPage() {
   }, [router]);
 
   return (
-    <div className="p-4 md:p-10">
-      <header className="mb-10">
-        <h1 className="text-3xl font-black text-[#16223F]">
-          Farm Dashboard
-        </h1>
-        <p className="text-sm text-gray-500">
-          Agasthya Management System
-        </p>
-      </header>
-
-      <div className="max-w-7xl">
-        <DashboardContent />
-      </div>
+    <div className="w-full">
+      <DashboardContent />
     </div>
   );
 }

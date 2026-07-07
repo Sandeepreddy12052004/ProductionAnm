@@ -81,7 +81,7 @@ export default function AnimalsPage() {
   };
 
   return (
-    <div className="p-4 md:p-3 w-full">
+    <div className="w-full">
       <AnimalDetailspg moduleConfig={livestockConfig} />
     </div>
   );
