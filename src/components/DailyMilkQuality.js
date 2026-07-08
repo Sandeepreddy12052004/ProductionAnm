@@ -9,6 +9,8 @@ export default function DailyMilkQuality() {
   const [bmcsList, setBmcsList] = useState([]);
   const [collectionsList, setCollectionsList] = useState([]);
   const [qaLogsList, setQaLogsList] = useState([]);
+  const [farmsList, setFarmsList] = useState([]);
+  const [selectedFarmId, setSelectedFarmId] = useState("");
 
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,38 +19,32 @@ export default function DailyMilkQuality() {
   // Grid values state: bmcId -> { liters, fat, snf, density, water, temperature, _id }
   const [rowValues, setRowValues] = useState({});
 
-  // Get active farm ID
-  const activeFarmId = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    try {
-      const activeFarm = localStorage.getItem('__active_farm_id__');
-      if (activeFarm && activeFarm !== 'ALL') {
-        return activeFarm;
-      }
-      const userJson = localStorage.getItem('user');
-      if (userJson) {
-        const user = JSON.parse(userJson);
-        const rawFarmId = user?.farmId && typeof user.farmId === 'object'
-          ? (user.farmId._id || user.farmId.id)
-          : user?.farmId;
-        if (rawFarmId && rawFarmId !== 'ALL') {
-          return String(rawFarmId).trim();
-        }
-      }
-    } catch (e) {}
-    return '';
-  }, []);
-
   // 1. Initial Data Fetch
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
       try {
-        const bmcs = await api.bmcs.getAll();
+        const [bmcs, farmsData] = await Promise.all([
+          api.bmcs.getAll(),
+          api.farms.getAll().catch(() => [])
+        ]);
+
+        const finalFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
+        setFarmsList(finalFarms);
+
+        const storedActive = localStorage.getItem('__active_farm_id__');
+        let activeId = "";
+        if (storedActive && storedActive !== 'ALL') {
+          activeId = storedActive;
+        } else if (finalFarms && finalFarms.length > 0) {
+          activeId = finalFarms[0]._id || finalFarms[0].id;
+        }
+        setSelectedFarmId(activeId);
+
         const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
           b => b.status === "ACTIVE" &&
                b.isDeleted !== true &&
-               (!activeFarmId || String(b.farmId?._id || b.farmId?.id || b.farmId) === activeFarmId)
+               (!activeId || String(b.farmId?._id || b.farmId?.id || b.farmId) === activeId)
         );
         setBmcsList(activeBmcs);
       } catch (err) {
@@ -59,7 +55,20 @@ export default function DailyMilkQuality() {
       }
     };
     init();
-  }, [activeFarmId]);
+  }, []);
+
+  // Filter BMCs list when active farm changes
+  useEffect(() => {
+    if (!selectedFarmId) return;
+    api.bmcs.getAll().then((bmcs) => {
+      const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
+        b => b.status === "ACTIVE" &&
+             b.isDeleted !== true &&
+             String(b.farmId?._id || b.farmId?.id || b.farmId) === selectedFarmId
+      );
+      setBmcsList(activeBmcs);
+    }).catch(console.error);
+  }, [selectedFarmId]);
 
   // 2. Fetch collections & QA logs when date changes
   const fetchDataForDate = async () => {
@@ -94,7 +103,7 @@ export default function DailyMilkQuality() {
     const dayCollections = collectionsList.filter(
       (c) => toLocalYMD(c.date) === targetDateStr &&
              !c.isDeleted &&
-             (!activeFarmId || String(c.farmId?._id || c.farmId?.id || c.farmId) === activeFarmId)
+             (!selectedFarmId || String(c.farmId?._id || c.farmId?.id || c.farmId) === selectedFarmId)
     );
     const groups = {};
     dayCollections.forEach(c => {
@@ -109,14 +118,14 @@ export default function DailyMilkQuality() {
       total += Math.max(0, g.quantity - g.selfConsumption);
     });
     return total;
-  }, [collectionsList, targetDateStr, activeFarmId]);
+  }, [collectionsList, targetDateStr, selectedFarmId]);
 
   useEffect(() => {
     // Group existing QA records on this date by bmcId
     const dayQaLogs = qaLogsList.filter(
       (q) => toLocalYMD(q.date) === targetDateStr &&
              !q.isDeleted &&
-             (!activeFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === activeFarmId)
+             (!selectedFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === selectedFarmId)
     );
 
     const bmcToQa = {};
@@ -158,7 +167,7 @@ export default function DailyMilkQuality() {
     });
 
     setRowValues(initialRows);
-  }, [bmcsList, qaLogsList, targetDateStr, activeFarmId]);
+  }, [bmcsList, qaLogsList, targetDateStr, selectedFarmId]);
 
   // Handle cell inputs
   const handleCellChange = (bmcId, field, val) => {
@@ -268,8 +277,8 @@ export default function DailyMilkQuality() {
               temperature: Number(temperature),
               bmcs: [{ bmcId: bId, name: bmc.name || bmc.code, liters: Number(liters) }]
             };
-            if (activeFarmId) {
-              payload.farmId = activeFarmId;
+            if (selectedFarmId) {
+              payload.farmId = selectedFarmId;
             }
 
             if (_id) {
@@ -310,21 +319,45 @@ export default function DailyMilkQuality() {
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
             
-            {/* Date Picker row */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-6 mb-6">
-              <div>
+            {/* Date & Farm Picker Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center border-b border-slate-100 pb-6 mb-6">
+              <div className="md:col-span-6">
                 <h3 className="text-sm font-black text-[#16223F] uppercase tracking-wider">Milk QA Spreadsheet</h3>
                 <p className="text-xs font-semibold text-slate-400">Enter parameters directly for each Bulk Milk Cooler.</p>
               </div>
-              <div className="relative w-full sm:w-48">
-                <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  max={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full h-11 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-4 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-300"
-                />
+              <div className="md:col-span-3 relative">
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Collection Date</label>
+                <div className="relative">
+                  <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    max={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full h-10 bg-slate-50/50 border border-slate-200/80 rounded-xl pl-11 pr-4 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-300"
+                  />
+                </div>
+              </div>
+              <div className="md:col-span-3 relative">
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Active Farm</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🏡</span>
+                  <select
+                    value={selectedFarmId}
+                    onChange={(e) => {
+                      const newFarmId = e.target.value;
+                      localStorage.setItem('__active_farm_id__', newFarmId);
+                      setSelectedFarmId(newFarmId);
+                    }}
+                    className="w-full h-10 bg-slate-50/50 border border-slate-200/80 rounded-xl pl-11 pr-10 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 appearance-none transition-all duration-300"
+                  >
+                    {farmsList.map((f) => (
+                      <option key={f._id || f.id} value={f._id || f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
