@@ -42,8 +42,8 @@ export default function DailyMilkQuality() {
         setSelectedFarmId(activeId);
 
         const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
-          b => b.status === "ACTIVE" &&
-               b.isDeleted !== true &&
+          b => String(b.status || "").trim().toUpperCase() === "ACTIVE" &&
+               !b.isDeleted &&
                (!activeId || String(b.farmId?._id || b.farmId?.id || b.farmId) === activeId)
         );
         setBmcsList(activeBmcs);
@@ -62,8 +62,8 @@ export default function DailyMilkQuality() {
     if (!selectedFarmId) return;
     api.bmcs.getAll().then((bmcs) => {
       const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
-        b => b.status === "ACTIVE" &&
-             b.isDeleted !== true &&
+        b => String(b.status || "").trim().toUpperCase() === "ACTIVE" &&
+             !b.isDeleted &&
              String(b.farmId?._id || b.farmId?.id || b.farmId) === selectedFarmId
       );
       setBmcsList(activeBmcs);
