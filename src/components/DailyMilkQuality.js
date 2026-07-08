@@ -17,6 +17,28 @@ export default function DailyMilkQuality() {
   // Grid values state: bmcId -> { liters, fat, snf, density, water, temperature, _id }
   const [rowValues, setRowValues] = useState({});
 
+  // Get active farm ID
+  const activeFarmId = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const activeFarm = localStorage.getItem('__active_farm_id__');
+      if (activeFarm && activeFarm !== 'ALL') {
+        return activeFarm;
+      }
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        const rawFarmId = user?.farmId && typeof user.farmId === 'object'
+          ? (user.farmId._id || user.farmId.id)
+          : user?.farmId;
+        if (rawFarmId && rawFarmId !== 'ALL') {
+          return String(rawFarmId).trim();
+        }
+      }
+    } catch (e) {}
+    return '';
+  }, []);
+
   // 1. Initial Data Fetch
   useEffect(() => {
     const init = async () => {
@@ -24,7 +46,9 @@ export default function DailyMilkQuality() {
       try {
         const bmcs = await api.bmcs.getAll();
         const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
-          b => b.status === "ACTIVE" && b.isDeleted !== true
+          b => b.status === "ACTIVE" &&
+               b.isDeleted !== true &&
+               (!activeFarmId || String(b.farmId?._id || b.farmId?.id || b.farmId) === activeFarmId)
         );
         setBmcsList(activeBmcs);
       } catch (err) {
@@ -35,7 +59,7 @@ export default function DailyMilkQuality() {
       }
     };
     init();
-  }, []);
+  }, [activeFarmId]);
 
   // 2. Fetch collections & QA logs when date changes
   const fetchDataForDate = async () => {
@@ -68,7 +92,9 @@ export default function DailyMilkQuality() {
 
   const totalCollectedNet = useMemo(() => {
     const dayCollections = collectionsList.filter(
-      (c) => toLocalYMD(c.date) === targetDateStr && !c.isDeleted
+      (c) => toLocalYMD(c.date) === targetDateStr &&
+             !c.isDeleted &&
+             (!activeFarmId || String(c.farmId?._id || c.farmId?.id || c.farmId) === activeFarmId)
     );
     const groups = {};
     dayCollections.forEach(c => {
@@ -83,12 +109,14 @@ export default function DailyMilkQuality() {
       total += Math.max(0, g.quantity - g.selfConsumption);
     });
     return total;
-  }, [collectionsList, targetDateStr]);
+  }, [collectionsList, targetDateStr, activeFarmId]);
 
   useEffect(() => {
     // Group existing QA records on this date by bmcId
     const dayQaLogs = qaLogsList.filter(
-      (q) => toLocalYMD(q.date) === targetDateStr && !q.isDeleted
+      (q) => toLocalYMD(q.date) === targetDateStr &&
+             !q.isDeleted &&
+             (!activeFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === activeFarmId)
     );
 
     const bmcToQa = {};
@@ -130,7 +158,7 @@ export default function DailyMilkQuality() {
     });
 
     setRowValues(initialRows);
-  }, [bmcsList, qaLogsList, targetDateStr]);
+  }, [bmcsList, qaLogsList, targetDateStr, activeFarmId]);
 
   // Handle cell inputs
   const handleCellChange = (bmcId, field, val) => {
@@ -152,6 +180,39 @@ export default function DailyMilkQuality() {
   }, [rowValues]);
 
   const availableMilk = Math.max(0, totalCollectedNet - totalEnteredQa);
+
+  const averageMetrics = useMemo(() => {
+    let count = 0;
+    let totalTemp = 0;
+    let totalFat = 0;
+    let totalSnf = 0;
+    let totalDensity = 0;
+    let totalWater = 0;
+
+    Object.values(rowValues).forEach(r => {
+      const isFilled = [r.liters, r.fat, r.snf, r.density, r.water, r.temperature].every(v => String(v).trim() !== "");
+      if (isFilled) {
+        count++;
+        totalTemp += Number(r.temperature) || 0;
+        totalFat += Number(r.fat) || 0;
+        totalSnf += Number(r.snf) || 0;
+        totalDensity += Number(r.density) || 0;
+        totalWater += Number(r.water) || 0;
+      }
+    });
+
+    if (count === 0) {
+      return { temperature: 0, fat: 0, snf: 0, density: 0, water: 0 };
+    }
+
+    return {
+      temperature: Number((totalTemp / count).toFixed(2)),
+      fat: Number((totalFat / count).toFixed(2)),
+      snf: Number((totalSnf / count).toFixed(2)),
+      density: Number((totalDensity / count).toFixed(2)),
+      water: Number((totalWater / count).toFixed(2))
+    };
+  }, [rowValues]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -203,6 +264,9 @@ export default function DailyMilkQuality() {
               temperature: Number(temperature),
               bmcs: [{ bmcId: bId, name: bmc.name || bmc.code, liters: Number(liters) }]
             };
+            if (activeFarmId) {
+              payload.farmId = activeFarmId;
+            }
 
             if (_id) {
               await api.milk.quality.update(_id, payload);
@@ -409,6 +473,33 @@ export default function DailyMilkQuality() {
                   </span>
                 </div>
                 <span className="text-xl">✨</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Average Quality Metrics card */}
+          <div className="bg-white/95 rounded-3xl border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+            <h3 className="text-xs font-black text-[#16223F] uppercase tracking-wider mb-4">Average Quality Metrics</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                <span className="text-slate-400 font-bold">Avg Temperature:</span>
+                <span className="text-slate-800 font-black">{averageMetrics.temperature} °C</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                <span className="text-slate-400 font-bold">Avg Fat:</span>
+                <span className="text-slate-800 font-black">{averageMetrics.fat} %</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                <span className="text-slate-400 font-bold">Avg SNF:</span>
+                <span className="text-slate-800 font-black">{averageMetrics.snf} %</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                <span className="text-slate-400 font-bold">Avg CLR / Density:</span>
+                <span className="text-slate-800 font-black">{averageMetrics.density}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-bold">Avg Water:</span>
+                <span className="text-slate-800 font-black">{averageMetrics.water} %</span>
               </div>
             </div>
           </div>
