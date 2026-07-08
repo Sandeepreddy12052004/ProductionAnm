@@ -192,16 +192,13 @@
     }, [value]);
 
     const handleSelectBmc = (bmcId) => {
-      if (!bmcId) {
-        onChange([]);
-        return;
-      }
+      if (!bmcId) return;
       const bmc = bmcsList.find(b => (b._id || b.id) === bmcId);
       if (!bmc) return;
 
-      // Allow only one BMC at a time and preserve current entered liters
-      const currentLiters = selectedBmcs[0]?.liters !== undefined ? selectedBmcs[0].liters : "";
-      const next = [{ bmcId, name: bmc.name || bmc.code, liters: currentLiters }];
+      if (selectedBmcs.some(b => b.bmcId === bmcId)) return;
+
+      const next = [...selectedBmcs, { bmcId, name: bmc.name || bmc.code, liters: "" }];
       onChange(next);
     };
 
@@ -227,18 +224,22 @@
       <div className="space-y-4 mt-2 w-full">
         <div>
           <select
-            value={selectedBmcs[0]?.bmcId || ""}
+            value=""
             className="w-full h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs font-semibold outline-none focus:border-[#D1867D] transition-all"
             onChange={(e) => {
               handleSelectBmc(e.target.value);
+              e.target.value = "";
             }}
           >
             <option value="">Select BMC to add...</option>
-            {bmcsList.map(b => (
-              <option key={b._id || b.id} value={b._id || b.id}>
-                ❄️ {b.name || b.code} (Cap: {b.capacity} L)
-              </option>
-            ))}
+            {bmcsList
+              .filter(b => !selectedBmcs.some(sb => sb.bmcId === (b._id || b.id)))
+              .map(b => (
+                <option key={b._id || b.id} value={b._id || b.id}>
+                  ❄️ {b.name || b.code} (Cap: {b.capacity} L)
+                </option>
+              ))
+            }
           </select>
         </div>
 
@@ -316,6 +317,9 @@
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isFieldRequired = (field) => {
+      if (title?.toLowerCase().includes("milk qa") || title?.toLowerCase().includes("milk quality")) {
+        return true;
+      }
       if (field.name === "calvingStatus") {
         return formData["pregnancyStatus"] === "Positive";
       }
@@ -779,10 +783,17 @@
             const collectionsList = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes?.data ?? []);
             const qaLogsList = Array.isArray(qaRes) ? qaRes : (qaRes?.data ?? []);
             
-            const targetDateStr = new Date(formData.date).toDateString();
+            const toLocalYMD = (dVal) => {
+              if (!dVal) return "";
+              const d = new Date(dVal);
+              if (isNaN(d.getTime())) return "";
+              return d.toLocaleDateString('en-CA');
+            };
+
+            const targetDateStr = toLocalYMD(formData.date);
             
             const dayCollections = collectionsList.filter(
-              (c) => new Date(c.date).toDateString() === targetDateStr && !c.isDeleted
+              (c) => toLocalYMD(c.date) === targetDateStr && !c.isDeleted
             );
             
             const groups = {};
@@ -805,7 +816,7 @@
             let usedInOtherQa = 0;
             qaLogsList.forEach(qa => {
               const isSameRecord = qa._id === initialData?._id || qa.id === initialData?.id;
-              if (!isSameRecord && new Date(qa.date).toDateString() === targetDateStr && !qa.isDeleted) {
+              if (!isSameRecord && toLocalYMD(qa.date) === targetDateStr && !qa.isDeleted) {
                 if (Array.isArray(qa.bmcs)) {
                   qa.bmcs.forEach(b => {
                     usedInOtherQa += Number(b.liters) || 0;
@@ -1438,6 +1449,10 @@
 
               if (fields.some(f => f.name === 'bmcs')) {
                 const bmcList = formData.bmcs || [];
+                if (bmcList.length === 0) {
+                  swalError("Validation Error", "Please select at least one BMC and enter its liters.");
+                  return;
+                }
                 const totalLiters = bmcList.reduce((sum, b) => sum + (Number(b.liters) || 0), 0);
                 if (totalLiters > availableMilk) {
                   swalError("Validation Error", `Total liters entered (${totalLiters} L) cannot exceed the available milk (${availableMilk} L) from collections.`);
