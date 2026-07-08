@@ -214,6 +214,10 @@ export default function DailyMilkQuality() {
     };
   }, [rowValues]);
 
+  const isTallied = useMemo(() => {
+    return Number(totalEnteredQa.toFixed(2)) === Number(totalCollectedNet.toFixed(2));
+  }, [totalEnteredQa, totalCollectedNet]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -428,12 +432,23 @@ export default function DailyMilkQuality() {
               </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-8 pt-6 border-t border-slate-100 w-full">
+              <div>
+                {!isTallied && totalCollectedNet > 0 && (
+                  <span className="text-xs text-red-500 font-bold">
+                    ⚠️ Quantities must tally exactly to save ({totalEnteredQa.toFixed(2)} L entered vs {totalCollectedNet.toFixed(2)} L collected)
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isSaving}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-700/20 active:scale-[0.98] transition-all text-xs"
+                disabled={isSaving || (!isTallied && totalCollectedNet > 0)}
+                className={`inline-flex items-center justify-center gap-2 px-6 py-3 font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all text-xs ${
+                  (!isTallied && totalCollectedNet > 0)
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/10 hover:shadow-emerald-700/20'
+                }`}
               >
                 <Save className="w-4 h-4" />
                 {isSaving ? "Saving Daily logs..." : "Save Daily Milk QA"}
