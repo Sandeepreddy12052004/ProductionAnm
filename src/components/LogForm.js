@@ -192,13 +192,15 @@
     }, [value]);
 
     const handleSelectBmc = (bmcId) => {
-      if (!bmcId) return;
+      if (!bmcId) {
+        onChange([]);
+        return;
+      }
       const bmc = bmcsList.find(b => (b._id || b.id) === bmcId);
       if (!bmc) return;
 
-      if (selectedBmcs.some(b => b.bmcId === bmcId)) return;
-
-      const next = [...selectedBmcs, { bmcId, name: bmc.name || bmc.code, liters: 0 }];
+      // Allow only one BMC at a time
+      const next = [{ bmcId, name: bmc.name || bmc.code, liters: "" }];
       onChange(next);
     };
 
@@ -208,10 +210,10 @@
     };
 
     const handleLitersChange = (bmcId, litersVal) => {
-      const liters = litersVal === "" ? "" : Number(litersVal);
+      // Keep value as a string to allow typing decimal point
       const next = selectedBmcs.map(b => {
         if (b.bmcId === bmcId) {
-          return { ...b, liters };
+          return { ...b, liters: litersVal };
         }
         return b;
       });
@@ -224,21 +226,18 @@
       <div className="space-y-4 mt-2 w-full">
         <div>
           <select
+            value={selectedBmcs[0]?.bmcId || ""}
             className="w-full h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs font-semibold outline-none focus:border-[#D1867D] transition-all"
             onChange={(e) => {
               handleSelectBmc(e.target.value);
-              e.target.value = "";
             }}
           >
             <option value="">Select BMC to add...</option>
-            {bmcsList
-              .filter(b => !selectedBmcs.some(sb => sb.bmcId === (b._id || b.id)))
-              .map(b => (
-                <option key={b._id || b.id} value={b._id || b.id}>
-                  ❄️ {b.name || b.code} (Cap: {b.capacity} L)
-                </option>
-              ))
-            }
+            {bmcsList.map(b => (
+              <option key={b._id || b.id} value={b._id || b.id}>
+                ❄️ {b.name || b.code} (Cap: {b.capacity} L)
+              </option>
+            ))}
           </select>
         </div>
 
@@ -277,13 +276,13 @@
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-400 font-bold">Total Liters Entered:</span>
             <span className={`font-black ${totalEntered > availableMilk ? 'text-red-600' : 'text-slate-800'}`}>
-              {totalEntered.toLocaleString()} L
+              {Number(totalEntered.toFixed(2)).toLocaleString()} L
             </span>
           </div>
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-400 font-bold">Available Quantity:</span>
             <span className="text-emerald-600 font-black">
-              {Math.max(0, availableMilk - totalEntered).toLocaleString()} L
+              {Number(Math.max(0, availableMilk - totalEntered).toFixed(2)).toLocaleString()} L
             </span>
           </div>
           {totalEntered > availableMilk && (
@@ -538,6 +537,9 @@
 
     const [formData, setFormData] = useState(() => {
       const formatted = formatInitialData(initialData, fields);
+      if (fields.some(f => f.name === 'date') && (!formatted.date || formatted.date === '')) {
+        formatted.date = new Date().toISOString().split('T')[0];
+      }
       if (formatted.dameBreed && (!formatted.breed || formatted.breed === '' || formatted.breed === '-')) {
         formatted.breed = formatted.dameBreed;
       }
