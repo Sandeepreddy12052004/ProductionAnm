@@ -1,0 +1,419 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { api } from "../utils/api";
+import { swalSuccess, swalError } from "../utils/swal";
+import SkeletonLoader from "./SkeletonLoader";
+import ModulePageHeader from "./ModulePageHeader";
+import { Calendar as CalendarIcon, Save } from "lucide-react";
+
+export default function DailyMilkQuality() {
+  const [bmcsList, setBmcsList] = useState([]);
+  const [collectionsList, setCollectionsList] = useState([]);
+  const [qaLogsList, setQaLogsList] = useState([]);
+
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Grid values state: bmcId -> { liters, fat, snf, density, water, temperature, _id }
+  const [rowValues, setRowValues] = useState({});
+
+  // 1. Initial Data Fetch
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        const bmcs = await api.bmcs.getAll();
+        const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
+          b => b.status === "ACTIVE" && b.isDeleted !== true
+        );
+        setBmcsList(activeBmcs);
+      } catch (err) {
+        console.error(err);
+        swalError("Error", "Failed to load BMCs list.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // 2. Fetch collections & QA logs when date changes
+  const fetchDataForDate = async () => {
+    try {
+      const [collectionsRes, qaRes] = await Promise.all([
+        api.milk.collections.getAll().catch(() => []),
+        api.milk.quality.getAll().catch(() => [])
+      ]);
+      setCollectionsList(Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes?.data ?? []));
+      setQaLogsList(Array.isArray(qaRes) ? qaRes : (qaRes?.data ?? []));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDataForDate();
+  }, [selectedDate]);
+
+  // Helper for timezone-safe local date string
+  const toLocalYMD = (dVal) => {
+    if (!dVal) return "";
+    const d = new Date(dVal);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString('en-CA');
+  };
+
+  // 3. Match collections and populate existing values
+  const targetDateStr = useMemo(() => toLocalYMD(selectedDate), [selectedDate]);
+
+  const totalCollectedNet = useMemo(() => {
+    const dayCollections = collectionsList.filter(
+      (c) => toLocalYMD(c.date) === targetDateStr && !c.isDeleted
+    );
+    const groups = {};
+    dayCollections.forEach(c => {
+      const groupKey = `${c.shedId}_${c.session}`;
+      if (!groups[groupKey]) {
+        groups[groupKey] = { quantity: 0, selfConsumption: c.selfConsumption || 0 };
+      }
+      groups[groupKey].quantity += c.quantity || 0;
+    });
+    let total = 0;
+    Object.values(groups).forEach(g => {
+      total += Math.max(0, g.quantity - g.selfConsumption);
+    });
+    return total;
+  }, [collectionsList, targetDateStr]);
+
+  useEffect(() => {
+    // Group existing QA records on this date by bmcId
+    const dayQaLogs = qaLogsList.filter(
+      (q) => toLocalYMD(q.date) === targetDateStr && !q.isDeleted
+    );
+
+    const bmcToQa = {};
+    dayQaLogs.forEach(q => {
+      if (Array.isArray(q.bmcs)) {
+        q.bmcs.forEach(b => {
+          if (b.bmcId) {
+            bmcToQa[b.bmcId] = {
+              _id: q._id || q.id,
+              liters: b.liters !== undefined ? String(b.liters) : "",
+              fat: q.fat !== undefined ? String(q.fat) : "",
+              snf: q.snf !== undefined ? String(q.snf) : "",
+              density: q.density !== undefined ? String(q.density) : "",
+              water: q.water !== undefined ? String(q.water) : "",
+              temperature: q.temperature !== undefined ? String(q.temperature) : ""
+            };
+          }
+        });
+      }
+    });
+
+    // Initialize values for all BMCs
+    const initialRows = {};
+    bmcsList.forEach(b => {
+      const bId = b._id || b.id;
+      if (bmcToQa[bId]) {
+        initialRows[bId] = bmcToQa[bId];
+      } else {
+        initialRows[bId] = {
+          _id: "",
+          liters: "",
+          fat: "",
+          snf: "",
+          density: "",
+          water: "",
+          temperature: ""
+        };
+      }
+    });
+
+    setRowValues(initialRows);
+  }, [bmcsList, qaLogsList, targetDateStr]);
+
+  // Handle cell inputs
+  const handleCellChange = (bmcId, field, val) => {
+    setRowValues(prev => ({
+      ...prev,
+      [bmcId]: {
+        ...prev[bmcId],
+        [field]: val
+      }
+    }));
+  };
+
+  const totalEnteredQa = useMemo(() => {
+    let sum = 0;
+    Object.values(rowValues).forEach(r => {
+      sum += Number(r.liters) || 0;
+    });
+    return sum;
+  }, [rowValues]);
+
+  const availableMilk = Math.max(0, totalCollectedNet - totalEnteredQa);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Validate that if any cell is filled, all cells in that row are filled (mandatory)
+      for (const bmc of bmcsList) {
+        const bId = bmc._id || bmc.id;
+        const row = rowValues[bId] || {};
+        const { liters, fat, snf, density, water, temperature } = row;
+
+        const hasAnyValue = [liters, fat, snf, density, water, temperature].some(v => String(v).trim() !== "");
+        if (hasAnyValue) {
+          const hasEmpty = [liters, fat, snf, density, water, temperature].some(v => String(v).trim() === "");
+          if (hasEmpty) {
+            swalError("Validation Error", `All Milk QA fields (Liters, Temperature, Fat, SNF, CLR, Water) are mandatory for BMC: ${bmc.name || bmc.code}`);
+            setIsSaving(false);
+            return;
+          }
+          if (Number(liters) <= 0) {
+            swalError("Validation Error", `Milk quantity (Liters) must be greater than zero for BMC: ${bmc.name || bmc.code}`);
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+
+      if (totalEnteredQa > totalCollectedNet) {
+        swalError("Validation Error", `Total QA logged (${totalEnteredQa.toFixed(2)} L) cannot exceed the total collected milk yield (${totalCollectedNet.toFixed(2)} L) for this date.`);
+        setIsSaving(false);
+        return;
+      }
+
+      // Save each row
+      await Promise.all(
+        bmcsList.map(async (bmc) => {
+          const bId = bmc._id || bmc.id;
+          const row = rowValues[bId] || {};
+          const { _id, liters, fat, snf, density, water, temperature } = row;
+
+          const isFilled = [liters, fat, snf, density, water, temperature].every(v => String(v).trim() !== "");
+
+          if (isFilled) {
+            const payload = {
+              date: new Date(selectedDate).toISOString(),
+              fat: Number(fat),
+              snf: Number(snf),
+              density: Number(density),
+              water: Number(water),
+              temperature: Number(temperature),
+              bmcs: [{ bmcId: bId, name: bmc.name || bmc.code, liters: Number(liters) }]
+            };
+
+            if (_id) {
+              await api.milk.quality.update(_id, payload);
+            } else {
+              await api.milk.quality.create(payload);
+            }
+          } else if (_id) {
+            // Deleted / Cleared row
+            await api.milk.quality.delete(_id);
+          }
+        })
+      );
+
+      swalSuccess("Success", "Daily Milk QA logs saved successfully.");
+      await fetchDataForDate();
+    } catch (err) {
+      console.error(err);
+      swalError("Error", "Failed to save daily Milk QA logs.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="p-6 md:p-10 w-full h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans min-h-screen">
+      
+      {/* Page Header */}
+      <ModulePageHeader
+        title="Daily Milk QA Log"
+        description="Verify milk chemistry, temperature parameters, and allocate storage yields directly into Bulk Milk Coolers."
+      />
+
+      {/* Configuration Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-6">
+        
+        {/* Table & Form Panel */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
+            
+            {/* Date Picker row */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-6 mb-6">
+              <div>
+                <h3 className="text-sm font-black text-[#16223F] uppercase tracking-wider">Milk QA Spreadsheet</h3>
+                <p className="text-xs font-semibold text-slate-400">Enter parameters directly for each Bulk Milk Cooler.</p>
+              </div>
+              <div className="relative w-full sm:w-48">
+                <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full h-11 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-4 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-300"
+                />
+              </div>
+            </div>
+
+            {isLoading ? (
+              <SkeletonLoader type="table" columns={8} />
+            ) : bmcsList.length === 0 ? (
+              <div className="text-center py-10">
+                <p className="text-xs font-bold text-slate-400">No active Bulk Milk Coolers (BMCs) found in management registry.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-2">⚡ BMC Name</th>
+                      <th className="py-3 px-2 w-24">Liters (L)</th>
+                      <th className="py-3 px-2 w-24">Temp (°C)</th>
+                      <th className="py-3 px-2 w-20">Fat %</th>
+                      <th className="py-3 px-2 w-20">SNF %</th>
+                      <th className="py-3 px-2 w-24">CLR / Density</th>
+                      <th className="py-3 px-2 w-20">Water %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bmcsList.map(bmc => {
+                      const bId = bmc._id || bmc.id;
+                      const row = rowValues[bId] || {};
+                      return (
+                        <tr key={bId} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-2">
+                            <span className="text-xs font-black text-slate-800 block">❄️ {bmc.name || bmc.code}</span>
+                            <span className="text-[10px] font-bold text-slate-400">Cap: {bmc.capacity} L</span>
+                          </td>
+                          <td className="py-3 px-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.liters || ""}
+                              onChange={(e) => handleCellChange(bId, "liters", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
+                          <td className="py-3 px-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.temperature || ""}
+                              onChange={(e) => handleCellChange(bId, "temperature", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
+                          <td className="py-3 px-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.fat || ""}
+                              onChange={(e) => handleCellChange(bId, "fat", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
+                          <td className="py-3 px-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.snf || ""}
+                              onChange={(e) => handleCellChange(bId, "snf", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
+                          <td className="py-3 px-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.density || ""}
+                              onChange={(e) => handleCellChange(bId, "density", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
+                          <td className="py-3 px-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.water || ""}
+                              onChange={(e) => handleCellChange(bId, "water", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-700/20 active:scale-[0.98] transition-all text-xs"
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? "Saving Daily logs..." : "Save Daily Milk QA"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Stats Sidebar */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          
+          {/* Yield Allocator status card */}
+          <div className="bg-white/95 rounded-3xl border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+            <h3 className="text-xs font-black text-[#16223F] uppercase tracking-wider mb-4">Yield Allocation Status</h3>
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
+                <div>
+                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Milk Collected</span>
+                  <span className="text-sm font-black text-slate-800">{totalCollectedNet.toLocaleString()} L</span>
+                </div>
+                <span className="text-xl">🥛</span>
+              </div>
+              
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
+                <div>
+                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Total QA Logged</span>
+                  <span className="text-sm font-black text-slate-800">{totalEnteredQa.toLocaleString()} L</span>
+                </div>
+                <span className="text-xl">❄️</span>
+              </div>
+
+              <div className={`p-4 border rounded-2xl flex justify-between items-center ${availableMilk === 0 && totalCollectedNet > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                <div>
+                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Remaining Available Milk</span>
+                  <span className={`text-sm font-black ${availableMilk === 0 && totalCollectedNet > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                    {availableMilk.toLocaleString()} L
+                  </span>
+                </div>
+                <span className="text-xl">✨</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
