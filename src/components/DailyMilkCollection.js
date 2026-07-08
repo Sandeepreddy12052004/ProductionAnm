@@ -178,7 +178,6 @@ export default function DailyMilkCollection() {
              String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
             String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
             !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
-            String(a.status).toUpperCase() !== 'PREGNANT' &&
             String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
             String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
         ).length;
@@ -255,7 +254,6 @@ export default function DailyMilkCollection() {
            String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
           String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
           !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
-          String(a.status).toUpperCase() !== 'PREGNANT' &&
           String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
           String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
       );
@@ -292,17 +290,7 @@ export default function DailyMilkCollection() {
       return sum + (Number(quantities[tag]) || 0);
     }, 0);
 
-    const summaryList = [
-      ...shedsSummary,
-      {
-        name: "Pregnant Animals",
-        totalQty: pregnantTotalQty,
-        selfCons: 0,
-        net: pregnantTotalQty,
-        animalCount: pregnantAnimals.length,
-        isVirtual: true
-      }
-    ];
+    const summaryList = [...shedsSummary];
 
     const summaryTotalQty = summaryList.reduce((sum, s) => sum + s.totalQty, 0);
     const summaryTotalSelf = summaryList.reduce((sum, s) => sum + s.selfCons, 0);
@@ -330,9 +318,6 @@ export default function DailyMilkCollection() {
 
   // Active Animals list inside currently selected active shed
   const activeShedAnimals = useMemo(() => {
-    if (activeShedId === "PREGNANT_WORKFLOW") {
-      return calculations.pregnantAnimals || [];
-    }
     if (!activeShedObj) return [];
 
     return animals.filter(
@@ -342,11 +327,10 @@ export default function DailyMilkCollection() {
          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj._id || '').trim().toUpperCase()) &&
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
         !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
-        String(a.status).toUpperCase() !== 'PREGNANT' &&
         String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
         String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
     );
-  }, [activeShedObj, activeShedId, animals, selectedFarmId, calculations.pregnantAnimals]);
+  }, [activeShedObj, animals, selectedFarmId]);
 
   const unassignedAnimalsInShed = useMemo(() => {
     if (!activeShedObj || activeShedObj.lineManagement !== "Yes") return [];
@@ -676,27 +660,6 @@ export default function DailyMilkCollection() {
                   );
                 })}
 
-                {/* 🤰 Virtual Tab for Pregnant Animals */}
-                {calculations.pregnantAnimals && calculations.pregnantAnimals.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setActiveShedId("PREGNANT_WORKFLOW");
-                      setFilters([{ field: "tag", value: "" }]);
-                    }}
-                    className={`h-12 px-5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2.5 border active:scale-[0.98] ${
-                      activeShedId === "PREGNANT_WORKFLOW"
-                        ? "bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-600/10"
-                        : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200/60 shadow-[0_4px_12px_rgba(0,0,0,0.01)]"
-                    }`}
-                  >
-                    <span>🤰 Pregnant Animals</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
-                      activeShedId === "PREGNANT_WORKFLOW" ? "bg-white/20 text-white" : "bg-violet-100 text-violet-600"
-                    }`}>
-                      {calculations.pregnantAnimals.length} head · {calculations.pregnantTotalQty} L
-                    </span>
-                  </button>
-                )}
               </div>
 
               {/* Selected Shed Data Entry Card */}
@@ -708,20 +671,14 @@ export default function DailyMilkCollection() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-black text-slate-900 uppercase tracking-tight font-sans">
-                          {activeShedId === "PREGNANT_WORKFLOW" ? "Pregnant Animals" : activeShedId} Workspace
+                          {activeShedId} Workspace
                         </h3>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase border ${
-                          activeShedId === "PREGNANT_WORKFLOW"
-                            ? "bg-violet-50 text-violet-700 border-violet-100"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                        }`}>
-                          {activeShedId === "PREGNANT_WORKFLOW" ? "One-Time Milking" : session}
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase border bg-emerald-50 text-emerald-700 border-emerald-100">
+                          {session}
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 font-medium mt-1">
-                        {activeShedId === "PREGNANT_WORKFLOW"
-                          ? "Log quantities for pregnant animals. Yields under 2L transition them to Dry Shed."
-                          : "Please record the exact milk quantity collected per individual livestock asset."}
+                        Please record the exact milk quantity collected per individual livestock asset.
                       </p>
                     </div>
 
@@ -892,7 +849,7 @@ export default function DailyMilkCollection() {
                     </div>
                   </div>
 
-                  {activeShedId === "PREGNANT_WORKFLOW" && (
+                  {activeShedAnimals.some(a => String(a.status).toUpperCase() === 'PREGNANT') && (
                     <div className="mx-8 mt-6 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl p-5 shadow-[0_4px_20px_rgba(109,40,217,0.03)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex items-start gap-4">
                         <span className="text-2xl pt-0.5 font-sans">✨</span>
@@ -901,7 +858,7 @@ export default function DailyMilkCollection() {
                             Automated Dry Transition Rules
                           </span>
                           <span className="block text-[10px] text-violet-600 mt-1 font-semibold leading-relaxed">
-                            Pregnant buffaloes are on a <strong>one-time daily milking program</strong>. If a cow's session contribution is <strong>less than 2 Liters</strong>, the system will automatically transition her to the <strong>Dry state (DRY status)</strong> and move her to the <strong>Dry Shed</strong> upon saving.
+                            If a pregnant animal's session contribution is <strong>less than 3 Liters</strong>, the system will automatically transition her to the <strong>Dry state (DRY status)</strong> and move her to the <strong>Dry Shed</strong> upon saving.
                           </span>
                         </div>
                       </div>
@@ -947,18 +904,29 @@ export default function DailyMilkCollection() {
                               key={tag}
                               className="group bg-slate-50/50 hover:bg-white border border-slate-200/50 hover:border-emerald-500/30 rounded-2xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-md transition-all duration-300"
                             >
-                              <div className="flex justify-between items-center mb-3">
-                                <span className="text-[9px] font-extrabold">
-                                  {activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0) ? (
-                                    <span className="text-red-500 font-black">Unassigned</span>
-                                  ) : (
-                                    <span className="text-slate-300">#{animalIndex}</span>
-                                  )}
+                              <div className="flex justify-between items-center mb-2.5">
+                                <span className="text-[9px] font-extrabold text-slate-300">
+                                  #{animalIndex}
                                 </span>
-                                <span className="text-[10px] font-black text-slate-700 font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm">
+                                <span className="text-[10px] font-black text-slate-700 font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm max-w-[70%] truncate" title={tag}>
                                   {tag}
                                 </span>
                               </div>
+                              {((String(animal.status).toUpperCase() === 'PREGNANT') || 
+                                (activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0))) && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {String(animal.status).toUpperCase() === 'PREGNANT' && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold text-[#D1867D] bg-[#D1867D]/10 border border-[#D1867D]/20 rounded-md uppercase tracking-wider animate-pulse" title="Pregnant">
+                                      🤰 Pregnant
+                                    </span>
+                                  )}
+                                  {activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0) && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-black text-red-600 bg-red-50 border border-red-100 rounded-md uppercase tracking-wider" title="Unassigned in Line Management">
+                                      ⚠️ Unassigned
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                               <label className="block text-[8px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                                 Volume (Liters)
                               </label>
@@ -1223,12 +1191,19 @@ export default function DailyMilkCollection() {
             </h3>
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
               {unassignedAnimalsInShed.map((animal) => (
-                <div key={animal.tag || animal.tag_id} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex items-center justify-between">
-                  <div>
-                    <span className="block text-xs font-black text-[#16223F] font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm w-fit">
-                      {String(animal.tag || animal.tag_id).toUpperCase()}
-                    </span>
-                    <span className="block text-[10px] text-slate-400 mt-1 font-semibold uppercase">
+                <div key={animal.tag || animal.tag_id} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1.5 gap-2">
+                      <span className="block text-xs font-black text-[#16223F] font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm w-fit">
+                        {String(animal.tag || animal.tag_id).toUpperCase()}
+                      </span>
+                      {String(animal.status).toUpperCase() === 'PREGNANT' && (
+                        <span className="px-2.5 py-0.5 text-[9px] font-extrabold text-[#D1867D] bg-[#D1867D]/10 border border-[#D1867D]/20 rounded-md uppercase tracking-wider animate-pulse" title="Pregnant">
+                          🤰 Pregnant
+                        </span>
+                      )}
+                    </div>
+                    <span className="block text-[10px] text-slate-400 font-semibold uppercase">
                       {animal.breed || 'Unknown Breed'} · {animal.cattleType || animal.animalType || 'COW'}
                     </span>
                   </div>

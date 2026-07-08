@@ -598,7 +598,7 @@ const DashboardContent = () => {
 
                 <div className="grid grid-cols-2 gap-3.5">
                   <button 
-                    onClick={() => handleNavigation('milk_prod')}
+                    onClick={() => router.push('/milk')}
                     className="p-4 border border-slate-200/70 hover:border-blue-500/30 hover:bg-blue-50/20 text-slate-700 hover:text-blue-800 font-bold rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-300 cursor-pointer active:scale-95 text-center"
                   >
                     <span className="text-2xl">🥛</span>
@@ -606,7 +606,7 @@ const DashboardContent = () => {
                   </button>
 
                   <button 
-                    onClick={() => handleNavigation('crossing')}
+                    onClick={() => router.push('/crossing')}
                     className="p-4 border border-slate-200/70 hover:border-violet-500/30 hover:bg-violet-50/20 text-slate-700 hover:text-violet-800 font-bold rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-300 cursor-pointer active:scale-95 text-center"
                   >
                     <span className="text-2xl">🧬</span>
@@ -614,7 +614,7 @@ const DashboardContent = () => {
                   </button>
 
                   <button 
-                    onClick={() => handleNavigation('health')}
+                    onClick={() => router.push('/treatment')}
                     className="p-4 border border-slate-200/70 hover:border-rose-500/30 hover:bg-rose-50/20 text-slate-700 hover:text-rose-800 font-bold rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-300 cursor-pointer active:scale-95 text-center"
                   >
                     <span className="text-2xl">🩺</span>
@@ -622,7 +622,7 @@ const DashboardContent = () => {
                   </button>
 
                   <button 
-                    onClick={() => handleNavigation('feed_inv')}
+                    onClick={() => router.push('/feed-log')}
                     className="p-4 border border-slate-200/70 hover:border-amber-500/30 hover:bg-amber-50/20 text-slate-700 hover:text-amber-800 font-bold rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-300 cursor-pointer active:scale-95 text-center"
                   >
                     <span className="text-2xl">🌾</span>
