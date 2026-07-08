@@ -199,8 +199,9 @@
       const bmc = bmcsList.find(b => (b._id || b.id) === bmcId);
       if (!bmc) return;
 
-      // Allow only one BMC at a time
-      const next = [{ bmcId, name: bmc.name || bmc.code, liters: "" }];
+      // Allow only one BMC at a time and preserve current entered liters
+      const currentLiters = selectedBmcs[0]?.liters !== undefined ? selectedBmcs[0].liters : "";
+      const next = [{ bmcId, name: bmc.name || bmc.code, liters: currentLiters }];
       onChange(next);
     };
 
