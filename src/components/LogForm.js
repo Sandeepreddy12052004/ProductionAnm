@@ -544,6 +544,9 @@
       if (formatted.dameBreed && (!formatted.breed || formatted.breed === '' || formatted.breed === '-')) {
         formatted.breed = formatted.dameBreed;
       }
+      if (String(formatted.gender).toUpperCase() === 'MALE') {
+        formatted.calvings = 0;
+      }
       let fallbackFarmId = '';
       try {
         const activeFarm = localStorage.getItem('__active_farm_id__');
@@ -990,6 +993,10 @@
 
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+
+      if (name === "gender" && String(value).toUpperCase() === "MALE") {
+        updated["calvings"] = 0;
+      }
 
       if (name === "weight" || name === "harvestedArea") {
         const w = name === "weight" ? Number(value) : Number(updated.weight || 0);
@@ -2159,6 +2166,7 @@
     /*  Updated Disabled Logic: 1st Notification remains enabled if status is Negative */
     disabled={
       field.disabled === true ||
+      (field.name === "calvings" && String(formData.gender).toUpperCase() === "MALE") ||
       (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
       (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
