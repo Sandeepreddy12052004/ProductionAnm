@@ -549,6 +549,7 @@ export default function DailyMilkCollection() {
                     <input
                       type="date"
                       value={selectedDate}
+                      max={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setSelectedDate(e.target.value)}
                       className="w-full h-12 bg-slate-50/50 border border-slate-200/80 rounded-2xl pl-11 pr-4 text-xs font-black text-slate-800 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all duration-300"
                     />
