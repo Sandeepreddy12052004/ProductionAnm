@@ -2170,7 +2170,7 @@
 
     /*  Added Whole Number protection */
     min={field.type === "number" ? "0" : undefined}
-    step={field.type === "number" ? "1" : undefined}
+    step={field.type === "number" ? "any" : undefined}
     
     readOnly={field.name === "age" || field.name === "pregnantAge" || field.name === "procuredBy"}
     
