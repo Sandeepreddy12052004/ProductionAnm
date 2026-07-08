@@ -3,7 +3,7 @@ import { api } from "../utils/api";
 import { swalSuccess, swalError } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
-import { Calendar as CalendarIcon, Save } from "lucide-react";
+import { Calendar as CalendarIcon, Save, ChevronDown } from "lucide-react";
 
 export default function DailyMilkQuality() {
   const [bmcsList, setBmcsList] = useState([]);
@@ -11,6 +11,7 @@ export default function DailyMilkQuality() {
   const [qaLogsList, setQaLogsList] = useState([]);
   const [farmsList, setFarmsList] = useState([]);
   const [selectedFarmId, setSelectedFarmId] = useState("");
+  const [focusedBmcId, setFocusedBmcId] = useState(null);
 
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [isLoading, setIsLoading] = useState(true);
@@ -357,6 +358,7 @@ export default function DailyMilkQuality() {
                       </option>
                     ))}
                   </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -372,89 +374,107 @@ export default function DailyMilkQuality() {
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                      <th className="py-3 px-2">⚡ BMC Name</th>
-                      <th className="py-3 px-2 w-24">Liters (L)</th>
-                      <th className="py-3 px-2 w-24">Temp (°C)</th>
-                      <th className="py-3 px-2 w-20">Fat %</th>
-                      <th className="py-3 px-2 w-20">SNF %</th>
-                      <th className="py-3 px-2 w-24">CLR / Density</th>
-                      <th className="py-3 px-2 w-20">Water %</th>
+                      <th className="py-3 px-2 text-left">⚡ BMC Name</th>
+                      <th className="py-3 px-2 w-28 text-center">Liters (L)</th>
+                      <th className="py-3 px-2 w-28 text-center">Temp (°C)</th>
+                      <th className="py-3 px-2 w-24 text-center">Fat %</th>
+                      <th className="py-3 px-2 w-24 text-center">SNF %</th>
+                      <th className="py-3 px-2 w-32 text-center">CLR / Density</th>
+                      <th className="py-3 px-2 w-24 text-center">Water %</th>
                     </tr>
                   </thead>
                   <tbody>
                     {bmcsList.map(bmc => {
                       const bId = bmc._id || bmc.id;
                       const row = rowValues[bId] || {};
+                      const isFocused = focusedBmcId === bId;
                       return (
-                        <tr key={bId} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 px-2">
+                        <tr
+                          key={bId}
+                          className={`border-b border-slate-50 hover:bg-slate-50/50 transition-all border-l-4 ${
+                            isFocused ? "bg-slate-50/70 border-l-[#D1867D]" : "border-l-transparent"
+                          }`}
+                        >
+                          <td className="py-4 px-2 align-middle">
                             <span className="text-xs font-black text-slate-800 block">❄️ {bmc.name || bmc.code}</span>
                             <span className="text-[10px] font-bold text-slate-400">Cap: {bmc.capacity} L</span>
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 align-middle">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               placeholder="0.0"
                               value={row.liters || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
                               onChange={(e) => handleCellChange(bId, "liters", e.target.value)}
-                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 align-middle">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               placeholder="0.0"
                               value={row.temperature || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
                               onChange={(e) => handleCellChange(bId, "temperature", e.target.value)}
-                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 align-middle">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               placeholder="0.0"
                               value={row.fat || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
                               onChange={(e) => handleCellChange(bId, "fat", e.target.value)}
-                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 align-middle">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               placeholder="0.0"
                               value={row.snf || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
                               onChange={(e) => handleCellChange(bId, "snf", e.target.value)}
-                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 align-middle">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               placeholder="0.0"
                               value={row.density || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
                               onChange={(e) => handleCellChange(bId, "density", e.target.value)}
-                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-2 align-middle">
                             <input
                               type="number"
                               min="0"
                               step="any"
                               placeholder="0.0"
                               value={row.water || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
                               onChange={(e) => handleCellChange(bId, "water", e.target.value)}
-                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
                         </tr>
@@ -477,10 +497,10 @@ export default function DailyMilkQuality() {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving || totalEnteredQa > totalCollectedNet}
-                className={`inline-flex items-center justify-center gap-2 px-6 py-3 font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all text-xs ${
+                className={`inline-flex items-center justify-center gap-2 px-6 py-3 font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs ${
                   (totalEnteredQa > totalCollectedNet)
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/10 hover:shadow-emerald-700/20'
+                    : 'bg-[#16223F] hover:bg-[#20315a] text-white shadow-[#16223F]/10 hover:shadow-xl'
                 }`}
               >
                 <Save className="w-4 h-4" />
