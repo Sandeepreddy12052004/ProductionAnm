@@ -202,7 +202,9 @@ export default function BmcManagementPg() {
   };
 
   // Stats
-  const totalCapacity = bmcs.reduce((sum, b) => sum + (b.capacity || 0), 0);
+  const totalCapacity = bmcs
+    .filter(b => String(b.status || "").trim().toUpperCase() === "ACTIVE")
+    .reduce((sum, b) => sum + (b.capacity || 0), 0);
   const totalStored = bmcs.reduce((sum, b) => sum + (b.currentVolume || 0), 0);
   const activeCoolers = bmcs.filter(b => b.status === 'ACTIVE').length;
 

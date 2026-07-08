@@ -214,7 +214,9 @@ const DashboardContent = () => {
 
       // 4. Coolers (BMC) metrics
       const totalBmcVolume = bmcs.reduce((sum, b) => sum + (b.currentVolume || 0), 0);
-      const totalBmcCapacity = bmcs.reduce((sum, b) => sum + (b.capacity || 0), 0);
+      const totalBmcCapacity = bmcs
+        .filter(b => String(b.status || "").trim().toUpperCase() === "ACTIVE")
+        .reduce((sum, b) => sum + (b.capacity || 0), 0);
       const activeCoolersCount = bmcs.filter(b => b.status === 'ACTIVE').length;
       const bmcAlerts = bmcs.filter(b => b.status === 'ACTIVE' && b.temperature > 4).length;
 
