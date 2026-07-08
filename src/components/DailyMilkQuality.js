@@ -434,18 +434,18 @@ export default function DailyMilkQuality() {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-8 pt-6 border-t border-slate-100 w-full">
               <div>
-                {!isTallied && totalCollectedNet > 0 && (
+                {totalEnteredQa > totalCollectedNet && (
                   <span className="text-xs text-red-500 font-bold">
-                    ⚠️ Quantities must tally exactly to save ({totalEnteredQa.toFixed(2)} L entered vs {totalCollectedNet.toFixed(2)} L collected)
+                    ⚠️ Entered quantity cannot exceed total collected milk ({totalEnteredQa.toFixed(2)} L entered vs {totalCollectedNet.toFixed(2)} L collected)
                   </span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isSaving || (!isTallied && totalCollectedNet > 0)}
+                disabled={isSaving || totalEnteredQa > totalCollectedNet}
                 className={`inline-flex items-center justify-center gap-2 px-6 py-3 font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all text-xs ${
-                  (!isTallied && totalCollectedNet > 0)
+                  (totalEnteredQa > totalCollectedNet)
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                     : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/10 hover:shadow-emerald-700/20'
                 }`}
