@@ -370,7 +370,17 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             cleanPath.startsWith('/api/designations/');
         } else {
           // Global user: filter by the selected active farm if set (and not 'ALL')
-          const activeFarmId = localStorage.getItem('__active_farm_id__');
+          let activeFarmId = 'ALL';
+          try {
+            if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+              const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+              activeFarmId = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+            } else {
+              activeFarmId = localStorage.getItem('__active_farm_id__') || 'ALL';
+            }
+          } catch (e) {
+            activeFarmId = localStorage.getItem('__active_farm_id__') || 'ALL';
+          }
           if (activeFarmId && activeFarmId !== 'ALL') {
             restrictedFarmId = String(activeFarmId).trim();
           }

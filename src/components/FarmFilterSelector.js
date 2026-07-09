@@ -29,12 +29,13 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
         .then((data) => {
           if (Array.isArray(data)) {
             setFarms(data);
-            const storedActive = localStorage.getItem('__active_farm_id__');
+            const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+            const storedActive = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
             let initialActive = storedActive || 'ALL';
             
             if (initialActive === 'ALL' && !showAllOption && data.length > 0) {
               const firstFarmId = data[0]._id || data[0].id;
-              localStorage.setItem('__active_farm_id__', firstFarmId);
+              localStorage.setItem(pageKey, firstFarmId);
               initialActive = firstFarmId;
             }
             
@@ -47,7 +48,8 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
 
   const handleFarmChange = (e) => {
     const selectedId = e.target.value;
-    localStorage.setItem('__active_farm_id__', selectedId);
+    const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+    localStorage.setItem(pageKey, selectedId);
     setActiveFarmId(selectedId);
     window.location.reload();
   };

@@ -122,7 +122,8 @@ export default function DailyMilkCollection() {
         const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
         setAnimals(rawAnimals);
 
-        const storedActive = localStorage.getItem('__active_farm_id__');
+        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+        const storedActive = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
         if (storedActive && storedActive !== 'ALL') {
           setSelectedFarmId(storedActive);
         } else if (sorted && sorted.length > 0) {
@@ -586,7 +587,8 @@ export default function DailyMilkCollection() {
                       value={selectedFarmId}
                       onChange={(e) => {
                         const newFarmId = e.target.value;
-                        localStorage.setItem('__active_farm_id__', newFarmId);
+                        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+                        localStorage.setItem(pageKey, newFarmId);
                         setSelectedFarmId(newFarmId);
                         window.location.reload();
                       }}

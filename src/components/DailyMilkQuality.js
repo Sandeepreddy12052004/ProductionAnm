@@ -33,7 +33,8 @@ export default function DailyMilkQuality() {
         const finalFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
         setFarmsList(finalFarms);
 
-        const storedActive = localStorage.getItem('__active_farm_id__');
+        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+        const storedActive = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
         let activeId = "";
         if (storedActive && storedActive !== 'ALL') {
           activeId = storedActive;
@@ -347,7 +348,8 @@ export default function DailyMilkQuality() {
                     value={selectedFarmId}
                     onChange={(e) => {
                       const newFarmId = e.target.value;
-                      localStorage.setItem('__active_farm_id__', newFarmId);
+                      const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+                      localStorage.setItem(pageKey, newFarmId);
                       setSelectedFarmId(newFarmId);
                     }}
                     className="w-full h-10 bg-slate-50/50 border border-slate-200/80 rounded-xl pl-11 pr-10 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 appearance-none transition-all duration-300"
