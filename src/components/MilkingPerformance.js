@@ -21,6 +21,7 @@ export default function MilkingPerformance() {
   // Filter States
   const [selectedShed, setSelectedShed] = useState('ALL');
   const [selectedAnimalType, setSelectedAnimalType] = useState('ALL');
+  const [lowYieldThreshold, setLowYieldThreshold] = useState(15);
   const [datePreset, setDatePreset] = useState('7_DAYS');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -224,7 +225,8 @@ export default function MilkingPerformance() {
     .filter(animal => {
       const isCalf = String(animal.type).toUpperCase().includes('CALF') || String(animal.tag).toUpperCase().includes('CALF');
       const isMale = String(animal.gender).toUpperCase() === 'MALE';
-      return !isCalf && !isMale;
+      const passesThreshold = lowYieldThreshold === '' || animal.yieldL <= Number(lowYieldThreshold);
+      return !isCalf && !isMale && passesThreshold;
     })
     .sort((a, b) => a.yieldL - b.yieldL)
     .slice(0, 5);
@@ -463,6 +465,19 @@ export default function MilkingPerformance() {
               <option value="BUFFALO">Buffalo</option>
             </select>
           </div>
+
+          {/* Low Yield Limit Filter */}
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">Low Yield Limit (L)</label>
+            <input
+              type="number"
+              min="0"
+              value={lowYieldThreshold}
+              onChange={(e) => { setLowYieldThreshold(e.target.value === '' ? '' : Number(e.target.value)); setCurrentPage(1); }}
+              placeholder="e.g. 15"
+              className="h-10 w-28 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
+            />
+          </div>
         </div>
 
         {/* Clear Filters Indicator */}
@@ -470,6 +485,7 @@ export default function MilkingPerformance() {
           onClick={() => {
             setSelectedShed('ALL');
             setSelectedAnimalType('ALL');
+            setLowYieldThreshold(15);
             setDatePreset('7_DAYS');
             setStartDate('');
             setEndDate('');
