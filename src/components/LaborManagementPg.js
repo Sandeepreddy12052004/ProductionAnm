@@ -26,6 +26,9 @@ export default function LaborManagementPg() {
   const [farms, setFarms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [userFarmId, setUserFarmId] = useState("");
+  const [farmFilter, setFarmFilter] = useState("ALL");
 
   // Modals
   const [showLaborForm, setShowLaborForm] = useState(false);
@@ -52,6 +55,21 @@ export default function LaborManagementPg() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      const storedUser = localStorage.getItem('user');
+      let currentRole = '';
+      let currentFarmId = '';
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        currentRole = u.role || '';
+        const fId = u.farmId && typeof u.farmId === 'object' ? (u.farmId._id || u.farmId.id) : u.farmId;
+        currentFarmId = fId || '';
+        setUserRole(currentRole);
+        setUserFarmId(currentFarmId);
+        if (currentRole !== 'SUPER_ADMIN' && currentFarmId) {
+          setFarmFilter(currentFarmId);
+        }
+      }
+
       // Parallel fetches for efficiency
       const [laborsRes, designationsRes, farmsRes] = await Promise.all([
         api.labors.getAll(),
@@ -186,7 +204,7 @@ export default function LaborManagementPg() {
       id: lab._id || lab.id,
       name: lab.name || "",
       designationId: lab.designationId?._id || lab.designationId || "",
-      farmId: lab.farmId?._id || lab.farmId || "",
+      farmId: String(lab.farmId?._id || lab.farmId || ""),
       phone: lab.phone || "",
       status: lab.status || "ACTIVE",
     });
@@ -214,7 +232,12 @@ export default function LaborManagementPg() {
     const designationStr = String(l.designationId?.name || "").toLowerCase();
     const farmStr = String(l.farmId?.name || "").toLowerCase();
     const query = searchQuery.toLowerCase();
-    return nameStr.includes(query) || phoneStr.includes(query) || designationStr.includes(query) || farmStr.includes(query);
+    const matchesSearch = nameStr.includes(query) || phoneStr.includes(query) || designationStr.includes(query) || farmStr.includes(query);
+
+    const laborFarmId = l.farmId?._id || l.farmId;
+    const matchesFarm = farmFilter === 'ALL' || String(laborFarmId) === String(farmFilter);
+
+    return matchesSearch && matchesFarm;
   });
 
   const filteredDesignations = designations.filter((d) => {
@@ -239,7 +262,8 @@ export default function LaborManagementPg() {
         <button
           onClick={() => {
             if (activeTab === "labors") {
-              setLaborForm({ id: null, name: "", designationId: "", farmId: "", phone: "", status: "ACTIVE" });
+              const defFarmId = userRole !== 'SUPER_ADMIN' && userFarmId ? userFarmId : (farms[0]?._id || '');
+              setLaborForm({ id: null, name: "", designationId: "", farmId: String(defFarmId), phone: "", status: "ACTIVE" });
               setShowLaborForm(true);
             } else {
               setDesignationForm({ id: null, name: "", description: "", status: "ACTIVE" });
@@ -320,16 +344,31 @@ export default function LaborManagementPg() {
             </button>
           </div>
 
-          {/* Search Inputs */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab === "labors" ? "employees, farms..." : "designations..."}`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-100 border border-slate-200/50 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
-            />
+          {/* Controls Panel (Search & Farm filter) */}
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {activeTab === "labors" && (
+              <select
+                value={farmFilter}
+                onChange={(e) => setFarmFilter(e.target.value)}
+                className="h-10 px-3.5 bg-slate-100 border border-slate-200/50 rounded-2xl text-xs font-bold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200 cursor-pointer min-w-[150px]"
+              >
+                <option value="ALL">All Farms</option>
+                {farms.map(f => (
+                  <option key={f._id} value={f._id}>{f.name}</option>
+                ))}
+              </select>
+            )}
+
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab === "labors" ? "employees, farms..." : "designations..."}`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-100 border border-slate-200/50 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] focus:ring-2 focus:ring-[#D1867D]/10 transition-all duration-200"
+              />
+            </div>
           </div>
         </div>
 
