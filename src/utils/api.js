@@ -398,7 +398,13 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             cleanPath === '/api/labors' ||
             cleanPath.startsWith('/api/labors/') ||
             cleanPath === '/api/designations' ||
-            cleanPath.startsWith('/api/designations/');
+            cleanPath.startsWith('/api/designations/') ||
+            cleanPath === '/api/lands' ||
+            cleanPath.startsWith('/api/lands/') ||
+            cleanPath === '/api/bmcs' ||
+            cleanPath.startsWith('/api/bmcs/') ||
+            cleanPath === '/api/semen-straws' ||
+            cleanPath.startsWith('/api/semen-straws/');
         }
 
         if (restrictedFarmId && !isBypassedEndpoint) {
