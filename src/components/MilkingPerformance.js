@@ -113,8 +113,19 @@ export default function MilkingPerformance() {
 
     // 2. Shed Filter
     if (selectedShed !== 'ALL') {
-      const shedCode = String(log.shedId || log.shed || '').trim().toUpperCase();
-      if (shedCode !== selectedShed) return false;
+      const selectedShedObj = shedsList.find(s => String(s._id || s.id) === selectedShed);
+      if (selectedShedObj) {
+        const logShed = String(log.shedId || log.shed || '').trim().toUpperCase();
+        const codeMatch = String(selectedShedObj.code || '').trim().toUpperCase();
+        const nameMatch = String(selectedShedObj.name || '').trim().toUpperCase();
+        const idMatch = String(selectedShedObj._id || selectedShedObj.id || '').trim().toUpperCase();
+        
+        if (logShed !== codeMatch && logShed !== nameMatch && logShed !== idMatch) {
+          return false;
+        }
+      } else {
+        return false;
+      }
     }
 
     // 3. Animal Type Filter
@@ -432,7 +443,7 @@ export default function MilkingPerformance() {
             >
               <option value="ALL">All Sheds</option>
               {shedsList.map(shed => (
-                <option key={shed._id || shed.id} value={String(shed.code || shed.name || '').toUpperCase()}>
+                <option key={shed._id || shed.id} value={String(shed._id || shed.id)}>
                   Shed {shed.name || shed.code}
                 </option>
               ))}
