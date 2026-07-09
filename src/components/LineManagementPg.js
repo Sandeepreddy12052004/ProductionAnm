@@ -364,6 +364,8 @@ const LineManagementPg = () => {
     PENDING: "text-orange-700 bg-orange-50 border-orange-100",
     SOLD: "text-slate-600 bg-slate-100 border-slate-200",
     DECEASED: "text-red-700 bg-red-50 border-red-100",
+    "ONE TIME MILKING": "text-blue-700 bg-blue-50 border-blue-100",
+    ONE_TIME_MILKING: "text-blue-700 bg-blue-50 border-blue-100",
   };
 
   // Build the list of 10 slots for the active selectedRowNum

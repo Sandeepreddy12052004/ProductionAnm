@@ -586,6 +586,8 @@ const ShedManagementPg = () => {
                                   PENDING: "bg-orange-50 text-orange-700 border-orange-100",
                                   SOLD: "bg-slate-100 text-slate-600 border-slate-200",
                                   DECEASED: "bg-red-50 text-red-700 border-red-100",
+                                  "ONE TIME MILKING": "bg-blue-50 text-blue-700 border-blue-100",
+                                  ONE_TIME_MILKING: "bg-blue-50 text-blue-700 border-blue-100",
                                 };
                                 const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO' 
                                   ? '🐃' 

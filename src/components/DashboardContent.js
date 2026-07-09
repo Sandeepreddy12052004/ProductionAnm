@@ -586,6 +586,7 @@ const DashboardContent = () => {
 
               </div>
 
+              {/* Original COLUMN 1 end */}
             </div>
 
             {/* COLUMN 2: Quick actions, Live treatments, Cooler levels (4/12 wide) */}
@@ -624,7 +625,7 @@ const DashboardContent = () => {
                   </button>
 
                   <button 
-                    onClick={() => router.push('/feed-log')}
+                    onClick={() => router.push('/feeding')}
                     className="p-4 border border-slate-200/70 hover:border-amber-500/30 hover:bg-amber-50/20 text-slate-700 hover:text-amber-800 font-bold rounded-2xl flex flex-col items-center justify-center gap-2 transition duration-300 cursor-pointer active:scale-95 text-center"
                   >
                     <span className="text-2xl">🌾</span>

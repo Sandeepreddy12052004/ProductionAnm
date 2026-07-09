@@ -198,6 +198,26 @@ export default function MilkingPerformance() {
     .sort((a, b) => b.yieldL - a.yieldL)
     .slice(0, 5);
 
+  const lowAnimals = Object.entries(animalYieldMap)
+    .map(([tag, yieldL]) => {
+      const animal = cattleMap.get(tag);
+      return {
+        tag,
+        yieldL,
+        breed: animal?.breed || 'Unknown',
+        shed: animal?.shedId || animal?.shed || '-',
+        type: animal?.cattleType || animal?.animalType || 'Cow',
+        gender: animal?.gender || 'Female'
+      };
+    })
+    .filter(animal => {
+      const isCalf = String(animal.type).toUpperCase().includes('CALF') || String(animal.tag).toUpperCase().includes('CALF');
+      const isMale = String(animal.gender).toUpperCase() === 'MALE';
+      return !isCalf && !isMale;
+    })
+    .sort((a, b) => a.yieldL - b.yieldL)
+    .slice(0, 5);
+
   // Table Logs Search & Pagination
   const formatTableDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -623,10 +643,10 @@ export default function MilkingPerformance() {
           </div>
 
           {/* TABLE SECTIONS: TOP PERFORMERS & DAILY LOGS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             
             {/* Top Yielding Animals */}
-            <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col justify-between h-full">
+            <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col justify-between h-full lg:col-span-1">
               <div>
                 <h3 className="font-extrabold text-base text-[#16223F] mb-1">Top Performing Animals</h3>
                 <p className="text-xs text-slate-400 font-bold mb-4">Highest milk yield producers in selected range</p>
@@ -651,6 +671,41 @@ export default function MilkingPerformance() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-black text-emerald-600">{animal.yieldL.toFixed(1)} L</p>
+                          <p className="text-[9px] text-slate-400 font-bold">Rank #{i + 1}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Low Yielding Animals */}
+            <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col justify-between h-full lg:col-span-1">
+              <div>
+                <h3 className="font-extrabold text-base text-[#16223F] mb-1">Low Performing Animals</h3>
+                <p className="text-xs text-slate-400 font-bold mb-4">Lowest milk yield producers in selected range</p>
+              </div>
+
+              {lowAnimals.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-sm font-semibold text-slate-400 py-10">
+                  No records.
+                </div>
+              ) : (
+                <div className="flex-1 divide-y divide-slate-100">
+                  {lowAnimals.map((animal, i) => {
+                    const emoji = String(animal.type).toUpperCase() === 'BUFFALO' ? '🐃' : '🐄';
+                    return (
+                      <div key={animal.tag} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{emoji}</span>
+                          <div>
+                            <p className="text-sm font-black text-[#16223F]">Tag {animal.tag}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">Shed {animal.shed} | {animal.breed}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-black text-rose-600">{animal.yieldL.toFixed(1)} L</p>
                           <p className="text-[9px] text-slate-400 font-bold">Rank #{i + 1}</p>
                         </div>
                       </div>

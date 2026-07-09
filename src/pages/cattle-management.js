@@ -31,7 +31,8 @@ export default function CattleManagementPage() {
           'EMPTY',
           'PENDING',
           'SOLD',
-          'DECEASED'
+          'DECEASED',
+          'ONE TIME MILKING'
         ]
       },
       { name: 'milk', label: 'Milk Yield' },

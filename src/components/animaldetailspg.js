@@ -1945,7 +1945,7 @@ const resolveStatusFromInfo = (tagId, remarks, currentStatus = 'ACTIVE') => {
     return 'SOLD';
   }
   
-  const allowedStatuses = ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED'];
+  const allowedStatuses = ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED', 'ONE_TIME_MILKING', 'ONE TIME MILKING'];
   const cleanCurrent = String(currentStatus).toUpperCase().trim();
   if (allowedStatuses.includes(cleanCurrent)) {
     return cleanCurrent;

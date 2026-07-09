@@ -76,7 +76,7 @@ export default function AnimalsPage() {
       { name: 'calvings', label: 'No. of Calvings', type: 'number' },
       { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
       { name: 'remarks', label: 'Remarks', type: 'text' },
-      { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED'] }
+      { name: 'status', label: 'Status', type: 'select', options: ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED', 'ONE TIME MILKING'] }
     ]
   };
 

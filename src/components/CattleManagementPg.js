@@ -97,6 +97,8 @@ export default function CattleManagementPg({
     SICK: "bg-red-50 text-red-700 border border-red-100",
     DRY: "bg-orange-50 text-orange-700 border border-orange-100",
     PENDING: "bg-amber-50 text-amber-700 border border-amber-100",
+    "ONE TIME MILKING": "bg-blue-50 text-blue-700 border border-blue-100",
+    ONE_TIME_MILKING: "bg-blue-50 text-blue-700 border border-blue-100",
   };
 
   const fetchCattleData = async () => {
