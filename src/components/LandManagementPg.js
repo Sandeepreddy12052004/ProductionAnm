@@ -264,7 +264,7 @@ export default function LandManagementPg() {
     const matchesStatus = statusFilter === 'ALL' || land.status === statusFilter;
     
     const landFarmId = land.farmId?._id || land.farmId;
-    const matchesFarm = farmFilter === 'ALL' || landFarmId === farmFilter;
+    const matchesFarm = farmFilter === 'ALL' || String(landFarmId) === String(farmFilter);
 
     return matchesSearch && matchesStatus && matchesFarm;
   });
@@ -277,7 +277,7 @@ export default function LandManagementPg() {
       (land.landownerName || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     const landFarmId = land.farmId?._id || land.farmId;
-    const matchesFarm = farmFilter === 'ALL' || landFarmId === farmFilter;
+    const matchesFarm = farmFilter === 'ALL' || String(landFarmId) === String(farmFilter);
     return matchesSearch && matchesFarm;
   });
 
@@ -457,20 +457,18 @@ export default function LandManagementPg() {
             </div>
           )}
 
-          {userRole === 'SUPER_ADMIN' && (
-            <div className="w-full sm:w-48">
-              <select
-                value={farmFilter}
-                onChange={(e) => setFarmFilter(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] transition-all duration-200"
-              >
-                <option value="ALL">All Farms</option>
-                {farms.map(f => (
-                  <option key={f._id} value={f._id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="w-full sm:w-48">
+            <select
+              value={farmFilter}
+              onChange={(e) => setFarmFilter(e.target.value)}
+              className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] transition-all duration-200"
+            >
+              <option value="ALL">All Farms</option>
+              {farms.map(f => (
+                <option key={f._id} value={f._id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -486,7 +484,7 @@ export default function LandManagementPg() {
           /* Lands Grid View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredLands.map((land) => {
-              const landFarm = farms.find(f => f._id === (land.farmId?._id || land.farmId));
+              const landFarm = farms.find(f => String(f._id) === String(land.farmId?._id || land.farmId));
               return (
                 <div 
                   key={land._id} 
@@ -831,22 +829,20 @@ export default function LandManagementPg() {
                 </div>
               </div>
 
-              {userRole === 'SUPER_ADMIN' ? (
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Enterprise Farm Unit</label>
-                  <select
-                    required
-                    value={landFormData.farmId}
-                    onChange={(e) => setLandFormData(prev => ({ ...prev, farmId: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
-                  >
-                    <option value="" disabled>Select Farm</option>
-                    {farms.map(f => (
-                      <option key={f._id} value={f._id}>{f.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Enterprise Farm Unit</label>
+                <select
+                  required
+                  value={landFormData.farmId}
+                  onChange={(e) => setLandFormData(prev => ({ ...prev, farmId: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
+                >
+                  <option value="" disabled>Select Farm</option>
+                  {farms.map(f => (
+                    <option key={f._id} value={f._id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

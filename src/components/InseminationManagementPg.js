@@ -273,18 +273,16 @@ export default function InseminationManagementPg() {
           </select>
 
           {/* Farm Filter (SUPER_ADMIN) */}
-          {userRole === 'SUPER_ADMIN' && (
-            <select
-              value={farmFilter}
-              onChange={(e) => setFarmFilter(e.target.value)}
-              className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] text-slate-700 font-medium"
-            >
-              <option value="ALL">All Farms</option>
-              {farms.map(f => (
-                <option key={f._id} value={f._id}>{f.name}</option>
-              ))}
-            </select>
-          )}
+          <select
+            value={farmFilter}
+            onChange={(e) => setFarmFilter(e.target.value)}
+            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] text-slate-700 font-medium"
+          >
+            <option value="ALL">All Farms</option>
+            {farms.map(f => (
+              <option key={f._id} value={f._id}>{f.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -508,22 +506,21 @@ export default function InseminationManagementPg() {
                   </select>
                 </div>
 
-                {userRole === 'SUPER_ADMIN' && (
-                  <div className="col-span-2">
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                      Assign to Farm
-                    </label>
-                    <select
-                      value={formData.farmId}
-                      onChange={(e) => setFormData(prev => ({ ...prev, farmId: e.target.value }))}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
-                    >
-                      {farms.map(f => (
-                        <option key={f._id} value={f._id}>{f.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <div className="col-span-2">
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                    Assign to Farm
+                  </label>
+                  <select
+                    value={formData.farmId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, farmId: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#16223F]/20 focus:border-[#16223F] font-semibold"
+                  >
+                    <option value="" disabled>Select Farm</option>
+                    {farms.map(f => (
+                      <option key={f._id} value={f._id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* ACTION BUTTONS */}

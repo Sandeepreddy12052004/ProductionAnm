@@ -320,20 +320,18 @@ export default function BmcManagementPg() {
             </select>
           </div>
 
-          {userRole === 'SUPER_ADMIN' && (
-            <div className="w-full sm:w-48">
-              <select
-                value={farmFilter}
-                onChange={(e) => setFarmFilter(e.target.value)}
-                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] transition-all duration-200"
-              >
-                <option value="ALL">All Farms</option>
-                {farms.map(f => (
-                  <option key={f._id} value={f._id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="w-full sm:w-48">
+            <select
+              value={farmFilter}
+              onChange={(e) => setFarmFilter(e.target.value)}
+              className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm font-semibold text-[#16223F] outline-none focus:bg-white focus:border-[#D1867D] transition-all duration-200"
+            >
+              <option value="ALL">All Farms</option>
+              {farms.map(f => (
+                <option key={f._id} value={f._id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -348,7 +346,7 @@ export default function BmcManagementPg() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredBmcs.map((bmc) => {
-              const bmcFarm = farms.find(f => f._id === (bmc.farmId?._id || bmc.farmId));
+              const bmcFarm = farms.find(f => String(f._id) === String(bmc.farmId?._id || bmc.farmId));
               const fillPercentage = bmc.capacity > 0 ? Math.min(((bmc.currentVolume || 0) / bmc.capacity) * 100, 100) : 0;
               
               // Temperature warning: Standard milk cooling target is 2°C - 4°C. Highlight if > 4°C.
@@ -552,22 +550,20 @@ export default function BmcManagementPg() {
                 </div>
               </div>
 
-              {userRole === 'SUPER_ADMIN' ? (
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Enterprise Farm Unit</label>
-                  <select
-                    required
-                    value={bmcFormData.farmId}
-                    onChange={(e) => setBmcFormData(prev => ({ ...prev, farmId: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
-                  >
-                    <option value="" disabled>Select Farm</option>
-                    {farms.map(f => (
-                      <option key={f._id} value={f._id}>{f.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Enterprise Farm Unit</label>
+                <select
+                  required
+                  value={bmcFormData.farmId}
+                  onChange={(e) => setBmcFormData(prev => ({ ...prev, farmId: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
+                >
+                  <option value="" disabled>Select Farm</option>
+                  {farms.map(f => (
+                    <option key={f._id} value={f._id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Location / Facility Section</label>
