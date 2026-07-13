@@ -27,11 +27,14 @@ const DashboardContent = () => {
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeAlertTab, setActiveAlertTab] = useState('heat'); // 'heat' | 'pd' | 'calving'
+  const [showMilkModal, setShowMilkModal] = useState(false);
   const [stats, setStats] = useState({
     totalAnimals: 0,
     calvesCount: 0,
     totalBreeds: 0,
     dailyMilk: 0,
+    dailyCollection: 0,
+    dailyProcurement: 0,
     healthAlertsCount: 0,
     activeTreatments: [],
     pdNearCount: 0,
@@ -56,13 +59,14 @@ const DashboardContent = () => {
       const isAll = !activeFarmId || activeFarmId === 'ALL';
 
       // Fetch from backend API
-      const [cattleRes, crossingRes, milkRes, treatmentRes, vaccineRes, bmcsRes] = await Promise.allSettled([
+      const [cattleRes, crossingRes, milkRes, treatmentRes, vaccineRes, bmcsRes, procurementRes] = await Promise.allSettled([
         api.cattle.getAll(),
         api.crossing.getAll(),
         api.milk.collections.getAll(),
         api.health.treatments.getAll(),
         api.health.vaccinations.getAll(),
-        api.bmcs.getAll()
+        api.bmcs.getAll(),
+        api.milk.procurement.getAll()
       ]);
 
       // Resolve actual data or fallback to local storage
@@ -87,6 +91,13 @@ const DashboardContent = () => {
         const tkpMilk = JSON.parse(localStorage.getItem('tkp_milk_prod_logs') || '[]');
         const tdrMilk = JSON.parse(localStorage.getItem('tdr_milk_prod_logs') || '[]');
         milkLogs = [...tkpMilk, ...tdrMilk];
+      }
+
+      let procurementLogs = [];
+      if (procurementRes.status === 'fulfilled' && Array.isArray(procurementRes.value)) {
+        procurementLogs = procurementRes.value;
+      } else {
+        procurementLogs = JSON.parse(localStorage.getItem('global_milk_procurements') || '[]');
       }
 
       let healthLogs = [];
@@ -120,6 +131,7 @@ const DashboardContent = () => {
       livestock = livestock.filter(a => isAll || String(a.farmId?._id || a.farmId?.id || a.farmId) === String(activeFarmId));
       crossingLogs = crossingLogs.filter(log => isAll || String(log.farmId?._id || log.farmId?.id || log.farmId) === String(activeFarmId));
       milkLogs = milkLogs.filter(log => isAll || String(log.farmId?._id || log.farmId?.id || log.farmId) === String(activeFarmId));
+      procurementLogs = procurementLogs.filter(log => isAll || String(log.farmId?._id || log.farmId?.id || log.farmId) === String(activeFarmId));
       healthLogs = healthLogs.filter(h => isAll || String(h.farmId?._id || h.farmId?.id || h.farmId) === String(activeFarmId));
       vaccineLogs = vaccineLogs.filter(v => isAll || String(v.farmId?._id || v.farmId?.id || v.farmId) === String(activeFarmId));
       bmcs = bmcs.filter(b => isAll || String(b.farmId?._id || b.farmId?.id || b.farmId) === String(activeFarmId));
@@ -187,6 +199,11 @@ const DashboardContent = () => {
       // 3. Milk metrics
       const dailyMilkTotal = milkLogs.reduce((sum, log) => {
         const amt = Number(log.quantity ?? log.liters ?? 0);
+        return sum + amt;
+      }, 0);
+
+      const dailyProcurementTotal = procurementLogs.reduce((sum, log) => {
+        const amt = Number(log.liters ?? 0);
         return sum + amt;
       }, 0);
 
@@ -261,7 +278,9 @@ const DashboardContent = () => {
         totalAnimals: activeLivestockCount,
         calvesCount,
         totalBreeds,
-        dailyMilk: dailyMilkTotal,
+        dailyMilk: dailyMilkTotal + dailyProcurementTotal,
+        dailyCollection: dailyMilkTotal,
+        dailyProcurement: dailyProcurementTotal,
         healthAlertsCount: activeTreatments.length,
         activeTreatments,
         pdNearCount: alerts.pdNearCount,
@@ -343,7 +362,10 @@ const DashboardContent = () => {
             </div>
 
             {/* Daily Milk Collections */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50/30 border border-blue-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(59,130,246,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+            <div 
+              onClick={() => setShowMilkModal(true)}
+              className="bg-gradient-to-br from-blue-50 to-indigo-50/30 border border-blue-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(59,130,246,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
+            >
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest block font-sans">Milk Harvest</span>
                 <span className="text-3xl font-black text-blue-950 block">{mounted ? stats.dailyMilk.toLocaleString() : 0} <span className="text-xs font-bold text-blue-700">Liters</span></span>
@@ -364,7 +386,7 @@ const DashboardContent = () => {
                   {mounted ? stats.pregnantCount : 0} <span className="text-xs font-bold text-violet-700">Preg</span>
                 </span>
                 <span className="text-[10px] font-bold text-violet-600 block">
-                  {stats.inseminatedCount} Inseminated · {stats.dryCount} Dry cows
+                  {stats.inseminatedCount} Inseminated
                 </span>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-600">
@@ -487,7 +509,7 @@ const DashboardContent = () => {
               </div>
 
               {/* Analytics Section: SVG Charts Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 gap-8">
                 
                 {/* 📊 Yesterday's Yield by Shed (SVG Chart) */}
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_30px_rgba(0,0,0,0.015)] space-y-6">
@@ -508,82 +530,23 @@ const DashboardContent = () => {
                         const pctWidth = Math.max(5, Math.round((item.liters / maxLiters) * 100));
                         
                         return (
-                          <div key={item.name} className="space-y-1">
-                            <div className="flex justify-between text-xs font-bold text-slate-700">
-                              <span className="font-extrabold">{item.name}</span>
-                              <span>{item.liters.toLocaleString()} L</span>
-                            </div>
-                            <div className="h-4 bg-slate-50 border border-slate-100 rounded-lg overflow-hidden flex">
-                              <div 
-                                style={{ width: `${pctWidth}%` }}
-                                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg transition-all duration-1000 ease-out shadow-sm"
-                              />
-                            </div>
-                          </div>
+                           <div key={item.name} className="space-y-1">
+                             <div className="flex justify-between text-xs font-bold text-slate-700">
+                               <span className="font-extrabold">{item.name}</span>
+                               <span>{item.liters.toLocaleString()} L</span>
+                             </div>
+                             <div className="h-4 bg-slate-50 border border-slate-100 rounded-lg overflow-hidden flex">
+                               <div 
+                                 style={{ width: `${pctWidth}%` }}
+                                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg transition-all duration-1000 ease-out shadow-sm"
+                               />
+                             </div>
+                           </div>
                         );
                       })}
                     </div>
                   )}
                 </div>
-
-                {/* 🧬 Breeding progression conversion funnel */}
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_30px_rgba(0,0,0,0.015)] space-y-6">
-                  <div className="space-y-1">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Reproduction Pipeline</span>
-                    <h3 className="text-base font-black text-[#16223F] uppercase tracking-tight">Breeding Progression</h3>
-                  </div>
-
-                  <div className="space-y-5 pt-2">
-                    {/* Step 1: Active herd */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-full bg-slate-100 font-black text-xs text-slate-700 flex items-center justify-center shrink-0 shadow-sm border border-slate-200/50">1</div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between text-xs font-bold text-slate-700">
-                          <span className="font-extrabold uppercase text-[10px] tracking-wider text-slate-500">Active Milking Stock</span>
-                          <span>{stats.totalAnimals - stats.dryCount} head</span>
-                        </div>
-                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-slate-400 rounded-full w-full" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Step 2: Inseminated */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-full bg-amber-50 font-black text-xs text-amber-700 flex items-center justify-center shrink-0 shadow-sm border border-amber-100">2</div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between text-xs font-bold text-slate-700">
-                          <span className="font-extrabold uppercase text-[10px] tracking-wider text-amber-600">Inseminations (Pending PD)</span>
-                          <span>{stats.inseminatedCount} head</span>
-                        </div>
-                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            style={{ width: `${stats.totalAnimals > 0 ? (stats.inseminatedCount / stats.totalAnimals) * 100 : 0}%` }}
-                            className="h-full bg-amber-500 rounded-full transition-all duration-1000 ease-out" 
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Step 3: Confirmed Pregnant */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-full bg-emerald-50 font-black text-xs text-emerald-700 flex items-center justify-center shrink-0 shadow-sm border border-emerald-100">3</div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between text-xs font-bold text-slate-700">
-                          <span className="font-extrabold uppercase text-[10px] tracking-wider text-emerald-600">Confirmed Pregnant</span>
-                          <span>{stats.pregnantCount} head</span>
-                        </div>
-                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            style={{ width: `${stats.totalAnimals > 0 ? (stats.pregnantCount / stats.totalAnimals) * 100 : 0}%` }}
-                            className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" 
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
               </div>
 
               {/* Original COLUMN 1 end */}
@@ -710,6 +673,87 @@ const DashboardContent = () => {
 
           </div>
 
+        </div>
+      )}
+
+      {/* Milk Harvest Breakdown Modal */}
+      {showMilkModal && (
+        <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 flex flex-col space-y-6 animate-scaleIn">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+                  <Droplets className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-[#16223F] uppercase tracking-tight">Milk Harvest Breakdown</h3>
+                  <p className="text-xs text-slate-400 font-medium">Detailed daily collection & procurement.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMilkModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Daily Collection Yield */}
+              <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Daily Milk Collection</span>
+                  <span className="text-xl font-black text-slate-800">{stats.dailyCollection.toLocaleString()} <span className="text-xs font-bold text-slate-500">Liters</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMilkModal(false);
+                    router.push('/milk');
+                  }}
+                  className="px-3.5 py-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+                >
+                  View Details
+                </button>
+              </div>
+
+              {/* Milk Procurement */}
+              <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Milk Procurement</span>
+                  <span className="text-xl font-black text-slate-800">{stats.dailyProcurement.toLocaleString()} <span className="text-xs font-bold text-slate-500">Liters</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMilkModal(false);
+                    router.push('/milk-procurement');
+                  }}
+                  className="px-3.5 py-1.5 bg-[#D1867D]/10 hover:bg-[#D1867D] text-[#16223F] font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+                >
+                  View Details
+                </button>
+              </div>
+
+              {/* Total Combined Yield */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100/70 p-5 rounded-2xl flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest block">Total Milk Volume</span>
+                  <span className="text-2xl font-black text-blue-950">{stats.dailyMilk.toLocaleString()} <span className="text-sm font-black text-blue-700">Liters</span></span>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setShowMilkModal(false)}
+                className="w-full py-3 bg-[#16223F] hover:bg-[#20315a] text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

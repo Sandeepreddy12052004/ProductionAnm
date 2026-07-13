@@ -46,13 +46,14 @@ const formatDateToDDMMYYYY = (dateVal) => {
 
 const getApiForModule = (id) => {
   switch (id) {
-    case 'grass':     return api.operations.grassCollection;
-    case 'feeding':   return api.operations.dailyFeeding;
-    case 'milk_prod': return api.milk.collections;
-    case 'components':return api.milk.quality;
-    case 'feed_inv':  return api.inventory.feed;
-    case 'med_inv':   return api.inventory.medicines;
-    default:          return null;
+    case 'grass':       return api.operations.grassCollection;
+    case 'feeding':     return api.operations.dailyFeeding;
+    case 'milk_prod':   return api.milk.collections;
+    case 'procurement': return api.milk.procurement;
+    case 'components':  return api.milk.quality;
+    case 'feed_inv':    return api.inventory.feed;
+    case 'med_inv':     return api.inventory.medicines;
+    default:            return null;
   }
 };
 

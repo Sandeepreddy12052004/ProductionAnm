@@ -33,6 +33,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/operations/grass-collection':  ['GRASS', 'INCHARGE', 'FARM_ADMIN'],
   '/api/operations/daily-feeding':     ['FEEDING', 'INCHARGE', 'FARM_ADMIN'],
   '/api/milk/collections':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/milk/procurement':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
   '/api/milk/quality':                 ['MILK', 'INCHARGE', 'FARM_ADMIN'],
   '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'TAG_MANAGEMENT', 'FARM_ADMIN'],
   '/api/feed-items':                   ['FEED_ITEMS', 'FARM_ADMIN'],
@@ -581,6 +582,12 @@ export const api = {
       update:            (id, data) => apiRequest(`/api/milk/collections/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/milk/collections/${id}`, 'DELETE'),
       bulkCreate:        (data)     => apiRequest('/api/milk/collections/bulk', 'POST', data),
+    },
+    procurement: {
+      getAll:            ()         => apiRequest('/api/milk/procurement'),
+      create:            (data)     => apiRequest('/api/milk/procurement', 'POST', data),
+      update:            (id, data) => apiRequest(`/api/milk/procurement/${id}`, 'PUT', data),
+      delete:            (id)       => apiRequest(`/api/milk/procurement/${id}`, 'DELETE'),
     },
     quality: {
       getAll:            ()         => apiRequest('/api/milk/quality'),

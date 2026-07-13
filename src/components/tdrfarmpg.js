@@ -402,7 +402,7 @@ useEffect(() => {
     if (!f.value) return true;
 
     return String(log[f.field] || "")
-      .toLowerCase()
+      .toLowerCase()  
       .includes(f.value.toLowerCase());
   });
 });
