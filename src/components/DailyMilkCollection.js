@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/router";
 import { api } from "../utils/api";
 import { swalSuccess, swalError } from "../utils/swal";
 import LivestockTagInput from "./LivestockTagInput";
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export default function DailyMilkCollection() {
+  const router = useRouter();
   const [farms, setFarms] = useState([]);
   const [sheds, setSheds] = useState([]);
   const [animals, setAnimals] = useState([]);
@@ -29,6 +31,12 @@ export default function DailyMilkCollection() {
   // Filter / Page state
   const [selectedFarmId, setSelectedFarmId] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    if (router.isReady && router.query.date) {
+      setSelectedDate(router.query.date);
+    }
+  }, [router.isReady, router.query.date]);
   const [session, setSession] = useState("MORNING");
   const [activeShedId, setActiveShedId] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -861,7 +869,7 @@ export default function DailyMilkCollection() {
                             Automated Dry Transition Rules
                           </span>
                           <span className="block text-[10px] text-violet-600 mt-1 font-semibold leading-relaxed">
-                            If a pregnant animal's session contribution is <strong>less than 3 Liters</strong>, the system will automatically transition her to the <strong>Dry state (DRY status)</strong> and move her to the <strong>Dry Shed</strong> upon saving.
+                            If a pregnant animal&apos;s session contribution is <strong>less than 3 Liters</strong>, the system will automatically transition her to the <strong>Dry state (DRY status)</strong> and move her to the <strong>Dry Shed</strong> upon saving.
                           </span>
                         </div>
                       </div>

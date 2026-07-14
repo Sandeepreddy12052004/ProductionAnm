@@ -196,26 +196,32 @@ const DashboardContent = () => {
       const uniqueBreeds = new Set(activeLivestock.map(a => String(a.breed || '').trim().toUpperCase()).filter(b => b !== ''));
       const totalBreeds = uniqueBreeds.size;
 
-      // 3. Milk metrics
-      const dailyMilkTotal = milkLogs.reduce((sum, log) => {
-        const amt = Number(log.quantity ?? log.liters ?? 0);
-        return sum + amt;
-      }, 0);
-
-      const dailyProcurementTotal = procurementLogs.reduce((sum, log) => {
-        const amt = Number(log.liters ?? 0);
-        return sum + amt;
-      }, 0);
-
-      // Yesterday's milk grouping per shed
+      // 3. Milk metrics (Yesterday / Previous Day's data)
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayTime = yesterday.getTime();
+
       const yesterdayCollections = milkLogs.filter(log => {
         const d = new Date(log.date);
         d.setHours(0, 0, 0, 0);
         return d.getTime() === yesterdayTime;
       });
+
+      const yesterdayProcurements = procurementLogs.filter(log => {
+        const d = new Date(log.date);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === yesterdayTime;
+      });
+
+      const dailyMilkTotal = yesterdayCollections.reduce((sum, log) => {
+        const amt = Number(log.quantity ?? log.liters ?? 0);
+        return sum + amt;
+      }, 0);
+
+      const dailyProcurementTotal = yesterdayProcurements.reduce((sum, log) => {
+        const amt = Number(log.liters ?? 0);
+        return sum + amt;
+      }, 0);
 
       const shedYieldsObj = {};
       for (const log of yesterdayCollections) {
@@ -367,7 +373,7 @@ const DashboardContent = () => {
               className="bg-gradient-to-br from-blue-50 to-indigo-50/30 border border-blue-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(59,130,246,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
             >
               <div className="space-y-1">
-                <span className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest block font-sans">Milk Harvest</span>
+                <span className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest block font-sans">Milk Harvest (Yesterday)</span>
                 <span className="text-3xl font-black text-blue-950 block">{mounted ? stats.dailyMilk.toLocaleString() : 0} <span className="text-xs font-bold text-blue-700">Liters</span></span>
                 <span className="text-[10px] font-bold text-blue-600 block">
                   Storage fill: {stats.totalBmcVolume}L / {stats.totalBmcCapacity}L ({bmcFillPercentage}%)
@@ -687,7 +693,7 @@ const DashboardContent = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-[#16223F] uppercase tracking-tight">Milk Harvest Breakdown</h3>
-                  <p className="text-xs text-slate-400 font-medium">Detailed daily collection & procurement.</p>
+                  <p className="text-xs text-slate-400 font-medium">Detailed yesterday&apos;s collection & procurement.</p>
                 </div>
               </div>
               <button
@@ -702,13 +708,16 @@ const DashboardContent = () => {
               {/* Daily Collection Yield */}
               <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Daily Milk Collection</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Yesterday&apos;s Collection</span>
                   <span className="text-xl font-black text-slate-800">{stats.dailyCollection.toLocaleString()} <span className="text-xs font-bold text-slate-500">Liters</span></span>
                 </div>
                 <button
                   onClick={() => {
                     setShowMilkModal(false);
-                    router.push('/milk');
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    router.push(`/milk?date=${ymd}`);
                   }}
                   className="px-3.5 py-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
                 >
@@ -719,13 +728,16 @@ const DashboardContent = () => {
               {/* Milk Procurement */}
               <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Milk Procurement</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Yesterday&apos;s Procurement</span>
                   <span className="text-xl font-black text-slate-800">{stats.dailyProcurement.toLocaleString()} <span className="text-xs font-bold text-slate-500">Liters</span></span>
                 </div>
                 <button
                   onClick={() => {
                     setShowMilkModal(false);
-                    router.push('/milk-procurement');
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    router.push(`/milk-procurement?date=${ymd}`);
                   }}
                   className="px-3.5 py-1.5 bg-[#D1867D]/10 hover:bg-[#D1867D] text-[#16223F] font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
                 >
@@ -736,7 +748,7 @@ const DashboardContent = () => {
               {/* Total Combined Yield */}
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100/70 p-5 rounded-2xl flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest block">Total Milk Volume</span>
+                  <span className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest block">Total Yesterday&apos;s Volume</span>
                   <span className="text-2xl font-black text-blue-950">{stats.dailyMilk.toLocaleString()} <span className="text-sm font-black text-blue-700">Liters</span></span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">

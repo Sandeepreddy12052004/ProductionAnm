@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import LogForm from './LogForm';
 import LivestockTagInput from './LivestockTagInput';
 import ExcelJS from 'exceljs';
@@ -60,6 +61,7 @@ const getApiForModule = (id) => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const OpsLogPg = ({ moduleConfig }) => {
+  const router = useRouter();
   const current = moduleConfig || { id: 'unknown', name: 'Unknown', icon: '📋', fields: [] };
 
   const [logs, setLogs] = useState([]);
@@ -351,12 +353,14 @@ const OpsLogPg = ({ moduleConfig }) => {
 
   useEffect(() => {
     fetchLogs();
-    const defaultFilter = [{ field: 'entryDate', value: '', from: '', to: '' }];
+    const defaultFilter = (router.isReady && router.query.date)
+      ? [{ field: 'entryDate', value: '', from: router.query.date, to: router.query.date }]
+      : [{ field: 'entryDate', value: '', from: '', to: '' }];
     setFilters(defaultFilter);
     setAppliedFilters(defaultFilter);
     setFilterSearchQueries({});
     setCurrentPage(1);
-  }, [moduleConfig]);
+  }, [moduleConfig, router.isReady, router.query.date]);
 
   const getActiveFarmId = () => {
     try {
