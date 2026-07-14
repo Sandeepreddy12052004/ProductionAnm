@@ -523,7 +523,7 @@ const DashboardContent = () => {
               </div>
 
               {/* Analytics Section: SVG Charts Row */}
-              <div className="grid grid-cols-1 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 
                 {/* 📊 Yesterday's Yield by Shed (SVG Chart) */}
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_30px_rgba(0,0,0,0.015)] space-y-6">
