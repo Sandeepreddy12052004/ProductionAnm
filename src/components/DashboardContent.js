@@ -601,6 +601,26 @@ const DashboardContent = () => {
             {/* COLUMN 2: Quick actions, Live treatments, Cooler levels (4/12 wide) */}
             <div className="xl:col-span-4 space-y-8">
               
+              {/* Crossing Alerts Card */}
+              <div 
+                onClick={() => router.push('/crossing')}
+                className="bg-gradient-to-br from-amber-50 to-yellow-50/30 border border-amber-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(245,158,11,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
+              >
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-amber-800/60 uppercase tracking-widest block font-sans">Crossing Alert</span>
+                  <span className="text-3xl font-black text-amber-950 block">
+                    {mounted ? (stats.pdList.length + stats.calvingList.length + stats.heatList.length) : 0}{" "}
+                    <span className="text-xs font-bold text-amber-700">Pending</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-600 block">
+                    {stats.pdList.length} PD Tests · {stats.calvingList.length} Calvings due
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+              </div>
+              
               {/* Quick Actions Center */}
               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_30px_rgba(0,0,0,0.015)] space-y-6">
                 <div className="space-y-1">
