@@ -561,6 +561,38 @@ const DashboardContent = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Bulk Milk Cooler level progress visualizer */}
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_30px_rgba(0,0,0,0.015)] space-y-6">
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Cooling storage</span>
+                    <h3 className="text-base font-black text-[#16223F] uppercase tracking-tight">Bulk Milk Coolers</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                      <span>Stored volume:</span>
+                      <span className="font-extrabold text-slate-800">{stats.totalBmcVolume}L / {stats.totalBmcCapacity}L</span>
+                    </div>
+
+                    {/* Stored volume progress bar */}
+                    <div className="h-6 bg-slate-50 border border-slate-200/60 rounded-xl overflow-hidden flex relative">
+                      <div 
+                        style={{ width: `${bmcFillPercentage}%` }}
+                        className="h-full bg-gradient-to-r from-blue-50 to-indigo-50 transition-all duration-1000 shadow-inner"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-slate-800 mix-blend-difference">{bmcFillPercentage}% Full</span>
+                    </div>
+
+                    {/* Alerts alerts */}
+                    {stats.bmcAlerts > 0 && (
+                      <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2.5 text-[10px] font-bold text-red-700">
+                        <Thermometer className="w-5 h-5 text-red-500 shrink-0" />
+                        <span>Warning: {stats.bmcAlerts} active cooling tank(s) report temperature &gt; 4°C!</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Original COLUMN 1 end */}
@@ -608,38 +640,6 @@ const DashboardContent = () => {
                     <span className="text-2xl">🌾</span>
                     <span className="text-[10px] tracking-tight uppercase font-black">Feed Logs</span>
                   </button>
-                </div>
-              </div>
-
-              {/* Bulk Milk Cooler level progress visualizer */}
-              <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_30px_rgba(0,0,0,0.015)] space-y-6">
-                <div className="space-y-1">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Cooling storage</span>
-                  <h3 className="text-base font-black text-[#16223F] uppercase tracking-tight">Bulk Milk Coolers</h3>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-600">
-                    <span>Stored volume:</span>
-                    <span className="font-extrabold text-slate-800">{stats.totalBmcVolume}L / {stats.totalBmcCapacity}L</span>
-                  </div>
-
-                  {/* Stored volume progress bar */}
-                  <div className="h-6 bg-slate-50 border border-slate-200/60 rounded-xl overflow-hidden flex relative">
-                    <div 
-                      style={{ width: `${bmcFillPercentage}%` }}
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 shadow-inner"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-slate-800 mix-blend-difference">{bmcFillPercentage}% Full</span>
-                  </div>
-
-                  {/* Alerts alerts */}
-                  {stats.bmcAlerts > 0 && (
-                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2.5 text-[10px] font-bold text-red-700">
-                      <Thermometer className="w-5 h-5 text-red-500 shrink-0" />
-                      <span>Warning: {stats.bmcAlerts} active cooling tank(s) report temperature &gt; 4°C!</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
