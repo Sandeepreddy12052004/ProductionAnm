@@ -140,11 +140,8 @@ const DashboardContent = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-
-      const fifteenDaysOut = new Date(today);
-      fifteenDaysOut.setDate(today.getDate() + 15);
+      const thirtyDaysOut = new Date(today);
+      thirtyDaysOut.setDate(today.getDate() + 30);
 
       const checkDate = (dateStr, start, end) => {
         if (!dateStr) return false;
@@ -163,23 +160,17 @@ const DashboardContent = () => {
         const heatDateVal = log.heatMonitoring1stNotification || log['heat monitoring 1st notification'];
 
         // Detail lists for alerts checklist
-        if (checkDate(pdDateVal, today, fifteenDaysOut)) {
+        if (checkDate(pdDateVal, today, thirtyDaysOut)) {
           acc.pdNearCount++;
-          if (checkDate(pdDateVal, today, tomorrow)) {
-            acc.pdList.push({ tag, date: new Date(pdDateVal).toLocaleDateString('en-GB'), type: 'PD Test due' });
-          }
+          acc.pdList.push({ tag, date: new Date(pdDateVal).toLocaleDateString('en-GB'), type: 'PD Test due' });
         }
-        if (checkDate(calvingDateVal, today, fifteenDaysOut)) {
+        if (checkDate(calvingDateVal, today, thirtyDaysOut)) {
           acc.calvingNearCount++;
-          if (checkDate(calvingDateVal, today, tomorrow)) {
-            acc.calvingList.push({ tag, date: new Date(calvingDateVal).toLocaleDateString('en-GB'), type: 'Expected Calving' });
-          }
+          acc.calvingList.push({ tag, date: new Date(calvingDateVal).toLocaleDateString('en-GB'), type: 'Expected Calving' });
         }
-        if (checkDate(heatDateVal, today, fifteenDaysOut)) {
+        if (checkDate(heatDateVal, today, thirtyDaysOut)) {
           acc.heatNearCount++;
-          if (checkDate(heatDateVal, today, tomorrow)) {
-            acc.heatList.push({ tag, date: new Date(heatDateVal).toLocaleDateString('en-GB'), type: 'Heat check' });
-          }
+          acc.heatList.push({ tag, date: new Date(heatDateVal).toLocaleDateString('en-GB'), type: 'Heat check' });
         }
 
         return acc;
@@ -445,7 +436,7 @@ const DashboardContent = () => {
                 <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/30">
                   <div>
                     <h3 className="text-base font-black text-[#16223F] uppercase tracking-tight"> Breeding Actions Calendar</h3>
-                    <p className="text-xs text-slate-400 font-medium mt-0.5">Tasks due today or tomorrow. Complete alerts by updating crossing statuses.</p>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">Tasks due in the next 30 days. Complete alerts by updating crossing statuses.</p>
                   </div>
                   
                   {/* Tabs selector */}
@@ -482,7 +473,7 @@ const DashboardContent = () => {
                     <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
                       <CheckCircle2 className="w-10 h-10 text-emerald-500 animate-pulse" />
                       <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">All Cycles On Track</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold max-w-sm">No operations scheduled for today or tomorrow. All notifications are clear.</p>
+                      <p className="text-[10px] text-slate-400 font-semibold max-w-sm">No operations scheduled for the next 30 days. All notifications are clear.</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -513,7 +504,10 @@ const DashboardContent = () => {
                               <td className="py-3.5 text-slate-400">{alert.date}</td>
                               <td className="py-3.5 text-right">
                                 <button
-                                  onClick={() => handleNavigation('crossing')}
+                                  onClick={() => {
+                                    const statusParam = activeAlertTab === 'pd' ? 'Pending' : activeAlertTab === 'calving' ? 'Positive' : 'Pending';
+                                    router.push(`/crossing?tag=${alert.tag}&status=${statusParam}`);
+                                  }}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-800 text-[#16223F] font-black rounded-xl text-[9px] uppercase tracking-wider active:scale-[0.98] transition-all"
                                 >
                                   Process <ArrowUpRight className="w-3.5 h-3.5" />

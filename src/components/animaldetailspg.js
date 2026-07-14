@@ -1129,6 +1129,22 @@ const currentFields = current.fields.map(f => {
     }
   }, [current.id, isCustomFilterModule]);
 
+  useEffect(() => {
+    if (router.isReady) {
+      if (router.query.tag) {
+        const tagFilter = { field: "tag", value: router.query.tag };
+        setAppliedFilters([tagFilter]);
+        setFilters([tagFilter]);
+      }
+      if (router.query.status) {
+        const upperStatus = String(router.query.status).toUpperCase();
+        if (['PENDING', 'POSITIVE', 'NEGATIVE'].includes(upperStatus)) {
+          setCrossingSubTab(upperStatus);
+        }
+      }
+    }
+  }, [router.isReady, router.query.tag, router.query.status]);
+
   const getFieldOptions = (fieldName) => {
     const fieldConfig = currentFields.find(f => f.name === fieldName);
     const optionsSet = new Set();
