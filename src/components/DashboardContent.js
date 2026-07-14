@@ -354,7 +354,10 @@ const DashboardContent = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Livestock stockpile */}
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50/30 border border-emerald-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(16,185,129,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+            <div 
+              onClick={() => router.push('/animals')}
+              className="bg-gradient-to-br from-emerald-50 to-teal-50/30 border border-emerald-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(16,185,129,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
+            >
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-emerald-800/60 uppercase tracking-widest block font-sans">Active Livestock</span>
                 <span className="text-3xl font-black text-emerald-950 block">{mounted ? stats.totalAnimals : 0} <span className="text-xs font-bold text-emerald-700">head</span></span>
@@ -385,7 +388,10 @@ const DashboardContent = () => {
             </div>
 
             {/* Breeding categories */}
-            <div className="bg-gradient-to-br from-violet-50 to-purple-50/30 border border-violet-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(139,92,246,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+            <div 
+              onClick={() => router.push('/crossing')}
+              className="bg-gradient-to-br from-violet-50 to-purple-50/30 border border-violet-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(139,92,246,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
+            >
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-violet-800/60 uppercase tracking-widest block font-sans">Breeding Pipeline</span>
                 <span className="text-3xl font-black text-violet-950 block">
@@ -401,7 +407,10 @@ const DashboardContent = () => {
             </div>
 
             {/* Health alert checks */}
-            <div className="bg-gradient-to-br from-rose-50 to-orange-50/30 border border-rose-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(244,63,94,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300">
+            <div 
+              onClick={() => router.push('/treatment')}
+              className="bg-gradient-to-br from-rose-50 to-orange-50/30 border border-rose-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(244,63,94,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
+            >
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-rose-800/60 uppercase tracking-widest block font-sans">Health & Safety</span>
                 <span className="text-3xl font-black text-rose-950 block">{mounted ? stats.healthAlertsCount : 0} <span className="text-xs font-bold text-rose-700">Alerts</span></span>
