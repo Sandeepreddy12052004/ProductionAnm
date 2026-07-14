@@ -264,11 +264,16 @@ const DashboardContent = () => {
         const tag = String(log.tag_id || log.tagId || log.tag || '').trim().toUpperCase();
         if (!tag || processedTags.has(tag)) continue;
         processedTags.add(tag);
+
+        const hasCalved = !!(log.actualCalvingDate || log['actual calving date']);
         const status = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
-        if (status === 'POSITIVE') {
-          pregnantTags.add(tag);
-        } else if (status === 'PENDING') {
-          inseminatedTags.add(tag);
+
+        if (!hasCalved) {
+          if (status === 'POSITIVE') {
+            pregnantTags.add(tag);
+          } else if (status === 'PENDING') {
+            inseminatedTags.add(tag);
+          }
         }
       }
 
