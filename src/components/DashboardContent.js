@@ -842,6 +842,23 @@ const DashboardContent = () => {
                 </button>
               </div>
 
+              {/* Yesterday's Milk Available in BMC */}
+              <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Yesterday&apos;s Milk Available in BMC</span>
+                  <span className="text-xl font-black text-slate-800">{stats.totalBmcVolume.toLocaleString()} <span className="text-xs font-bold text-slate-500">Liters</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMilkModal(false);
+                    router.push('/bmc-management');
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+                >
+                  View Coolers
+                </button>
+              </div>
+
               {/* Total Combined Yield */}
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100/70 p-5 rounded-2xl flex items-center justify-between">
                 <div className="space-y-1">
