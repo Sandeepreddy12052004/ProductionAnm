@@ -26,8 +26,9 @@ const DashboardContent = () => {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeAlertTab, setActiveAlertTab] = useState('heat'); // 'heat' | 'pd' | 'calving'
+  const [activeAlertTab, setActiveAlertTab] = useState('pd'); // 'pd' | 'calving' | 'heat'
   const [showMilkModal, setShowMilkModal] = useState(false);
+  const [showCrossingModal, setShowCrossingModal] = useState(false);
   const [stats, setStats] = useState({
     totalAnimals: 0,
     calvesCount: 0,
@@ -638,7 +639,7 @@ const DashboardContent = () => {
               
               {/* Crossing Alerts Card */}
               <div 
-                onClick={() => router.push('/crossing')}
+                onClick={() => setShowCrossingModal(true)}
                 className="bg-gradient-to-br from-amber-50 to-yellow-50/30 border border-amber-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(245,158,11,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
               >
                 <div className="space-y-1">
@@ -823,6 +824,76 @@ const DashboardContent = () => {
             <div className="pt-2">
               <button
                 onClick={() => setShowMilkModal(false)}
+                className="w-full py-3 bg-[#16223F] hover:bg-[#20315a] text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Crossing Alert Breakdown Modal */}
+      {showCrossingModal && (
+        <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 flex flex-col space-y-6 animate-scaleIn">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-[#16223F] uppercase tracking-tight">Crossing Alerts</h3>
+                  <p className="text-xs text-slate-400 font-medium">Detailed pending alerts requiring attention.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCrossingModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* PD Test alerts */}
+              <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">PD Tests due</span>
+                  <span className="text-xl font-black text-slate-800">{stats.crossingAlertsPdCount} <span className="text-xs font-bold text-slate-500">Alerts</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCrossingModal(false);
+                    router.push('/crossing?status=Pending');
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+                >
+                  View Details
+                </button>
+              </div>
+
+              {/* Calvings alerts */}
+              <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Calvings due</span>
+                  <span className="text-xl font-black text-slate-800">{stats.crossingAlertsCalvingCount} <span className="text-xs font-bold text-slate-500">Alerts</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCrossingModal(false);
+                    router.push('/crossing?status=Positive');
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+                >
+                  View Details
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setShowCrossingModal(false)}
                 className="w-full py-3 bg-[#16223F] hover:bg-[#20315a] text-white font-black rounded-2xl text-xs uppercase tracking-wider transition-colors"
               >
                 Close
