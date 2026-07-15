@@ -25,7 +25,7 @@ export default function MilkingPerformance() {
   const [datePreset, setDatePreset] = useState('7_DAYS');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  
+
   // Table search & pagination
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,12 +106,6 @@ export default function MilkingPerformance() {
 
   const { start: filterStart, end: filterEnd } = getDateRange();
 
-  const daysInRange = useMemo(() => {
-    const diffTime = Math.abs(filterEnd.getTime() - filterStart.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays || 1;
-  }, [filterStart, filterEnd]);
-
   // Apply filters to milk collections
   const filteredLogs = milkLogs.filter(log => {
     // 1. Date Filter
@@ -126,7 +120,7 @@ export default function MilkingPerformance() {
         const codeMatch = String(selectedShedObj.code || '').trim().toUpperCase();
         const nameMatch = String(selectedShedObj.name || '').trim().toUpperCase();
         const idMatch = String(selectedShedObj._id || selectedShedObj.id || '').trim().toUpperCase();
-        
+
         if (logShed !== codeMatch && logShed !== nameMatch && logShed !== idMatch) {
           return false;
         }
@@ -205,10 +199,9 @@ export default function MilkingPerformance() {
   const topAnimals = Object.entries(animalYieldMap)
     .map(([tag, yieldL]) => {
       const animal = cattleMap.get(tag);
-      const avgYield = yieldL / daysInRange;
       return {
         tag,
-        yieldL: avgYield,
+        yieldL,
         breed: animal?.breed || 'Unknown',
         shed: animal?.shedId || animal?.shed || '-',
         type: animal?.cattleType || animal?.animalType || 'Cow'
@@ -220,10 +213,9 @@ export default function MilkingPerformance() {
   const lowAnimals = Object.entries(animalYieldMap)
     .map(([tag, yieldL]) => {
       const animal = cattleMap.get(tag);
-      const avgYield = yieldL / daysInRange;
       return {
         tag,
-        yieldL: avgYield,
+        yieldL,
         breed: animal?.breed || 'Unknown',
         shed: animal?.shedId || animal?.shed || '-',
         type: animal?.cattleType || animal?.animalType || 'Cow',
@@ -374,8 +366,8 @@ export default function MilkingPerformance() {
     });
 
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const areaPath = points.length > 0 
-      ? `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z` 
+    const areaPath = points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
       : '';
 
     return { linePath, areaPath, points, maxVal };
@@ -541,7 +533,7 @@ export default function MilkingPerformance() {
 
           {/* MAIN GRAPH/CHARTS SECTIONS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            
+
             {/* SVG Trend Line Chart */}
             <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
               <div>
@@ -558,8 +550,8 @@ export default function MilkingPerformance() {
                   <svg viewBox={`0 0 ${trendSvgWidth} ${trendSvgHeight}`} className="w-full h-auto min-w-[640px]">
                     <defs>
                       <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#D1867D" stopOpacity="0.25"/>
-                        <stop offset="100%" stopColor="#D1867D" stopOpacity="0.00"/>
+                        <stop offset="0%" stopColor="#D1867D" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#D1867D" stopOpacity="0.00" />
                       </linearGradient>
                     </defs>
 
@@ -607,7 +599,7 @@ export default function MilkingPerformance() {
 
                   {/* Dynamic Floating Tooltip */}
                   {hoveredPoint && hoveredPoint.type === 'trend' && (
-                    <div 
+                    <div
                       className="absolute bg-[#16223F] text-white p-2.5 rounded-xl shadow-lg border border-slate-700 pointer-events-none text-[10px] font-bold z-10 transition-all duration-150"
                       style={{
                         left: `${(hoveredPoint.x / trendSvgWidth) * 100}%`,
@@ -645,7 +637,7 @@ export default function MilkingPerformance() {
                           <span>{yieldL.toFixed(1)} L ({percent.toFixed(0)}%)</span>
                         </div>
                         <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
+                          <div
                             style={{ width: `${percent}%` }}
                             className="h-full bg-gradient-to-r from-[#D1867D] to-[#e49b92] rounded-full transition-all duration-500"
                           />
@@ -679,7 +671,7 @@ export default function MilkingPerformance() {
 
           {/* TABLE SECTIONS: TOP PERFORMERS & DAILY LOGS */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-            
+
             {/* Top Yielding Animals */}
             <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col justify-between h-full lg:col-span-1">
               <div>
@@ -752,7 +744,7 @@ export default function MilkingPerformance() {
 
             {/* Daily Production Logs Table */}
             <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
-              
+
               {/* Header with Search & Exports */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
                 <div>
