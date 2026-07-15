@@ -195,33 +195,12 @@ export default function DailyMilkQuality() {
   const availableMilk = Math.max(0, totalCollectedNet - totalEnteredQa);
 
   const yesterdayStoredBmcVolume = useMemo(() => {
-    // Yesterday's date string
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
+    // Yesterday relative to selectedDate
+    const current = new Date(selectedDate);
+    current.setHours(0, 0, 0, 0);
+    const yesterday = new Date(current);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayDateStr = toLocalYMD(yesterday);
-
-    // Filter collectionsList for yesterday's date
-    const yesterdayCollections = collectionsList.filter(
-      (c) => toLocalYMD(c.date) === yesterdayDateStr &&
-             !c.isDeleted &&
-             (!selectedFarmId || String(c.farmId?._id || c.farmId?.id || c.farmId) === selectedFarmId)
-    );
-
-    // Sum yesterday's collected net volume
-    const groups = {};
-    yesterdayCollections.forEach(c => {
-      const groupKey = `${c.shedId}_${c.session}`;
-      if (!groups[groupKey]) {
-        groups[groupKey] = { quantity: 0, selfConsumption: c.selfConsumption || 0 };
-      }
-      groups[groupKey].quantity += c.quantity || 0;
-    });
-    let yesterdayTotalCollectedNet = 0;
-    Object.values(groups).forEach(g => {
-      yesterdayTotalCollectedNet += Math.max(0, g.quantity - g.selfConsumption);
-    });
 
     // Filter qaLogsList for yesterday's date
     const yesterdayQa = qaLogsList.filter(
@@ -230,17 +209,17 @@ export default function DailyMilkQuality() {
              (!selectedFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === selectedFarmId)
     );
 
-    // Sum yesterday's total QA logged
-    let yesterdayTotalEnteredQa = 0;
+    // Sum up yesterday's net volume: liters - indentLiters
+    let sum = 0;
     yesterdayQa.forEach(q => {
       if (q.bmcs && q.bmcs.length > 0) {
-        yesterdayTotalEnteredQa += Number(q.bmcs[0].liters) || 0;
+        const liters = q.bmcs[0].liters || 0;
+        const indent = q.indentLiters || 0;
+        sum += Math.max(0, liters - indent);
       }
     });
-
-    // Return the leftover: collected - entered
-    return Math.max(0, yesterdayTotalCollectedNet - yesterdayTotalEnteredQa);
-  }, [collectionsList, qaLogsList, selectedFarmId]);
+    return sum;
+  }, [qaLogsList, selectedDate, selectedFarmId]);
 
   const averageMetrics = useMemo(() => {
     let count = 0;
