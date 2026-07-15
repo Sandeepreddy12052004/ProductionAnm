@@ -1132,7 +1132,8 @@ const currentFields = current.fields.map(f => {
   useEffect(() => {
     if (router.isReady) {
       if (router.query.tag) {
-        const tagFilter = { field: "tag", value: router.query.tag };
+        const tagValues = String(router.query.tag).split(',').map(v => v.trim()).filter(Boolean);
+        const tagFilter = { field: "tag", value: tagValues };
         setAppliedFilters([tagFilter]);
         setFilters([tagFilter]);
       }
@@ -1651,7 +1652,7 @@ if (!moduleConfig) {
           fieldConfig?.type === "select" ||
           (isCustomFilterModule && !f.field.toLowerCase().includes("date") && (f.field !== "tagId" || ['vaccine', 'health'].includes(current.id)))
         ) {
-          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? String(f.value).split(',').map(v => v.trim()).filter(Boolean) : []);
           if (selectedValues.length > 0) {
             const recordVal = String(log[f.field] || "").toLowerCase();
             const optionMatched = selectedValues.some(v => {
@@ -3010,7 +3011,7 @@ const getShedFromLivestock = (tagValue) => {
                 // Checkbox multi-select dropdown for categorical fields on vaccine page
                 const options = getFieldOptions(f.field);
                 const isOpen = !!openDropdowns[index];
-                const selectedList = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+                const selectedList = Array.isArray(f.value) ? f.value : (f.value ? String(f.value).split(',').map(v => v.trim()).filter(Boolean) : []);
 
                 return (
                   <div className="flex flex-col gap-2 w-full">
