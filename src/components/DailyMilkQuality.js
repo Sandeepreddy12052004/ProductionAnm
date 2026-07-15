@@ -572,7 +572,6 @@ export default function DailyMilkQuality() {
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Milk Collected</span>
                   <span className="text-sm font-black text-slate-800">{totalCollectedNet.toLocaleString()} L</span>
                 </div>
-                <span className="text-xl">🥛</span>
               </div>
               
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
@@ -580,7 +579,6 @@ export default function DailyMilkQuality() {
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Total QA Logged</span>
                   <span className="text-sm font-black text-slate-800">{totalEnteredQa.toLocaleString()} L</span>
                 </div>
-                <span className="text-xl">❄️</span>
               </div>
 
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
@@ -588,7 +586,6 @@ export default function DailyMilkQuality() {
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Milk Available in BMC</span>
                   <span className="text-sm font-black text-slate-800">{yesterdayStoredBmcVolume.toLocaleString()} L</span>
                 </div>
-                <span className="text-xl">🧊</span>
               </div>
 
               <div className={`p-4 border rounded-2xl flex justify-between items-center ${availableMilk === 0 && totalCollectedNet > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
@@ -598,7 +595,6 @@ export default function DailyMilkQuality() {
                     {availableMilk.toLocaleString()} L
                   </span>
                 </div>
-                <span className="text-xl">✨</span>
               </div>
             </div>
           </div>
