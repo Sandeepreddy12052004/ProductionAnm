@@ -64,14 +64,15 @@ const DashboardContent = () => {
       const isAll = !activeFarmId || activeFarmId === 'ALL';
 
       // Fetch from backend API
-      const [cattleRes, crossingRes, milkRes, treatmentRes, vaccineRes, bmcsRes, procurementRes] = await Promise.allSettled([
+      const [cattleRes, crossingRes, milkRes, treatmentRes, vaccineRes, bmcsRes, procurementRes, qualityRes] = await Promise.allSettled([
         api.cattle.getAll(),
         api.crossing.getAll(),
         api.milk.collections.getAll(),
         api.health.treatments.getAll(),
         api.health.vaccinations.getAll(),
         api.bmcs.getAll(),
-        api.milk.procurement.getAll()
+        api.milk.procurement.getAll(),
+        api.milk.quality.getAll()
       ]);
 
       // Resolve actual data or fallback to local storage
@@ -130,6 +131,13 @@ const DashboardContent = () => {
         bmcs = bmcsRes.value.data;
       } else {
         bmcs = JSON.parse(localStorage.getItem('global_bmcs_logs') || '[]');
+      }
+
+      let qualityLogs = [];
+      if (qualityRes.status === 'fulfilled' && Array.isArray(qualityRes.value)) {
+        qualityLogs = qualityRes.value;
+      } else if (qualityRes.status === 'fulfilled' && Array.isArray(qualityRes.value?.data)) {
+        qualityLogs = qualityRes.value.data;
       }
 
       // Filter by farm association
@@ -272,7 +280,19 @@ const DashboardContent = () => {
       })).sort((a, b) => b.liters - a.liters);
 
       // 4. Coolers (BMC) metrics
-      const totalBmcVolume = bmcs.reduce((sum, b) => sum + (b.currentVolume || 0), 0);
+      const yesterdayQa = qualityLogs.filter(log => {
+        const d = new Date(log.date);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === yesterdayTime;
+      });
+
+      const totalBmcVolume = bmcs.reduce((sum, b) => {
+        const bId = b._id || b.id;
+        const bmcQa = yesterdayQa.find(q => q.bmcs && q.bmcs.length > 0 && String(q.bmcs[0].bmcId) === String(bId));
+        const bmcVolume = bmcQa ? Math.max(0, (bmcQa.bmcs[0].liters || 0) - (bmcQa.indentLiters || 0)) : 0;
+        return sum + bmcVolume;
+      }, 0);
+
       const totalBmcCapacity = bmcs
         .filter(b => String(b.status || "").trim().toUpperCase() === "ACTIVE")
         .reduce((sum, b) => sum + (b.capacity || 0), 0);

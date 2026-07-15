@@ -19,6 +19,7 @@ import {
 export default function BmcManagementPg() {
   const [bmcs, setBmcs] = useState([]);
   const [farms, setFarms] = useState([]);
+  const [qaLogs, setQaLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState('');
   const [userFarmId, setUserFarmId] = useState('');
@@ -58,13 +59,15 @@ export default function BmcManagementPg() {
         setUserFarmId(fId || '');
       }
 
-      const [bmcsData, farmsData] = await Promise.all([
+      const [bmcsData, farmsData, qualityData] = await Promise.all([
         api.bmcs.getAll(),
-        api.farms.getAll()
+        api.farms.getAll(),
+        api.milk.quality.getAll()
       ]);
 
       setBmcs(Array.isArray(bmcsData) ? bmcsData : (bmcsData?.data ?? []));
       setFarms(Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []));
+      setQaLogs(Array.isArray(qualityData) ? qualityData : (qualityData?.data ?? []));
     } catch (error) {
       console.error('Failed to fetch BMC data', error);
       swalError('Error', 'Failed to retrieve Bulk Milk Cooler data.');
@@ -201,11 +204,31 @@ export default function BmcManagementPg() {
     }
   };
 
+  // Calculate yesterday's date at midnight
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayTime = yesterday.getTime();
+
+  const yesterdayQa = qaLogs.filter(log => {
+    const d = new Date(log.date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === yesterdayTime;
+  });
+
   // Stats
   const totalCapacity = bmcs
     .filter(b => String(b.status || "").trim().toUpperCase() === "ACTIVE")
     .reduce((sum, b) => sum + (b.capacity || 0), 0);
-  const totalStored = bmcs.reduce((sum, b) => sum + (b.currentVolume || 0), 0);
+
+  const totalStored = bmcs.reduce((sum, b) => {
+    const bId = b._id || b.id;
+    const bmcQa = yesterdayQa.find(q => q.bmcs && q.bmcs.length > 0 && String(q.bmcs[0].bmcId) === String(bId));
+    const bmcVolume = bmcQa ? Math.max(0, (bmcQa.bmcs[0].liters || 0) - (bmcQa.indentLiters || 0)) : 0;
+    return sum + bmcVolume;
+  }, 0);
+
   const activeCoolers = bmcs.filter(b => b.status === 'ACTIVE').length;
 
   // Filter
@@ -347,7 +370,10 @@ export default function BmcManagementPg() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredBmcs.map((bmc) => {
               const bmcFarm = farms.find(f => String(f._id) === String(bmc.farmId?._id || bmc.farmId));
-              const fillPercentage = bmc.capacity > 0 ? Math.min(((bmc.currentVolume || 0) / bmc.capacity) * 100, 100) : 0;
+              const bId = bmc._id || bmc.id;
+              const bmcQa = yesterdayQa.find(q => q.bmcs && q.bmcs.length > 0 && String(q.bmcs[0].bmcId) === String(bId));
+              const currentVolume = bmcQa ? Math.max(0, (bmcQa.bmcs[0].liters || 0) - (bmcQa.indentLiters || 0)) : 0;
+              const fillPercentage = bmc.capacity > 0 ? Math.min((currentVolume / bmc.capacity) * 100, 100) : 0;
               
               // Temperature warning: Standard milk cooling target is 2°C - 4°C. Highlight if > 4°C.
               const isTempWarning = bmc.temperature !== undefined && bmc.temperature !== null && bmc.temperature > 4;
@@ -384,7 +410,7 @@ export default function BmcManagementPg() {
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs font-bold text-slate-500">
                         <span>Storage Volume</span>
-                        <span>{bmc.currentVolume?.toLocaleString() || 0} / {bmc.capacity?.toLocaleString()} L</span>
+                        <span>{currentVolume?.toLocaleString() || 0} / {bmc.capacity?.toLocaleString()} L</span>
                       </div>
                       <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-50">
                         <div 
