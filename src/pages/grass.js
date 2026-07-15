@@ -16,7 +16,6 @@ export default function GrassCollectionPage() {
       { name: 'grassAge',       label: 'Grass Age (Days)', type: 'number' },
       { name: 'yield',          label: 'Yield (KG/Acre)',  type: 'number', disabled: true, readOnly: true },
       { name: 'noOfWorkers',    label: 'No. of Workers',   type: 'number' },
-      { name: 'laborId',        label: 'Labor',            type: 'select', options: [] },
       { name: 'procuredBy',     label: 'Procured By User', type: 'text' },
     ]
   };

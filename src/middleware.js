@@ -105,7 +105,6 @@ export function middleware(request) {
     { key: 'TAG_MANAGEMENT', match: pathname === '/tag-management' },
     { key: 'BREED_MANAGEMENT', match: pathname === '/breed-management' },
     { key: 'ANIMAL_MANAGEMENT', match: pathname === '/animal-management' },
-    { key: 'LABOR_MANAGEMENT', match: pathname === '/labor-management' },
     { key: 'LIVESTOCK', match: pathname === '/animals' },
     { key: 'SHED_LOG', match: pathname === '/shed' || pathname === '/shedlog' },
     { key: 'CROSSING_LOG', match: pathname === '/crossing' },

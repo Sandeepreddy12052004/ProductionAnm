@@ -479,14 +479,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
 
 
 
-                          {hasAccess('LABOR_MANAGEMENT') && (
-                            <li>
-                              <Link href="/labor-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/labor-management") ? activeStyle : normalStyle}`}>
-                                💼 Labor Management
-                              </Link>
-                            </li>
-                          )}
+
 
                           {hasAccess('CROSSING_LOG') && (
                             <li>
