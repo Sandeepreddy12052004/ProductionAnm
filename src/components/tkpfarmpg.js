@@ -285,7 +285,8 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         { name: 'fat', label: 'Fat %', type: 'number' },
         { name: 'snf', label: 'SNF %', type: 'number' },
         { name: 'density', label: 'CLR / Density', type: 'number' },
-        { name: 'water', label: 'Water %', type: 'number' }
+        { name: 'water', label: 'Water %', type: 'number' },
+        { name: 'indentLiters', label: 'No. of Liters Used for Indent', type: 'number' }
       ]
     },
     {

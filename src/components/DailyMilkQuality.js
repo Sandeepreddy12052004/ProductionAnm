@@ -142,6 +142,7 @@ export default function DailyMilkQuality() {
               snf: q.snf !== undefined ? String(q.snf) : "",
               density: q.density !== undefined ? String(q.density) : "",
               water: q.water !== undefined ? String(q.water) : "",
+              indentLiters: q.indentLiters !== undefined ? String(q.indentLiters) : "",
               temperature: q.temperature !== undefined ? String(q.temperature) : ""
             };
           }
@@ -163,6 +164,7 @@ export default function DailyMilkQuality() {
           snf: "",
           density: "",
           water: "",
+          indentLiters: "",
           temperature: ""
         };
       }
@@ -199,9 +201,10 @@ export default function DailyMilkQuality() {
     let totalSnf = 0;
     let totalDensity = 0;
     let totalWater = 0;
+    let totalIndentLiters = 0;
 
     Object.values(rowValues).forEach(r => {
-      const isFilled = [r.liters, r.fat, r.snf, r.density, r.water, r.temperature].every(v => String(v).trim() !== "");
+      const isFilled = [r.liters, r.fat, r.snf, r.density, r.water, r.indentLiters, r.temperature].every(v => String(v).trim() !== "");
       if (isFilled) {
         count++;
         totalTemp += Number(r.temperature) || 0;
@@ -209,11 +212,12 @@ export default function DailyMilkQuality() {
         totalSnf += Number(r.snf) || 0;
         totalDensity += Number(r.density) || 0;
         totalWater += Number(r.water) || 0;
+        totalIndentLiters += Number(r.indentLiters) || 0;
       }
     });
 
     if (count === 0) {
-      return { temperature: 0, fat: 0, snf: 0, density: 0, water: 0 };
+      return { temperature: 0, fat: 0, snf: 0, density: 0, water: 0, indentLiters: 0 };
     }
 
     return {
@@ -221,7 +225,8 @@ export default function DailyMilkQuality() {
       fat: Number((totalFat / count).toFixed(2)),
       snf: Number((totalSnf / count).toFixed(2)),
       density: Number((totalDensity / count).toFixed(2)),
-      water: Number((totalWater / count).toFixed(2))
+      water: Number((totalWater / count).toFixed(2)),
+      indentLiters: Number(totalIndentLiters.toFixed(2))
     };
   }, [rowValues]);
 
@@ -236,13 +241,13 @@ export default function DailyMilkQuality() {
       for (const bmc of bmcsList) {
         const bId = bmc._id || bmc.id;
         const row = rowValues[bId] || {};
-        const { liters, fat, snf, density, water, temperature } = row;
+        const { liters, fat, snf, density, water, indentLiters, temperature } = row;
 
-        const hasAnyValue = [liters, fat, snf, density, water, temperature].some(v => String(v).trim() !== "");
+        const hasAnyValue = [liters, fat, snf, density, water, indentLiters, temperature].some(v => String(v).trim() !== "");
         if (hasAnyValue) {
-          const hasEmpty = [liters, fat, snf, density, water, temperature].some(v => String(v).trim() === "");
+          const hasEmpty = [liters, fat, snf, density, water, indentLiters, temperature].some(v => String(v).trim() === "");
           if (hasEmpty) {
-            swalError("Validation Error", `All Milk QA fields (Liters, Temperature, Fat, SNF, CLR, Water) are mandatory for BMC: ${bmc.name || bmc.code}`);
+            swalError("Validation Error", `All Milk QA fields (Liters, Temperature, Fat, SNF, CLR, Water, Indent Liters) are mandatory for BMC: ${bmc.name || bmc.code}`);
             setIsSaving(false);
             return;
           }
@@ -265,9 +270,9 @@ export default function DailyMilkQuality() {
         bmcsList.map(async (bmc) => {
           const bId = bmc._id || bmc.id;
           const row = rowValues[bId] || {};
-          const { _id, liters, fat, snf, density, water, temperature } = row;
+          const { _id, liters, fat, snf, density, water, indentLiters, temperature } = row;
 
-          const isFilled = [liters, fat, snf, density, water, temperature].every(v => String(v).trim() !== "");
+          const isFilled = [liters, fat, snf, density, water, indentLiters, temperature].every(v => String(v).trim() !== "");
 
           if (isFilled) {
             const payload = {
@@ -276,6 +281,7 @@ export default function DailyMilkQuality() {
               snf: Number(snf),
               density: Number(density),
               water: Number(water),
+              indentLiters: Number(indentLiters),
               temperature: Number(temperature),
               bmcs: [{ bmcId: bId, name: bmc.name || bmc.code, liters: Number(liters) }]
             };
@@ -383,6 +389,7 @@ export default function DailyMilkQuality() {
                       <th className="py-3 px-2 w-24 text-center">SNF %</th>
                       <th className="py-3 px-2 w-32 text-center">CLR / Density</th>
                       <th className="py-3 px-2 w-24 text-center">Water %</th>
+                      <th className="py-3 px-2 w-36 text-center">Indent Liters</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -479,6 +486,19 @@ export default function DailyMilkQuality() {
                               className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
                             />
                           </td>
+                          <td className="py-3 px-2 align-middle">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              placeholder="0.0"
+                              value={row.indentLiters || ""}
+                              onFocus={() => setFocusedBmcId(bId)}
+                              onBlur={() => setFocusedBmcId(null)}
+                              onChange={(e) => handleCellChange(bId, "indentLiters", e.target.value)}
+                              className="w-full h-9 px-2 bg-slate-50/30 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-[#D1867D] focus:bg-white transition-all"
+                            />
+                          </td>
                         </tr>
                       );
                     })}
@@ -567,9 +587,13 @@ export default function DailyMilkQuality() {
                 <span className="text-slate-400 font-bold">Avg CLR / Density:</span>
                 <span className="text-slate-800 font-black">{averageMetrics.density}</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
+              <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
                 <span className="text-slate-400 font-bold">Avg Water:</span>
                 <span className="text-slate-800 font-black">{averageMetrics.water} %</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400 font-bold">Total Indent Liters:</span>
+                <span className="text-slate-800 font-black">{averageMetrics.indentLiters} L</span>
               </div>
             </div>
           </div>
