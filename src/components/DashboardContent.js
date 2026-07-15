@@ -50,7 +50,9 @@ const DashboardContent = () => {
     totalBmcCapacity: 0,
     activeCoolersCount: 0,
     bmcAlerts: 0,
-    shedYields: []
+    shedYields: [],
+    crossingAlertsPdCount: 0,
+    crossingAlertsCalvingCount: 0
   });
 
   const fetchDashboardStats = async () => {
@@ -179,6 +181,37 @@ const DashboardContent = () => {
         pdList: [], calvingList: [], heatList: []
       });
 
+      // Crossing Alerts Card Logic:
+      // pd test date crossed (in past or today) but status is pending/empty.
+      // calving date crossed (in past or today) but calving status is pending/empty OR no calf tag entered.
+      let crossingAlertsPdCount = 0;
+      let crossingAlertsCalvingCount = 0;
+
+      const isDateCrossed = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return false;
+        d.setHours(0, 0, 0, 0);
+        return d <= today;
+      };
+
+      for (const log of crossingLogs) {
+        const pdDateVal = log.pdDate || log['PD date'] || log.pd_date;
+        const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+        
+        if (isDateCrossed(pdDateVal) && (pregStatus === 'PENDING' || pregStatus === '')) {
+          crossingAlertsPdCount++;
+        }
+
+        const calvingDateVal = log.estimatedCalvingDate || log['estimated calving date'] || log.estimated_calving_date;
+        const calvingStatusVal = String(log.calvingStatus || log['calving status'] || '').toLowerCase();
+        const hasNoCalfTag = !log.calfTag && !log['calf tag'] && !log['calfTag'] || String(log.calfTag || log['calf tag'] || log['calfTag'] || '').trim() === '';
+        
+        if (isDateCrossed(calvingDateVal) && (calvingStatusVal === 'pending' || calvingStatusVal === '' || hasNoCalfTag)) {
+          crossingAlertsCalvingCount++;
+        }
+      }
+
       // 2. Livestock metrics
       const activeLivestock = livestock.filter(a => !['SOLD', 'DECEASED', 'DEAD'].includes(String(a.status).trim().toUpperCase()));
       const activeLivestockCount = activeLivestock.length;
@@ -298,7 +331,9 @@ const DashboardContent = () => {
         totalBmcCapacity,
         activeCoolersCount,
         bmcAlerts,
-        shedYields
+        shedYields,
+        crossingAlertsPdCount,
+        crossingAlertsCalvingCount
       });
     } catch (e) {
       console.error("Dashboard calculation error:", e);
@@ -609,11 +644,11 @@ const DashboardContent = () => {
                 <div className="space-y-1">
                   <span className="text-[10px] font-black text-amber-800/60 uppercase tracking-widest block font-sans">Crossing Alert</span>
                   <span className="text-3xl font-black text-amber-950 block">
-                    {mounted ? (stats.pdList.length + stats.calvingList.length + stats.heatList.length) : 0}{" "}
+                    {mounted ? (stats.crossingAlertsPdCount + stats.crossingAlertsCalvingCount) : 0}{" "}
                     <span className="text-xs font-bold text-amber-700">Pending</span>
                   </span>
                   <span className="text-[10px] font-bold text-amber-600 block">
-                    {stats.pdList.length} PD Tests · {stats.calvingList.length} Calvings due
+                    {stats.crossingAlertsPdCount} PD Tests · {stats.crossingAlertsCalvingCount} Calvings due
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600">
