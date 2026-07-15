@@ -194,6 +194,34 @@ export default function DailyMilkQuality() {
 
   const availableMilk = Math.max(0, totalCollectedNet - totalEnteredQa);
 
+  const yesterdayStoredBmcVolume = useMemo(() => {
+    // Yesterday's date at midnight local time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayTime = yesterday.getTime();
+
+    // Filter qaLogsList for yesterday's date
+    const yesterdayQa = qaLogsList.filter(log => {
+      const d = new Date(log.date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === yesterdayTime &&
+             (!selectedFarmId || String(log.farmId?._id || log.farmId?.id || log.farmId) === selectedFarmId);
+    });
+
+    // Sum up the net volume: liters - indentLiters
+    let sum = 0;
+    yesterdayQa.forEach(q => {
+      if (q.bmcs && q.bmcs.length > 0) {
+        const liters = q.bmcs[0].liters || 0;
+        const indent = q.indentLiters || 0;
+        sum += Math.max(0, liters - indent);
+      }
+    });
+    return sum;
+  }, [qaLogsList, selectedFarmId]);
+
   const averageMetrics = useMemo(() => {
     let count = 0;
     let totalTemp = 0;
@@ -553,6 +581,14 @@ export default function DailyMilkQuality() {
                   <span className="text-sm font-black text-slate-800">{totalEnteredQa.toLocaleString()} L</span>
                 </div>
                 <span className="text-xl">❄️</span>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
+                <div>
+                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Milk Available in BMC</span>
+                  <span className="text-sm font-black text-slate-800">{yesterdayStoredBmcVolume.toLocaleString()} L</span>
+                </div>
+                <span className="text-xl">🧊</span>
               </div>
 
               <div className={`p-4 border rounded-2xl flex justify-between items-center ${availableMilk === 0 && totalCollectedNet > 0 ? 'bg-red-50/50 border-red-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
