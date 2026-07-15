@@ -106,6 +106,12 @@ export default function MilkingPerformance() {
 
   const { start: filterStart, end: filterEnd } = getDateRange();
 
+  const daysInRange = useMemo(() => {
+    const diffTime = Math.abs(filterEnd.getTime() - filterStart.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays || 1;
+  }, [filterStart, filterEnd]);
+
   // Apply filters to milk collections
   const filteredLogs = milkLogs.filter(log => {
     // 1. Date Filter
@@ -199,9 +205,10 @@ export default function MilkingPerformance() {
   const topAnimals = Object.entries(animalYieldMap)
     .map(([tag, yieldL]) => {
       const animal = cattleMap.get(tag);
+      const avgYield = yieldL / daysInRange;
       return {
         tag,
-        yieldL,
+        yieldL: avgYield,
         breed: animal?.breed || 'Unknown',
         shed: animal?.shedId || animal?.shed || '-',
         type: animal?.cattleType || animal?.animalType || 'Cow'
@@ -213,9 +220,10 @@ export default function MilkingPerformance() {
   const lowAnimals = Object.entries(animalYieldMap)
     .map(([tag, yieldL]) => {
       const animal = cattleMap.get(tag);
+      const avgYield = yieldL / daysInRange;
       return {
         tag,
-        yieldL,
+        yieldL: avgYield,
         breed: animal?.breed || 'Unknown',
         shed: animal?.shedId || animal?.shed || '-',
         type: animal?.cattleType || animal?.animalType || 'Cow',
