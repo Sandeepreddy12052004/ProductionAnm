@@ -1667,9 +1667,11 @@ if (!moduleConfig) {
         else {
           // 🔁 NORMAL FILTER
           if (f.value) {
-            currentMatch = String(log[f.field] || "")
-              .toLowerCase()
-              .includes(f.value.toLowerCase());
+            const filterValues = String(f.value).split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+            if (filterValues.length > 0) {
+              const recordVal = String(log[f.field] || "").toLowerCase();
+              currentMatch = filterValues.some(v => recordVal === v || recordVal.includes(v));
+            }
           }
         }
 

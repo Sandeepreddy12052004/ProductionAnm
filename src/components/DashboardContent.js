@@ -53,7 +53,9 @@ const DashboardContent = () => {
     bmcAlerts: 0,
     shedYields: [],
     crossingAlertsPdCount: 0,
-    crossingAlertsCalvingCount: 0
+    crossingAlertsCalvingCount: 0,
+    crossingAlertsPdTags: [],
+    crossingAlertsCalvingTags: []
   });
 
   const fetchDashboardStats = async () => {
@@ -187,6 +189,8 @@ const DashboardContent = () => {
       // calving date crossed (in past or today) but calving status is pending/empty OR no calf tag entered.
       let crossingAlertsPdCount = 0;
       let crossingAlertsCalvingCount = 0;
+      const crossingAlertsPdTags = [];
+      const crossingAlertsCalvingTags = [];
 
       const isDateCrossed = (dateStr) => {
         if (!dateStr) return false;
@@ -199,9 +203,13 @@ const DashboardContent = () => {
       for (const log of crossingLogs) {
         const pdDateVal = log.pdDate || log['PD date'] || log.pd_date;
         const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
+        const tag = String(log.tag_id || log.tag || log.tagId || '').trim();
         
         if (isDateCrossed(pdDateVal) && (pregStatus === 'PENDING' || pregStatus === '')) {
           crossingAlertsPdCount++;
+          if (tag && !crossingAlertsPdTags.includes(tag)) {
+            crossingAlertsPdTags.push(tag);
+          }
         }
 
         const calvingDateVal = log.estimatedCalvingDate || log['estimated calving date'] || log.estimated_calving_date;
@@ -210,6 +218,9 @@ const DashboardContent = () => {
         
         if (isDateCrossed(calvingDateVal) && (calvingStatusVal === 'pending' || calvingStatusVal === '' || hasNoCalfTag)) {
           crossingAlertsCalvingCount++;
+          if (tag && !crossingAlertsCalvingTags.includes(tag)) {
+            crossingAlertsCalvingTags.push(tag);
+          }
         }
       }
 
@@ -334,7 +345,9 @@ const DashboardContent = () => {
         bmcAlerts,
         shedYields,
         crossingAlertsPdCount,
-        crossingAlertsCalvingCount
+        crossingAlertsCalvingCount,
+        crossingAlertsPdTags,
+        crossingAlertsCalvingTags
       });
     } catch (e) {
       console.error("Dashboard calculation error:", e);
@@ -865,7 +878,8 @@ const DashboardContent = () => {
                 <button
                   onClick={() => {
                     setShowCrossingModal(false);
-                    router.push('/crossing?status=Pending');
+                    const tagParam = stats.crossingAlertsPdTags?.length > 0 ? `&tag=${stats.crossingAlertsPdTags.join(',')}` : '';
+                    router.push(`/crossing?status=Pending${tagParam}`);
                   }}
                   className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
                 >
@@ -882,7 +896,8 @@ const DashboardContent = () => {
                 <button
                   onClick={() => {
                     setShowCrossingModal(false);
-                    router.push('/crossing?status=Positive');
+                    const tagParam = stats.crossingAlertsCalvingTags?.length > 0 ? `&tag=${stats.crossingAlertsCalvingTags.join(',')}` : '';
+                    router.push(`/crossing?status=Positive${tagParam}`);
                   }}
                   className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
                 >
