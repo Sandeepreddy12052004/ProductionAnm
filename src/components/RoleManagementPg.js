@@ -31,9 +31,7 @@ const MODULE_GROUPS = {
       { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS', icon: '🌾' },
       { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT', icon: '🏷️' },
       { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT', icon: '🧬' },
-      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏' },
-      { name: 'Grass Management', baseToken: 'GRASS_MANAGEMENT', prefix: 'GRASS_MANAGEMENT', icon: '🌿' },
-      { name: 'Labor & Designation', baseToken: 'LABOR_MANAGEMENT', prefix: 'LABOR_MANAGEMENT', icon: '💼' }
+      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏' }
     ]
   },
   MODULES: {
@@ -51,7 +49,12 @@ const MODULE_GROUPS = {
       { name: 'Grass Collection', baseToken: 'GRASS', prefix: 'GRASS', icon: '🌿' },
       { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING', icon: '🍽️' },
       { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK', icon: '🥛' },
-      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' }
+      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' },
+      { name: 'Milk Performance', baseToken: 'MILK', prefix: 'MILK', icon: '📊' },
+      { name: 'Milk Procurement', baseToken: 'MILK', prefix: 'MILK', icon: '🛒' },
+      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'CROSSING_LOG', icon: '🧬' },
+      { name: 'Land Management', baseToken: 'LAND_MANAGEMENT', prefix: 'LAND_MANAGEMENT', icon: '🗺️' },
+      { name: 'BMC Management', baseToken: 'BMC_MANAGEMENT', prefix: 'BMC_MANAGEMENT', icon: '❄️' }
     ]
   }
 };

@@ -116,8 +116,11 @@ export function middleware(request) {
     { key: 'INVENTORY', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'med_inv' },
     { key: 'GRASS', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'grass' },
     { key: 'FEEDING', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'feeding' },
-    { key: 'MILK', match: pathname === '/milk' || pathname === '/milk-quality' || pathname === '/milking-performance' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod') },
-    { key: 'MILK', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components' }
+    { key: 'MILK', match: pathname === '/milk' || pathname === '/milk-quality' || pathname === '/milking-performance' || pathname === '/milk-procurement' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod') },
+    { key: 'MILK', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components' },
+    { key: 'CROSSING_LOG', match: pathname === '/insemination' },
+    { key: 'LAND_MANAGEMENT', match: pathname === '/land-management' || pathname.startsWith('/land-management') },
+    { key: 'BMC_MANAGEMENT', match: pathname === '/bmc-management' || pathname.startsWith('/bmc-management') }
   ];
 
   // Check if current route is matched and if user does not have access
@@ -145,7 +148,10 @@ export function middleware(request) {
       { key: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
       { key: 'GRASS', path: '/farm/tkp?tab=grass' },
       { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
-      { key: 'MILK', path: '/farm/tkp?tab=milk_prod' }
+      { key: 'MILK', path: '/farm/tkp?tab=milk_prod' },
+      { key: 'CROSSING_LOG', path: '/insemination' },
+      { key: 'LAND_MANAGEMENT', path: '/land-management' },
+      { key: 'BMC_MANAGEMENT', path: '/bmc-management' }
     ];
 
     const firstAllowed = routeMappings.find(r => hasAccess(r.key));
