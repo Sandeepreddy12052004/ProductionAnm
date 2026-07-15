@@ -418,9 +418,14 @@ export default function BmcManagementPg() {
                           style={{ width: `${fillPercentage}%` }}
                         />
                       </div>
-                      <p className="text-[10px] text-slate-400 font-semibold text-right">
-                        {fillPercentage.toFixed(1)}% full
-                      </p>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold">
+                        <span>
+                          {bmcQa ? `(${bmcQa.bmcs[0].liters}L - ${bmcQa.indentLiters || 0}L indent)` : '(No yesterday QA logs)'}
+                        </span>
+                        <span>
+                          {fillPercentage.toFixed(1)}% full
+                        </span>
+                      </div>
                     </div>
 
                     {/* Specifications */}
