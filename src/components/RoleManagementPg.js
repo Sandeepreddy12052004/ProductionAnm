@@ -40,21 +40,15 @@ const MODULE_GROUPS = {
   MODULES: {
     title: 'OPERATIONAL LOGS & INVENTORY',
     modules: [
-      { name: 'Live Stock',               baseToken: 'CATTLE',         prefix: 'LIVESTOCK',          icon: '🐄' },
-      { name: 'Shed Log',                 baseToken: 'SHED_LOG',       prefix: 'SHED_LOG',           icon: '📝' },
-      { name: 'Crossing Log',             baseToken: 'CROSSING_LOG',   prefix: 'CROSSING_LOG',       icon: '🧬' },
-      { name: 'Purchase Log',             baseToken: 'PURCHASE_LOG',   prefix: 'PURCHASE_LOG',       icon: '📥' },
-      { name: 'Sale Log',                 baseToken: 'SALE_LOG',       prefix: 'SALE_LOG',           icon: '📤' },
-      { name: 'Treatment Log',            baseToken: 'HEALTH',         prefix: 'HEALTH',             icon: '📋' },
-      { name: 'Vaccination Log',          baseToken: 'HEALTH',         prefix: 'HEALTH',             icon: '💉' },
-      { name: 'Feed Inventory',           baseToken: 'INVENTORY',      prefix: 'INVENTORY',          icon: '📦' },
-      { name: 'Medicine Inventory',       baseToken: 'INVENTORY',      prefix: 'INVENTORY',          icon: '💊' },
-      { name: 'Grass Collection',         baseToken: 'GRASS',          prefix: 'GRASS',              icon: '🌿' },
-      { name: 'Daily Feeding',            baseToken: 'FEEDING',        prefix: 'FEEDING',            icon: '🍽️' },
-      { name: 'Daily Milk Collection',    baseToken: 'MILK',           prefix: 'MILK',               icon: '🥛' },
-      { name: 'Milk Procurement',         baseToken: 'MILK',           prefix: 'MILK',               icon: '🛒' },
-      { name: 'Milk QA',                  baseToken: 'MILK',           prefix: 'MILK',               icon: '🧪' },
-      { name: 'Milk Performance',         baseToken: 'MILK',           prefix: 'MILK',               icon: '📊' }
+      { name: 'Live Stock',            baseToken: 'CATTLE',       prefix: 'LIVESTOCK',    icon: '🐄' },
+      { name: 'Shed Log',              baseToken: 'SHED_LOG',     prefix: 'SHED_LOG',     icon: '📝' },
+      { name: 'Purchase Log',          baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG', icon: '📥' },
+      { name: 'Sale Log',              baseToken: 'SALE_LOG',     prefix: 'SALE_LOG',     icon: '📤' },
+      { name: 'Treatment Log',         baseToken: 'HEALTH',       prefix: 'HEALTH',       icon: '📋' },
+      { name: 'Feed Inventory',        baseToken: 'INVENTORY',    prefix: 'INVENTORY',    icon: '📦' },
+      { name: 'Grass Collection',      baseToken: 'GRASS',        prefix: 'GRASS',        icon: '🌿' },
+      { name: 'Daily Feeding',         baseToken: 'FEEDING',      prefix: 'FEEDING',      icon: '🍽️' },
+      { name: 'Daily Milk Collection', baseToken: 'MILK',         prefix: 'MILK',         icon: '🥛' }
     ]
   }
 };
