@@ -1519,7 +1519,11 @@
                   };
                   await onSubmit(finalData);
                 } else {
-                  await onSubmit(formData); 
+                  const finalData = { ...formData };
+                  if (title?.toLowerCase().includes("feed") && !Number(finalData.bought)) {
+                    finalData.purchaseDate = "";
+                  }
+                  await onSubmit(finalData); 
                 }
               } catch (err) {
                 console.error(err);

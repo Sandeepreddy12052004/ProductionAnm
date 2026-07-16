@@ -1109,6 +1109,9 @@ const OpsLogPg = ({ moduleConfig }) => {
                     if (f.type === 'date' && cellVal) {
                       cellVal = formatDateToDDMMYYYY(cellVal);
                     }
+                    if (f.name === 'purchaseDate' && current.id === 'feed_inv' && !Number(log.bought)) {
+                      cellVal = '';
+                    }
                     return (
                       <td key={f.name} className="p-4 font-semibold text-black text-sm">
                         {cellVal ?? '-'}

@@ -262,7 +262,7 @@ export default function FeedInventoryPg() {
                     <th className="p-4 border-b">Feed Item</th>
                     <th className="p-4 border-b">Remaining Stock</th>
                     <th className="p-4 border-b text-center">Status</th>
-                    <th className="p-4 border-b">Last Transaction Info</th>
+                    <th className="p-4 border-b">Last Purchase Quantity</th>
                     <th className="p-4 border-b">Last Updated</th>
                   </tr>
                 </thead>
@@ -295,14 +295,12 @@ export default function FeedInventoryPg() {
                               {isLow ? "LOW STOCK" : "IN STOCK"}
                             </span>
                           </td>
-                          <td className="p-4 text-xs font-semibold text-slate-500">
-                            {item.lastBought > 0 ? (
-                              <span className="text-emerald-600">+{item.lastBought} {item.unit} bought</span>
-                            ) : item.lastUsage > 0 ? (
-                              <span className="text-amber-600">-{item.lastUsage} {item.unit} used</span>
-                            ) : (
-                              "No transactions logged"
-                            )}
+                          <td className="p-4 text-sm font-extrabold text-[#16223F]">
+                             {item.lastBought > 0 ? (
+                               <span className="text-emerald-600">{item.lastBought.toLocaleString()} {item.unit}</span>
+                             ) : (
+                               "-"
+                             )}
                           </td>
                           <td className="p-4 text-sm font-semibold text-gray-500">
                             {formattedDate}

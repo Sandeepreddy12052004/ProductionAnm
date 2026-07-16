@@ -51,7 +51,9 @@ const MODULE_GROUPS = {
       { name: 'Grass Collection', baseToken: 'GRASS', prefix: 'GRASS', icon: '🌿' },
       { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING', icon: '🍽️' },
       { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK', icon: '🥛' },
-      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' }
+      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' },
+      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬' },
+      { name: 'Milk Performance', baseToken: 'MILK', prefix: 'MILK_PERFORMANCE', icon: '📈' }
     ]
   }
 };

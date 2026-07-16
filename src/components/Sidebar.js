@@ -481,7 +481,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
 
 
 
-                          {hasAccess('CROSSING_LOG') && (
+                          {hasAccess('INSEMINATION_MANAGEMENT') && (
                             <li>
                               <Link href="/insemination" onClick={handleCloseSidebar}
                                 className={`block p-2 rounded border-l-4 ${isLinkActive("/insemination") ? activeStyle : normalStyle}`}>
@@ -496,7 +496,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                 )}
 
                 {/* NORMAL MODULES GROUP */}
-                {(hasAccess('LIVESTOCK') || hasAccess('SHED_LOG') || hasAccess('CROSSING_LOG') || hasAccess('PURCHASE_LOG') || hasAccess('SALE_LOG') || hasAccess('HEALTH') || hasAccess('INVENTORY') || hasAccess('GRASS') || hasAccess('FEEDING') || hasAccess('MILK')) && (
+                {(hasAccess('LIVESTOCK') || hasAccess('SHED_LOG') || hasAccess('CROSSING_LOG') || hasAccess('PURCHASE_LOG') || hasAccess('SALE_LOG') || hasAccess('HEALTH') || hasAccess('INVENTORY') || hasAccess('GRASS') || hasAccess('FEEDING') || hasAccess('MILK') || hasAccess('MILK_PERFORMANCE')) && (
                   <li className="mt-4 border-t border-slate-100 pt-4">
                     <button
                       onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
@@ -671,7 +671,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                           )}
 
                           {/* Milking Performance */}
-                          {hasAccess('MILK') && (
+                          {hasAccess('MILK_PERFORMANCE') && (
                             <li>
                               <Link href="/milking-performance" onClick={handleCloseSidebar}
                                 className={`block p-2 rounded border-l-4 ${isLinkActive("/milking-performance") ? activeStyle : normalStyle
