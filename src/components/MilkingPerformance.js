@@ -124,6 +124,21 @@ export default function MilkingPerformance() {
 
   // Apply filters to milk collections
   const filteredLogs = milkLogs.filter(log => {
+    // 0. Farm Filter
+    const activeFarmId = (() => {
+      try {
+        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+        return localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+      } catch (e) {}
+      return 'ALL';
+    })();
+    if (activeFarmId && activeFarmId !== 'ALL') {
+      const logFarmId = log.farmId && typeof log.farmId === 'object'
+        ? (log.farmId._id || log.farmId.id)
+        : log.farmId;
+      if (String(logFarmId) !== String(activeFarmId)) return false;
+    }
+
     // 1. Date Filter
     const logDateStr = toYYYYMMDD(log.date);
     if (logDateStr < startStr || logDateStr > endStr) return false;
@@ -256,61 +271,91 @@ export default function MilkingPerformance() {
   });
 
   // Group by Shed for shed comparisons
-  const shedGroups = {};
-  filteredLogs.forEach(log => {
-    const shedCode = String(log.shedId || log.shed || 'Shed ?').trim().toUpperCase();
-    if (!shedGroups[shedCode]) {
-      shedGroups[shedCode] = 0;
-    }
-    shedGroups[shedCode] += Number(log.quantity || 0);
-  });
+  const shedGroups = useMemo(() => {
+    const sums = {};
+    const counts = {};
+    filteredLogs.forEach(log => {
+      const shedCode = String(log.shedId || log.shed || 'Shed ?').trim().toUpperCase();
+      if (!sums[shedCode]) {
+        sums[shedCode] = 0;
+        counts[shedCode] = 0;
+      }
+      sums[shedCode] += Number(log.quantity || 0);
+      counts[shedCode] += 1;
+    });
+
+    const resolved = {};
+    Object.keys(sums).forEach(shedCode => {
+      resolved[shedCode] = metricType === 'AVG'
+        ? (sums[shedCode] / (counts[shedCode] || 1))
+        : sums[shedCode];
+    });
+    return resolved;
+  }, [filteredLogs, metricType]);
 
   // Find top yielding animals
-  const animalYieldMap = {};
-  filteredLogs.forEach(log => {
-    const tag = String(log.tag_id || log.tagId || '').trim().toUpperCase();
-    if (tag) {
-      if (!animalYieldMap[tag]) {
-        animalYieldMap[tag] = 0;
+  const animalYieldMap = useMemo(() => {
+    const sums = {};
+    const counts = {};
+    filteredLogs.forEach(log => {
+      const tag = String(log.tag_id || log.tagId || '').trim().toUpperCase();
+      if (tag) {
+        if (!sums[tag]) {
+          sums[tag] = 0;
+          counts[tag] = 0;
+        }
+        sums[tag] += Number(log.quantity || 0);
+        counts[tag] += 1;
       }
-      animalYieldMap[tag] += Number(log.quantity || 0);
-    }
-  });
+    });
 
-  const topAnimals = Object.entries(animalYieldMap)
-    .map(([tag, yieldL]) => {
-      const animal = cattleMap.get(tag);
-      return {
-        tag,
-        yieldL,
-        breed: animal?.breed || 'Unknown',
-        shed: animal?.shedId || animal?.shed || '-',
-        type: animal?.cattleType || animal?.animalType || 'Cow'
-      };
-    })
-    .sort((a, b) => b.yieldL - a.yieldL)
-    .slice(0, 5);
+    const resolved = {};
+    Object.keys(sums).forEach(tag => {
+      resolved[tag] = metricType === 'AVG'
+        ? (sums[tag] / (counts[tag] || 1))
+        : sums[tag];
+    });
+    return resolved;
+  }, [filteredLogs, metricType]);
 
-  const lowAnimals = Object.entries(animalYieldMap)
-    .map(([tag, yieldL]) => {
-      const animal = cattleMap.get(tag);
-      return {
-        tag,
-        yieldL,
-        breed: animal?.breed || 'Unknown',
-        shed: animal?.shedId || animal?.shed || '-',
-        type: animal?.cattleType || animal?.animalType || 'Cow',
-        gender: animal?.gender || 'Female'
-      };
-    })
-    .filter(animal => {
-      const isCalf = String(animal.type).toUpperCase().includes('CALF') || String(animal.tag).toUpperCase().includes('CALF');
-      const isMale = String(animal.gender).toUpperCase() === 'MALE';
-      const passesThreshold = lowYieldThreshold === '' || animal.yieldL <= Number(lowYieldThreshold);
-      return !isCalf && !isMale && passesThreshold;
-    })
-    .sort((a, b) => a.yieldL - b.yieldL)
-    .slice(0, 5);
+  const topAnimals = useMemo(() => {
+    return Object.entries(animalYieldMap)
+      .map(([tag, yieldL]) => {
+        const animal = cattleMap.get(tag);
+        return {
+          tag,
+          yieldL,
+          breed: animal?.breed || 'Unknown',
+          shed: animal?.shedId || animal?.shed || '-',
+          type: animal?.cattleType || animal?.animalType || 'Cow'
+        };
+      })
+      .sort((a, b) => b.yieldL - a.yieldL)
+      .slice(0, 5);
+  }, [animalYieldMap, cattleMap]);
+
+  const lowAnimals = useMemo(() => {
+    return Object.entries(animalYieldMap)
+      .map(([tag, yieldL]) => {
+        const animal = cattleMap.get(tag);
+        return {
+          tag,
+          yieldL,
+          breed: animal?.breed || 'Unknown',
+          shed: animal?.shedId || animal?.shed || '-',
+          type: animal?.cattleType || animal?.animalType || 'Cow',
+          gender: animal?.gender || 'Female'
+        };
+      })
+      .filter(animal => {
+        const isCalf = String(animal.type).toUpperCase().includes('CALF') || String(animal.tag).toUpperCase().includes('CALF');
+        const isMale = String(animal.gender).toUpperCase() === 'MALE';
+        const passesThreshold = lowYieldThreshold === '' || animal.yieldL <= Number(lowYieldThreshold);
+        return !isCalf && !isMale && passesThreshold;
+      })
+      .sort((a, b) => a.yieldL - b.yieldL)
+      .slice(0, 5);
+  }, [animalYieldMap, cattleMap, lowYieldThreshold]);
 
   // Table Logs Search & Pagination
   const formatTableDate = (dateStr) => {
@@ -623,29 +668,52 @@ export default function MilkingPerformance() {
       ) : (
         <>
           {/* KPI METRIC CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Total Yield</p>
-              <p className="text-3xl font-black text-[#16223F] mt-1.5">{totalYield.toFixed(1)} <span className="text-base font-bold">L</span></p>
-            </div>
+          {(() => {
+            const displayYield = metricType === 'SUM'
+              ? totalYield
+              : (filteredLogs.length > 0 ? (totalYield / filteredLogs.length) : 0);
 
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Daily Average</p>
-              <p className="text-3xl font-black text-[#16223F] mt-1.5">{avgDailyYield.toFixed(1)} <span className="text-base font-bold">L/day</span></p>
-            </div>
+            const displaySelfConsumption = metricType === 'SUM'
+              ? totalSelfConsumption
+              : (filteredLogs.length > 0 ? (totalSelfConsumption / filteredLogs.length) : 0);
 
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Peak Production</p>
-              <p className="text-3xl font-black text-emerald-600 mt-1.5">{peakDayValue.toFixed(1)} <span className="text-base font-bold text-[#16223F]">L</span></p>
-              <p className="text-[9px] font-bold text-slate-400 mt-0.5">Date: {peakDayStr !== '-' ? formatTableDate(peakDayStr) : '-'}</p>
-            </div>
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">
+                    {metricType === 'SUM' ? 'Total Yield' : 'Average Yield'}
+                  </p>
+                  <p className="text-3xl font-black text-[#16223F] mt-1.5">{displayYield.toFixed(1)} <span className="text-base font-bold">L</span></p>
+                </div>
 
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Self-Consumption</p>
-              <p className="text-3xl font-black text-[#D1867D] mt-1.5">{totalSelfConsumption.toFixed(1)} <span className="text-base font-bold">L</span></p>
-              <p className="text-[9px] font-bold text-slate-400 mt-0.5">Net Sale: {(totalYield - totalSelfConsumption).toFixed(1)} L</p>
-            </div>
-          </div>
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Daily Average</p>
+                  <p className="text-3xl font-black text-[#16223F] mt-1.5">{avgDailyYield.toFixed(1)} <span className="text-base font-bold">L/day</span></p>
+                </div>
+
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">
+                    {metricType === 'SUM' ? 'Peak Production' : 'Peak Avg Yield'}
+                  </p>
+                  <p className="text-3xl font-black text-emerald-600 mt-1.5">{peakDayValue.toFixed(1)} <span className="text-base font-bold text-[#16223F]">L</span></p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-0.5">Date: {peakDayStr !== '-' ? formatTableDate(peakDayStr) : '-'}</p>
+                </div>
+
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">
+                    {metricType === 'SUM' ? 'Self-Consumption' : 'Self-Consumption Avg'}
+                  </p>
+                  <p className="text-3xl font-black text-[#D1867D] mt-1.5">{displaySelfConsumption.toFixed(1)} <span className="text-base font-bold">L</span></p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-0.5">
+                    {metricType === 'SUM' 
+                      ? `Net Sale: ${(totalYield - totalSelfConsumption).toFixed(1)} L`
+                      : `Net Sale Avg: ${(displayYield - displaySelfConsumption).toFixed(1)} L`
+                    }
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* MAIN GRAPH/CHARTS SECTIONS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -783,21 +851,41 @@ export default function MilkingPerformance() {
               )}
 
               <div className="mt-8 border-t border-slate-100 pt-5">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Session Breakdown</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase">Morning Session</span>
-                    <span className="text-xl font-black text-[#16223F] mt-1">
-                      {filteredLogs.filter(l => l.session === 'MORNING').reduce((sum, l) => sum + Number(l.quantity || 0), 0).toFixed(0)} L
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase">Evening Session</span>
-                    <span className="text-xl font-black text-[#16223F] mt-1">
-                      {filteredLogs.filter(l => l.session === 'EVENING').reduce((sum, l) => sum + Number(l.quantity || 0), 0).toFixed(0)} L
-                    </span>
-                  </div>
-                </div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">
+                  {metricType === 'SUM' ? 'Session Breakdown' : 'Session Averages'}
+                </h4>
+                {(() => {
+                  const morningLogs = filteredLogs.filter(l => l.session === 'MORNING');
+                  const morningVal = metricType === 'SUM'
+                    ? morningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0)
+                    : (morningLogs.length > 0 ? morningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0) / morningLogs.length : 0);
+
+                  const eveningLogs = filteredLogs.filter(l => l.session === 'EVENING');
+                  const eveningVal = metricType === 'SUM'
+                    ? eveningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0)
+                    : (eveningLogs.length > 0 ? eveningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0) / eveningLogs.length : 0);
+
+                  return (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">
+                          {metricType === 'SUM' ? 'Morning Session' : 'Morning Average'}
+                        </span>
+                        <span className="text-xl font-black text-[#16223F] mt-1">
+                          {morningVal.toFixed(1)} L
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">
+                          {metricType === 'SUM' ? 'Evening Session' : 'Evening Average'}
+                        </span>
+                        <span className="text-xl font-black text-[#16223F] mt-1">
+                          {eveningVal.toFixed(1)} L
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
