@@ -268,7 +268,6 @@ export default function MilkingPerformance() {
   };
 
   const detailedTableLogs = sortedDates
-    .filter(dateStr => dailyGroups[dateStr]?.count > 0)
     .map(dateStr => {
       const info = dailyGroups[dateStr];
       return {
@@ -621,6 +620,15 @@ export default function MilkingPerformance() {
                             onMouseLeave={() => setHoveredPoint(null)}
                             className="transition-all duration-200 cursor-pointer"
                           />
+                          {/* Value text label above dot */}
+                          <text
+                            x={pt.x}
+                            y={pt.y - 8}
+                            textAnchor="middle"
+                            className="text-[9px] fill-[#16223F] font-black"
+                          >
+                            {pt.value.toFixed(1)}L
+                          </text>
                           {/* Render X-Axis labels at lower boundary */}
                           {(sortedDates.length < 15 || i % Math.ceil(sortedDates.length / 10) === 0) && (
                             <text x={pt.x} y={trendSvgHeight - trendPadding + 15} textAnchor="middle" className="text-[9px] fill-slate-400 font-bold">

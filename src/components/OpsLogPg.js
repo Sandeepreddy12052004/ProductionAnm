@@ -120,6 +120,7 @@ const OpsLogPg = ({ moduleConfig }) => {
     const hasMedicineName = current.fields.some(f => f.name === 'medicineName');
     const hasFarm = current.fields.some(f => ['farmId', 'farm'].includes(f.name));
     const hasLabor = current.fields.some(f => f.name === 'laborId');
+    const hasSourcingFarm = current.fields.some(f => f.name === 'sourcingFarmId');
     const isFeeding = current.id === 'feeding';
 
     let shed_opts = null;
@@ -128,6 +129,7 @@ const OpsLogPg = ({ moduleConfig }) => {
     let medicine_opts = null;
     let farm_opts = null;
     let labor_opts = null;
+    let sourcing_farm_opts = null;
     let dynamic_feeds = null;
 
     const tryMerge = () => {
@@ -138,6 +140,7 @@ const OpsLogPg = ({ moduleConfig }) => {
         (hasMedicineName && !medicine_opts) ||
         (hasFarm && !farm_opts) ||
         (hasLabor && !labor_opts) ||
+        (hasSourcingFarm && !sourcing_farm_opts) ||
         (isFeeding && !dynamic_feeds)
       ) return;
 
@@ -173,6 +176,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           return { ...f, options: farm_opts };
         if (f.name === 'laborId' && labor_opts)
           return { ...f, options: labor_opts };
+        if (f.name === 'sourcingFarmId' && sourcing_farm_opts)
+          return { ...f, options: sourcing_farm_opts };
         return f;
       }));
     };
@@ -281,7 +286,30 @@ const OpsLogPg = ({ moduleConfig }) => {
         .catch(console.error);
     }
 
-    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding && !hasLabor) {
+    if (hasSourcingFarm) {
+      api.lands.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          const activeFarmId = getActiveFarmId();
+          let filtered = list.filter(item => item.status !== 'MAINTENANCE' && item.isDeleted !== true);
+          if (activeFarmId) {
+            filtered = filtered.filter(item => {
+              const landFarmId = item.farmId && typeof item.farmId === 'object'
+                ? (item.farmId._id || item.farmId.id)
+                : item.farmId;
+              return String(landFarmId) === activeFarmId;
+            });
+          }
+          sourcing_farm_opts = filtered.map(item => ({
+            label: item.name || item.code,
+            value: item._id || item.id
+          }));
+          tryMerge();
+        })
+        .catch(console.error);
+    }
+
+    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding && !hasLabor && !hasSourcingFarm) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);

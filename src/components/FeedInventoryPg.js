@@ -83,16 +83,16 @@ export default function FeedInventoryPg() {
       // Since logs are sorted by date descending, the first record in the filter is the latest transaction
       const latestLog = itemLogs[0];
       const remainingStock = latestLog ? (Number(latestLog.remainingStock) || 0) : 0;
-      const lastUpdated = latestLog ? (latestLog.purchaseDate || latestLog.createdAt || latestLog.date) : null;
       
       // Calculate latest bought / usage values from latest log that has them
       const lastBoughtLog = itemLogs.find(log => Number(log.bought) > 0);
       const lastUsageLog = itemLogs.find(log => Number(log.usage) > 0);
+      const lastPurchaseDate = lastBoughtLog ? (lastBoughtLog.purchaseDate || lastBoughtLog.createdAt || lastBoughtLog.date) : null;
       
       stockItems.push({
         name: itemName,
         remainingStock: remainingStock,
-        lastUpdated: lastUpdated,
+        lastPurchaseDate: lastPurchaseDate,
         lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
         lastUsage: lastUsageLog ? (Number(lastUsageLog.usage) || 0) : 0,
         unit: item.type || "KG"
@@ -263,7 +263,7 @@ export default function FeedInventoryPg() {
                     <th className="p-4 border-b">Remaining Stock</th>
                     <th className="p-4 border-b text-center">Status</th>
                     <th className="p-4 border-b">Last Purchase Quantity</th>
-                    <th className="p-4 border-b">Last Updated</th>
+                    <th className="p-4 border-b">Last Purchase Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -272,8 +272,8 @@ export default function FeedInventoryPg() {
                   ) : (
                     filteredStockItems.map((item) => {
                       const isLow = item.remainingStock < 100;
-                      const formattedDate = item.lastUpdated
-                        ? new Date(item.lastUpdated).toLocaleDateString("en-GB")
+                      const formattedDate = item.lastPurchaseDate
+                        ? new Date(item.lastPurchaseDate).toLocaleDateString("en-GB")
                         : "-";
 
                       return (
