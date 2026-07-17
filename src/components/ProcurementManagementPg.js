@@ -3,6 +3,7 @@ import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
+import { X } from "lucide-react";
 
 const ProcurementManagementPg = () => {
   const [procurementSources, setProcurementSources] = useState([]);
@@ -280,53 +281,99 @@ const ProcurementManagementPg = () => {
       {/* FORM MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[30px] p-8 w-full max-w-lg shadow-2xl relative animate-scale-in">
-            <button
-              onClick={() => setShowForm(false)}
-              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-all font-bold"
-            >
-              ✕
-            </button>
-
-            <h2 className="text-2xl font-black text-[#071437] mb-6 pr-10">
-              {formData.id ? "Edit Procurement Source" : "Register Procurement Source"}
-            </h2>
-
-            <form onSubmit={handleSave} className="space-y-5">
-              {/* Name */}
+          <div className="bg-white border border-slate-200 rounded-[28px] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
+            
+            {/* STATIC HEADER */}
+            <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
               <div>
-                <label className="block mb-2 text-sm font-bold text-[#53698c]">
-                  Place/Center Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="e.g. Village Collection Point A"
-                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                  required
-                />
+                <h3 className="text-lg font-black text-[#16223F]">
+                  {formData.id ? "Edit Specifications" : "Define Procurement Source"}
+                </h3>
+                <p className="text-xs text-slate-400 font-semibold">Set source specifications and farm allocation details.</p>
+              </div>
+              <button 
+                onClick={() => setShowForm(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* SCROLLABLE FORM BODY WITH ACTION BUTTONS */}
+            <form onSubmit={handleSave} className="p-8 space-y-5 flex-1 overflow-y-auto max-h-[70vh] custom-scrollbar">
+              <div className="grid grid-cols-2 gap-4">
+                {/* PLACE/CENTER NAME */}
+                <div className="col-span-1 space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Place/Center Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="e.g. Village Collection Point A"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+
+                {/* CENTER CODE */}
+                <div className="col-span-1 space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Center Code
+                  </label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleChange}
+                    placeholder="e.g. PC-02"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all uppercase"
+                  />
+                </div>
               </div>
 
-              {/* Code */}
-              <div>
-                <label className="block mb-2 text-sm font-bold text-[#53698c]">
-                  Center Code
-                </label>
-                <input
-                  type="text"
-                  name="code"
-                  value={formData.code}
-                  onChange={handleChange}
-                  placeholder="e.g. PC-02"
-                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                {/* CONTACT PHONE */}
+                <div className="col-span-1 space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="e.g. +91 99999 88888"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* ASSIGNED FARM */}
+                <div className="col-span-1 space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Assigned Farm
+                  </label>
+                  <select
+                    name="farmId"
+                    value={formData.farmId}
+                    onChange={handleChange}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
+                  >
+                    <option value="">Select Farm</option>
+                    {farms.map((f) => (
+                      <option key={f._id || f.id} value={f._id || f.id}>
+                        {f.name || f.code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {/* Location */}
-              <div>
-                <label className="block mb-2 text-sm font-bold text-[#53698c]">
+              {/* LOCATION/ADDRESS */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
                   Location/Address
                 </label>
                 <input
@@ -335,75 +382,41 @@ const ProcurementManagementPg = () => {
                   value={formData.location}
                   onChange={handleChange}
                   placeholder="e.g. Sector-3, Highway Road"
-                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm text-[#16223F] bg-slate-50/50 focus:bg-white transition-all"
                 />
               </div>
 
-              {/* Phone */}
-              <div>
-                <label className="block mb-2 text-sm font-bold text-[#53698c]">
-                  Contact Phone
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="e.g. +91 99999 88888"
-                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437]"
-                />
-              </div>
-
-              {/* Farm Assignment */}
-              <div>
-                <label className="block mb-2 text-sm font-bold text-[#53698c]">
-                  Assigned Farm
-                </label>
-                <select
-                  name="farmId"
-                  value={formData.farmId}
-                  onChange={handleChange}
-                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437] bg-white"
-                >
-                  <option value="">Select Farm</option>
-                  {farms.map((f) => (
-                    <option key={f._id || f.id} value={f._id || f.id}>
-                      {f.name || f.code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="block mb-2 text-sm font-bold text-[#53698c]">
+              {/* STATUS */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
                   Status
                 </label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="w-full border border-[#dbe4f0] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-[#071437] text-[#071437] bg-white"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#16223F] text-sm font-semibold text-[#16223F] bg-white transition-all"
                 >
                   <option value={true}>ACTIVE</option>
                   <option value={false}>INACTIVE</option>
                 </select>
               </div>
 
-              <div className="flex gap-4 mt-8 pt-4 border-t border-[#edf1f7]">
-                <button
-                  type="submit"
-                  disabled={isLoadingForm}
-                  className="flex-1 bg-[#071437] hover:bg-[#0d1f4d] text-white py-4 rounded-2xl font-black text-sm shadow-md transition-all disabled:opacity-50"
-                >
-                  {isLoadingForm ? "Saving..." : "Save Center"}
-                </button>
+              {/* ACTION BUTTONS */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="flex-1 bg-[#eef2f7] hover:bg-[#e3e8f0] text-[#071437] py-4 rounded-2xl font-black text-sm transition-all"
+                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoadingForm}
+                  className="px-6 py-2.5 bg-[#16223F] hover:bg-[#253966] text-white rounded-xl text-xs font-bold shadow flex items-center gap-2 disabled:opacity-50 transition-all"
+                >
+                  {isLoadingForm ? "Saving..." : (formData.id ? "Save Specs" : "Define Source")}
                 </button>
               </div>
             </form>
