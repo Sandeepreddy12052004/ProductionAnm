@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import { hasActionPermission } from "../utils/permission";
 
 const TagManagementPg = () => {
   const [suffixes, setSuffixes] = useState([]);
@@ -10,6 +11,9 @@ const TagManagementPg = () => {
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [animalOptions, setAnimalOptions] = useState([]);
+
+  const canCreate = hasActionPermission('TAG_MANAGEMENT', 'CATTLE', 'create');
+  const canDelete = hasActionPermission('TAG_MANAGEMENT', 'CATTLE', 'delete');
 
   // Suffix Form state
   const [suffixFormData, setSuffixFormData] = useState({
@@ -122,21 +126,17 @@ const TagManagementPg = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setSuffixFormData({
-              id: null,
-              suffix: "",
-              animalType: animalOptions[0]?.toUpperCase() || "COW",
-            });
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>
-            + Add Suffix Rule
-          </span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              setSuffixFormData({ id: null, suffix: "", animalType: animalOptions[0]?.toUpperCase() || "COW" });
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>+ Add Suffix Rule</span>
+          </button>
+        )}
       </div>
 
       {/* SEARCH AND FILTERS */}
@@ -178,12 +178,14 @@ const TagManagementPg = () => {
                     <td className="p-4 text-sm font-black text-black">⚙️ {rule.suffix}</td>
                     <td className="p-4 text-sm font-bold text-gray-600">{rule.animalType}</td>
                     <td className="p-4 text-right">
-                      <button
-                        onClick={() => handleDeleteSuffix(rule._id || rule.id)}
-                        className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg border border-red-100"
-                      >
-                        Remove Rule
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteSuffix(rule._id || rule.id)}
+                          className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg border border-red-100"
+                        >
+                          Remove Rule
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import SkeletonLoader from './SkeletonLoader';
+import { hasActionPermission } from '../utils/permission';
 import { 
   Dna,
   Plus, 
@@ -22,6 +23,10 @@ export default function InseminationManagementPg() {
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState('');
   const [userFarmId, setUserFarmId] = useState('');
+
+  const canCreate = hasActionPermission('INSEMINATION_MANAGEMENT', 'CROSSING_LOG', 'create');
+  const canEdit   = hasActionPermission('INSEMINATION_MANAGEMENT', 'CROSSING_LOG', 'edit');
+  const canDelete = hasActionPermission('INSEMINATION_MANAGEMENT', 'CROSSING_LOG', 'delete');
 
   // Modals state
   const [showStrawForm, setShowStrawForm] = useState(false);
@@ -204,13 +209,15 @@ export default function InseminationManagementPg() {
             Manage semen straw inventory and track usage for Artificial Insemination.
           </p>
         </div>
-        <button
-          onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 px-5 py-3 bg-[#16223F] hover:bg-[#2a3f75] text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 text-sm"
-        >
-          <Plus className="w-5 h-5" />
-          Add Semen Straw Batch
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleOpenCreateModal}
+            className="flex items-center gap-2 px-5 py-3 bg-[#16223F] hover:bg-[#2a3f75] text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 text-sm"
+          >
+            <Plus className="w-5 h-5" />
+            Add Semen Straw Batch
+          </button>
+        )}
       </div>
 
       {/* STATS TILES */}
@@ -363,18 +370,22 @@ export default function InseminationManagementPg() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex justify-center items-center gap-2">
-                          <button
-                            onClick={() => handleOpenEditModal(s)}
-                            className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-[#16223F] rounded-lg transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(s._id)}
-                            className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenEditModal(s)}
+                              className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-[#16223F] rounded-lg transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(s._id)}
+                              className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

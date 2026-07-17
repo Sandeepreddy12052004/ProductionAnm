@@ -4,6 +4,7 @@ import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
 import ModulePageHeader from "./ModulePageHeader";
 import FarmFilterSelector from "./FarmFilterSelector";
+import { hasActionPermission } from "../utils/permission";
 
 const ShedManagementPg = () => {
   const [sheds, setSheds] = useState([]);
@@ -14,6 +15,10 @@ const ShedManagementPg = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedShedForOverview, setSelectedShedForOverview] = useState(null);
   const [cattleData, setCattleData] = useState([]);
+
+  const canCreate = hasActionPermission('SHED_MANAGEMENT', 'SHEDS', 'create');
+  const canEdit   = hasActionPermission('SHED_MANAGEMENT', 'SHEDS', 'edit');
+  const canDelete = hasActionPermission('SHED_MANAGEMENT', 'SHEDS', 'delete');
 
   const getFarmName = (fId) => {
     if (!fId) return 'Unknown';
@@ -222,16 +227,18 @@ const ShedManagementPg = () => {
         title="Shed Management"
         description="Create, view, edit, and manage sheds."
       >
-        <button
-          onClick={() => {
-            setFormData({ farmId: "", code: "", lines: 0, capacity: 0, status: "ACTIVE", remarks: "", lineManagement: "No", milking: "No" });
-            setEditingId(null);
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2"
-        >
-          <span>+ Add Shed</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              setFormData({ farmId: "", code: "", lines: 0, capacity: 0, status: "ACTIVE", remarks: "", lineManagement: "No", milking: "No" });
+              setEditingId(null);
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <span>+ Add Shed</span>
+          </button>
+        )}
       </ModulePageHeader>
 
       {/* SEARCH BAR */}
@@ -320,18 +327,22 @@ const ShedManagementPg = () => {
                   >
                     <span>👁️</span> Overview
                   </button>
-                  <button
-                    onClick={() => handleEdit(shed)}
-                    className="text-[11px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-100 flex items-center gap-1.5"
-                  >
-                    <span>✏️</span> Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(shed._id || shed.id)}
-                    className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5"
-                  >
-                    <span>🗑️</span> Delete
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={() => handleEdit(shed)}
+                      className="text-[11px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-100 flex items-center gap-1.5"
+                    >
+                      <span>✏️</span> Edit
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(shed._id || shed.id)}
+                      className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100 flex items-center gap-1.5"
+                    >
+                      <span>🗑️</span> Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             )))}

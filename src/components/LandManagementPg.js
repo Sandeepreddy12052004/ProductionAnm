@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import SkeletonLoader from './SkeletonLoader';
+import { hasActionPermission } from '../utils/permission';
 import { 
   Map, 
   Tractor, 
@@ -25,6 +26,10 @@ export default function LandManagementPg() {
   const [activeTab, setActiveTab] = useState('all');
   const [userRole, setUserRole] = useState('');
   const [userFarmId, setUserFarmId] = useState('');
+
+  const canCreate = hasActionPermission('LAND_MANAGEMENT', 'LAND', 'create');
+  const canEdit = hasActionPermission('LAND_MANAGEMENT', 'LAND', 'edit');
+  const canDelete = hasActionPermission('LAND_MANAGEMENT', 'LAND', 'delete');
 
   // Modals state
   const [showLandForm, setShowLandForm] = useState(false);
@@ -297,12 +302,14 @@ export default function LandManagementPg() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreateModal}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>+ Define Land Area</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleOpenCreateModal}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>+ Define Land Area</span>
+          </button>
+        )}
       </div>
 
       {/* STATS CARDS */}
@@ -392,13 +399,15 @@ export default function LandManagementPg() {
                   </div>
 
                   <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
-                    <button
-                      onClick={() => handleOpenEditModal(land)}
-                      className="flex-1 bg-[#16223F] hover:bg-[#253966] text-white text-[11px] font-bold py-2 rounded-xl text-center transition-all shadow-[0_2px_6px_rgba(22,34,63,0.15)] active:scale-95"
-                    >
-                      ✏️ Extend Lease
-                    </button>
-                    {land.status !== 'INACTIVE' && (
+                    {canEdit && (
+                      <button
+                        onClick={() => handleOpenEditModal(land)}
+                        className="flex-1 bg-[#16223F] hover:bg-[#253966] text-white text-[11px] font-bold py-2 rounded-xl text-center transition-all shadow-[0_2px_6px_rgba(22,34,63,0.15)] active:scale-95"
+                      >
+                        ✏️ Extend Lease
+                      </button>
+                    )}
+                    {canEdit && land.status !== 'INACTIVE' && (
                       <button
                         onClick={() => handleUpdateStatus(land, 'INACTIVE')}
                         className="flex-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold py-2 rounded-xl text-center transition-all active:scale-95"
@@ -587,18 +596,22 @@ export default function LandManagementPg() {
                   {/* Actions footer */}
                   <div className="px-6 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex gap-1.5">
-                      <button 
-                        onClick={() => handleOpenEditModal(land)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteLand(land._id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canEdit && (
+                        <button 
+                          onClick={() => handleOpenEditModal(land)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button 
+                          onClick={() => handleDeleteLand(land._id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex gap-1.5 items-center">
@@ -732,12 +745,14 @@ export default function LandManagementPg() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleOpenEditModal(land)}
-                            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg transition-all"
-                          >
-                            Edit specs
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenEditModal(land)}
+                              className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg transition-all"
+                            >
+                              Edit specs
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

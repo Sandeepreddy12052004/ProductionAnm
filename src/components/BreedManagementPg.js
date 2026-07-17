@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import { hasActionPermission } from "../utils/permission";
 
 const BreedManagementPg = () => {
   const [breeds, setBreeds] = useState([]);
@@ -9,6 +10,10 @@ const BreedManagementPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const canCreate = hasActionPermission('BREED_MANAGEMENT', 'CATTLE', 'create');
+  const canEdit   = hasActionPermission('BREED_MANAGEMENT', 'CATTLE', 'edit');
+  const canDelete = hasActionPermission('BREED_MANAGEMENT', 'CATTLE', 'delete');
 
   const [formData, setFormData] = useState({
     id: null,
@@ -122,20 +127,17 @@ const BreedManagementPg = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setFormData({
-              id: null,
-              name: "",
-              description: "",
-              status: true,
-            });
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>+ Add Breed</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              setFormData({ id: null, name: "", description: "", status: true });
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>+ Add Breed</span>
+          </button>
+        )}
       </div>
 
       {/* SEARCH AND FILTERS */}
@@ -202,18 +204,22 @@ const BreedManagementPg = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => handleEdit(breed)}
-                          className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(breed.id || breed._id)}
-                          className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100"
-                        >
-                          🗑️ Delete
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleEdit(breed)}
+                            className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
+                          >
+                            ✏️ Edit
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(breed.id || breed._id)}
+                            className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100"
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

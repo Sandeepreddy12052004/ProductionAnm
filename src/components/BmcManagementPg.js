@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import SkeletonLoader from './SkeletonLoader';
+import { hasActionPermission } from '../utils/permission';
 import { 
   Snowflake,
   Thermometer,
@@ -23,6 +24,10 @@ export default function BmcManagementPg() {
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState('');
   const [userFarmId, setUserFarmId] = useState('');
+
+  const canCreate = hasActionPermission('BMC_MANAGEMENT', 'BMC_MANAGEMENT', 'create');
+  const canEdit   = hasActionPermission('BMC_MANAGEMENT', 'BMC_MANAGEMENT', 'edit');
+  const canDelete = hasActionPermission('BMC_MANAGEMENT', 'BMC_MANAGEMENT', 'delete');
 
   // Modals state
   const [showBmcModal, setShowBmcModal] = useState(false);
@@ -259,12 +264,14 @@ export default function BmcManagementPg() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreateModal}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>+ Define Milk Cooler</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleOpenCreateModal}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>+ Define Milk Cooler</span>
+          </button>
+        )}
       </div>
 
       {/* STATS CARDS */}
@@ -474,20 +481,24 @@ export default function BmcManagementPg() {
                   {/* Actions footer */}
                   <div className="px-6 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex gap-1.5">
-                      <button 
-                        onClick={() => handleOpenEditModal(bmc)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
-                        title="Edit specifications"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteBmc(bmc._id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
-                        title="Delete cooler"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canEdit && (
+                        <button 
+                          onClick={() => handleOpenEditModal(bmc)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
+                          title="Edit specifications"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button 
+                          onClick={() => handleDeleteBmc(bmc._id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 active:scale-95"
+                          title="Delete cooler"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex gap-2">

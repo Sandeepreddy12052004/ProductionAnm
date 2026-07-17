@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import LogForm from './LogForm';
 import LivestockTagInput from './LivestockTagInput';
+import { hasActionPermission } from '@/utils/permission';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -63,6 +64,24 @@ const getApiForModule = (id) => {
 const OpsLogPg = ({ moduleConfig }) => {
   const router = useRouter();
   const current = moduleConfig || { id: 'unknown', name: 'Unknown', icon: '📋', fields: [] };
+
+  const getModulePrefixAndBaseToken = (id) => {
+    switch (id) {
+      case 'grass':       return { prefix: 'GRASS', baseToken: 'GRASS' };
+      case 'feeding':     return { prefix: 'FEEDING', baseToken: 'FEEDING' };
+      case 'milk_prod':   return { prefix: 'MILK', baseToken: 'MILK' };
+      case 'procurement': return { prefix: 'MILK', baseToken: 'MILK' };
+      case 'components':  return { prefix: 'MILK', baseToken: 'MILK' };
+      case 'feed_inv':    return { prefix: 'INVENTORY', baseToken: 'INVENTORY' };
+      case 'med_inv':     return { prefix: 'INVENTORY', baseToken: 'INVENTORY' };
+      default:            return { prefix: id?.toUpperCase(), baseToken: id?.toUpperCase() };
+    }
+  };
+
+  const { prefix, baseToken } = getModulePrefixAndBaseToken(current.id);
+  const canCreate = hasActionPermission(prefix, baseToken, 'create');
+  const canEdit = hasActionPermission(prefix, baseToken, 'edit');
+  const canDelete = hasActionPermission(prefix, baseToken, 'delete');
 
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -843,12 +862,14 @@ const OpsLogPg = ({ moduleConfig }) => {
                 </span>
               )}
             </button>
-            <button
-              onClick={() => { setIsEditing(false); setShowForm(true); }}
-              className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
-            >
-              + Add Entry
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => { setIsEditing(false); setShowForm(true); }}
+                className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+              >
+                + Add Entry
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -877,12 +898,14 @@ const OpsLogPg = ({ moduleConfig }) => {
                 </span>
               )}
             </button>
-            <button
-              onClick={() => { setIsEditing(false); setShowForm(true); }}
-              className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
-            >
-              + Add Entry
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => { setIsEditing(false); setShowForm(true); }}
+                className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all text-sm"
+              >
+                + Add Entry
+              </button>
+            )}
           </div>
         </ModulePageHeader>
       )}
@@ -1216,16 +1239,18 @@ const OpsLogPg = ({ moduleConfig }) => {
                 className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all">
                 👁️ View Details
               </button>
-              {current.id !== 'feed_inv' && (
+              {canEdit && current.id !== 'feed_inv' && (
                 <button onClick={() => { setIsEditing(true); setShowForm(true); }}
                   className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all">
                   ✏️ Edit Entry
                 </button>
               )}
-              <button onClick={handleDelete}
-                className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all">
-                🗑️ Delete Entry
-              </button>
+              {canDelete && (
+                <button onClick={handleDelete}
+                  className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all">
+                  🗑️ Delete Entry
+                </button>
+              )}
               <button onClick={() => setSelectedEntry(null)}
                 className="w-full text-black opacity-50 py-2 hover:opacity-100 transition-colors">
                 Close Menu
@@ -1293,7 +1318,7 @@ const OpsLogPg = ({ moduleConfig }) => {
       )}
 
       {/* ── Mobile FAB ── */}
-      {!showForm && !selectedEntry && !viewMode && !showFilters && (
+      {canCreate && !showForm && !selectedEntry && !viewMode && !showFilters && (
         <div className={`md:hidden fixed bottom-20 right-6 z-[100] transition-all duration-300 ${
           showFAB ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
         }`}>

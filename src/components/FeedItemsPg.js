@@ -3,6 +3,7 @@ import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
+import { hasActionPermission } from "../utils/permission";
 
 
 const FeedItemsPg = () => {
@@ -12,6 +13,10 @@ const FeedItemsPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const canCreate = hasActionPermission('FEED_ITEMS', 'INVENTORY', 'create');
+  const canEdit   = hasActionPermission('FEED_ITEMS', 'INVENTORY', 'edit');
+  const canDelete = hasActionPermission('FEED_ITEMS', 'INVENTORY', 'delete');
 
   const [formData, setFormData] = useState({
     id: null,
@@ -146,22 +151,17 @@ const FeedItemsPg = () => {
         title="Feed Items Registry"
         description="Configure dynamic feed types and options that populate daily feeding and stock logs."
       >
-        <button
-          onClick={() => {
-            setFormData({
-              id: null,
-              name: "",
-              type: "",
-              description: "",
-              status: true,
-              farmId: farms[0]?._id || farms[0]?.id || "",
-            });
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>+ Add Feed Item</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              setFormData({ id: null, name: "", type: "", description: "", status: true, farmId: farms[0]?._id || farms[0]?.id || "" });
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>+ Add Feed Item</span>
+          </button>
+        )}
       </ModulePageHeader>
 
       {/* SEARCH AND FILTERS */}
@@ -240,18 +240,22 @@ const FeedItemsPg = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id || item._id)}
-                          className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100"
-                        >
-                          🗑️ Delete
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
+                          >
+                            ✏️ Edit
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(item.id || item._id)}
+                            className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-100"
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

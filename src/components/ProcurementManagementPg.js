@@ -4,6 +4,7 @@ import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
 import { X } from "lucide-react";
+import { hasActionPermission } from "../utils/permission";
 
 const ProcurementManagementPg = () => {
   const [procurementSources, setProcurementSources] = useState([]);
@@ -12,6 +13,10 @@ const ProcurementManagementPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const canCreate = hasActionPermission('PROCUREMENT_MANAGEMENT', 'PROCUREMENT_MANAGEMENT', 'create');
+  const canEdit = hasActionPermission('PROCUREMENT_MANAGEMENT', 'PROCUREMENT_MANAGEMENT', 'edit');
+  const canDelete = hasActionPermission('PROCUREMENT_MANAGEMENT', 'PROCUREMENT_MANAGEMENT', 'delete');
 
   const [formData, setFormData] = useState({
     id: null,
@@ -153,23 +158,25 @@ const ProcurementManagementPg = () => {
         title="Procurement Sources Registry"
         description="Configure dynamic places/centers from which milk is fetched, populating daily procurement logs."
       >
-        <button
-          onClick={() => {
-            setFormData({
-              id: null,
-              name: "",
-              code: "",
-              location: "",
-              phone: "",
-              status: true,
-              farmId: farms[0]?._id || farms[0]?.id || "",
-            });
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2 animate-fade-in"
-        >
-          <span>+ Add Procurement Source</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              setFormData({
+                id: null,
+                name: "",
+                code: "",
+                location: "",
+                phone: "",
+                status: true,
+                farmId: farms[0]?._id || farms[0]?.id || "",
+              });
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2 animate-fade-in"
+          >
+            <span>+ Add Procurement Source</span>
+          </button>
+        )}
       </ModulePageHeader>
 
       {/* SEARCH AND FILTERS */}
@@ -256,18 +263,22 @@ const ProcurementManagementPg = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id || item._id)}
-                          className="text-[11px] bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-rose-100"
-                        >
-                          🗑️ Delete
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
+                          >
+                            ✏️ Edit
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(item.id || item._id)}
+                            className="text-[11px] bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-3 py-1.5 rounded-lg transition-colors border border-rose-100"
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
