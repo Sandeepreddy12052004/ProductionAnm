@@ -84,16 +84,16 @@ export default function MedicineInventoryPg() {
       // Since logs are sorted by date descending, the first record is the latest transaction
       const latestLog = itemLogs[0];
       const remainingStock = latestLog ? (Number(latestLog.presentStock) || 0) : 0;
-      const lastUpdated = latestLog ? (latestLog.purchaseDate || latestLog.createdAt || latestLog.date) : null;
       
       const lastBoughtLog = itemLogs.find(log => Number(log.bought) > 0);
       const lastUsageLog = itemLogs.find(log => Number(log.used) > 0);
+      const lastPurchased = lastBoughtLog ? (lastBoughtLog.purchaseDate || lastBoughtLog.createdAt || lastBoughtLog.date) : null;
       
       stockItems.push({
         name: itemName,
         type: item.type || (latestLog ? latestLog.type : "-"),
         remainingStock: remainingStock,
-        lastUpdated: lastUpdated,
+        lastPurchased: lastPurchased,
         lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
         lastUsage: lastUsageLog ? (Number(lastUsageLog.used) || 0) : 0,
         expiryDate: latestLog ? latestLog.expiryDate : null
@@ -262,9 +262,9 @@ export default function MedicineInventoryPg() {
                     <th className="p-4 border-b">Type</th>
                     <th className="p-4 border-b">Remaining Stock</th>
                     <th className="p-4 border-b text-center">Status</th>
-                    <th className="p-4 border-b">Last Transaction</th>
+                    <th className="p-4 border-b">Last Purchase</th>
                     <th className="p-4 border-b">Expiry Date</th>
-                    <th className="p-4 border-b">Last Updated</th>
+                    <th className="p-4 border-b">Last Purchased</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -273,8 +273,8 @@ export default function MedicineInventoryPg() {
                   ) : (
                     filteredStockItems.map((item) => {
                       const isLow = item.remainingStock < 10;
-                      const formattedDate = item.lastUpdated
-                        ? new Date(item.lastUpdated).toLocaleDateString("en-GB")
+                      const formattedDate = item.lastPurchased
+                        ? new Date(item.lastPurchased).toLocaleDateString("en-GB")
                         : "-";
                       const formattedExpiry = item.expiryDate
                         ? new Date(item.expiryDate).toLocaleDateString("en-GB")
@@ -305,10 +305,8 @@ export default function MedicineInventoryPg() {
                           <td className="p-4 text-xs font-semibold text-slate-500">
                             {item.lastBought > 0 ? (
                               <span className="text-emerald-600">+{item.lastBought} Units bought</span>
-                            ) : item.lastUsage > 0 ? (
-                              <span className="text-amber-600">-{item.lastUsage} Units used</span>
                             ) : (
-                              "No transactions logged"
+                              "No purchases logged"
                             )}
                           </td>
                           <td className="p-4 text-sm font-semibold text-gray-500">
