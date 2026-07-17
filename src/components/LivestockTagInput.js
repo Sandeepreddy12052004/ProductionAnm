@@ -136,7 +136,9 @@ const LivestockTagInput = ({
     // If already initialized from cache, skip API fetch
     if (allAnimals.length > 0) return;
 
-    setIsLoading(true);
+    Promise.resolve().then(() => {
+      setIsLoading(true);
+    });
     api.cattle.getAll()
       .then((res) => {
         const raw = Array.isArray(res) ? res : (res?.data ?? []);

@@ -339,7 +339,7 @@ export default function DailyMilkQuality() {
   };
 
   return (
-    <div className="p-6 md:p-10 w-full h-full flex flex-col bg-slate-50/50 text-slate-800 font-sans min-h-screen">
+    <div className="w-full flex flex-col bg-transparent text-slate-800 font-sans">
       
       {/* Page Header */}
       <ModulePageHeader

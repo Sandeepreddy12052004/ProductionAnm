@@ -920,7 +920,7 @@ const activeFilterCount = filters.filter(
   f => (f.value && f.value.trim() !== "") || f.from || f.to
 ).length;
   return (
-    <div className="p-0 md:p-0 w-full text-black bg-white min-h-screen">
+    <div className="w-full flex flex-col bg-transparent text-slate-800">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="flex items-center gap-5">
           <button 

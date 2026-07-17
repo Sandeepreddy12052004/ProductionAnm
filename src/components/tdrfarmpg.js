@@ -702,7 +702,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 ).length;
 
   return (
-    <div className="w-full h-full flex flex-col text-black bg-white px-0 md:px-0">
+    <div className="w-full flex flex-col bg-transparent text-slate-800">
       <div className="flex-none">
 
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">

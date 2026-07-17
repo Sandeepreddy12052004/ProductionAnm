@@ -16,7 +16,9 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
     try {
       const stored = localStorage.getItem('user');
       if (stored) {
-        setUser(JSON.parse(stored));
+        Promise.resolve().then(() => {
+          setUser(JSON.parse(stored));
+        });
       }
     } catch (e) {
       console.error('Error parsing user in FarmFilterSelector:', e);
