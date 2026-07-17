@@ -225,7 +225,7 @@ const FarmsPg = () => {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-[#f7f9fc]">
+    <div className="w-full flex flex-col bg-transparent text-slate-800">
 
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
       <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

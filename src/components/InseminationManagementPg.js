@@ -298,7 +298,7 @@ export default function InseminationManagementPg() {
           </div>
           <h4 className="text-lg font-bold text-slate-800 mt-4">No Semen Straw Batches found</h4>
           <p className="text-sm text-slate-500 max-w-sm mx-auto mt-2">
-            Try adjusting your search criteria, or click "Add Semen Straw Batch" to register a new straw batch.
+            Try adjusting your search criteria, or click &quot;Add Semen Straw Batch&quot; to register a new straw batch.
           </p>
         </div>
       ) : (

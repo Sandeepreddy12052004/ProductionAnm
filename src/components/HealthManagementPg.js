@@ -449,7 +449,7 @@ const HealthManagementPg = () => {
   });
 
   return (
-    <div className="p-4 md:p-8 w-full h-full flex flex-col bg-transparent text-slate-800">
+    <div className="w-full flex flex-col bg-transparent text-slate-800">
       {/* HEADER SECTION */}
       <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>

@@ -23,7 +23,7 @@ const FarmModule = ({ farmName, availableModules }) => {
   };
 
   return (
-    <div className="p-8 bg-white min-h-screen text-black">
+    <div className="w-full flex flex-col bg-transparent text-slate-800">
       <header className="flex justify-between items-center mb-8 border-b pb-6">
         <div>
           <h1 className="text-3xl font-black text-[#16223F]">Farm: {farmName}</h1>
