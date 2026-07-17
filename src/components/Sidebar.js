@@ -22,7 +22,8 @@ const DEFAULT_MODULE_GROUPS = {
       { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT', icon: '🏷️', path: '/tag-management' },
       { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT', icon: '🧬', path: '/breed-management' },
       { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏', path: '/animal-management' },
-      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬', path: '/insemination' }
+      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬', path: '/insemination' },
+      { name: 'Procurement Management', baseToken: 'PROCUREMENT_MANAGEMENT', prefix: 'PROCUREMENT_MANAGEMENT', icon: '🛒', path: '/procurement-management' }
     ]
   },
   MODULES: {
@@ -80,7 +81,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     "/feed-items",
     "/tag-management",
     "/breed-management",
-    "/bmc-management"
+    "/bmc-management",
+    "/procurement-management"
   ].includes(router.pathname) && !router.query.tab;
 
   const isNormalRoute =

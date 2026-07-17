@@ -47,6 +47,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/logs/purchase':                ['PURCHASE_LOG', 'PURCHASE', 'FARM_ADMIN'],
   '/api/bmcs':                         ['BMC', 'FARM_ADMIN', 'INCHARGE'],
   '/api/semen-straws':                 ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
+  '/api/procurement-sources':          ['PROCUREMENT_MANAGEMENT', 'FARM_ADMIN'],
 };
 
 // ---------------------------------------------------------------------------
@@ -162,6 +163,7 @@ function evaluateFirewall(endpoint) {
     cleanPath === '/api/medicines' || cleanPath.startsWith('/api/medicines/') ||
     cleanPath === '/api/animals' || cleanPath.startsWith('/api/animals/') ||
     cleanPath === '/api/bmcs' || cleanPath.startsWith('/api/bmcs/') ||
+    cleanPath === '/api/procurement-sources' || cleanPath.startsWith('/api/procurement-sources/') ||
     cleanPath === '/api/tags' || cleanPath.startsWith('/api/tags/');
 
   if (isLookupPath) {
@@ -751,5 +753,13 @@ export const api = {
     create:              (data)     => apiRequest('/api/semen-straws', 'POST', data),
     update:              (id, data) => apiRequest(`/api/semen-straws/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/semen-straws/${id}`, 'DELETE'),
+  },
+  
+  // Procurement Sources Configuration
+  procurementSources: {
+    getAll:              ()         => apiRequest('/api/procurement-sources'),
+    create:              (data)     => apiRequest('/api/procurement-sources', 'POST', data),
+    update:              (id, data) => apiRequest(`/api/procurement-sources/${id}`, 'PUT', data),
+    delete:              (id)       => apiRequest(`/api/procurement-sources/${id}`, 'DELETE'),
   },
 };

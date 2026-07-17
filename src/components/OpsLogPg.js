@@ -121,6 +121,7 @@ const OpsLogPg = ({ moduleConfig }) => {
     const hasFarm = current.fields.some(f => ['farmId', 'farm'].includes(f.name));
     const hasLabor = current.fields.some(f => f.name === 'laborId');
     const hasSourcingFarm = current.fields.some(f => f.name === 'sourcingFarmId');
+    const hasProcuredFrom = current.fields.some(f => f.name === 'procuredFrom');
     const isFeeding = current.id === 'feeding';
 
     let shed_opts = null;
@@ -131,6 +132,7 @@ const OpsLogPg = ({ moduleConfig }) => {
     let labor_opts = null;
     let sourcing_farm_opts = null;
     let dynamic_feeds = null;
+    let procured_from_opts = null;
 
     const tryMerge = () => {
       if (
@@ -141,7 +143,8 @@ const OpsLogPg = ({ moduleConfig }) => {
         (hasFarm && !farm_opts) ||
         (hasLabor && !labor_opts) ||
         (hasSourcingFarm && !sourcing_farm_opts) ||
-        (isFeeding && !dynamic_feeds)
+        (isFeeding && !dynamic_feeds) ||
+        (hasProcuredFrom && !procured_from_opts)
       ) return;
 
       let baseFields = current.fields;
@@ -178,6 +181,8 @@ const OpsLogPg = ({ moduleConfig }) => {
           return { ...f, options: labor_opts };
         if (f.name === 'sourcingFarmId' && sourcing_farm_opts)
           return { ...f, options: sourcing_farm_opts };
+        if (f.name === 'procuredFrom' && procured_from_opts)
+          return { ...f, options: procured_from_opts };
         return f;
       }));
     };
@@ -309,7 +314,21 @@ const OpsLogPg = ({ moduleConfig }) => {
         .catch(console.error);
     }
 
-    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding && !hasLabor && !hasSourcingFarm) {
+    if (hasProcuredFrom) {
+      api.procurementSources.getAll()
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          procured_from_opts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+          tryMerge();
+        })
+        .catch(err => {
+          console.error(err);
+          procured_from_opts = [];
+          tryMerge();
+        });
+    }
+
+    if (!hasShed && !hasAnimal && !hasFeedType && !hasMedicineName && !hasFarm && !isFeeding && !hasLabor && !hasSourcingFarm && !hasProcuredFrom) {
       setDynamicFields(current.fields);
     }
   }, [moduleConfig]);
