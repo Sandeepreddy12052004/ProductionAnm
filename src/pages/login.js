@@ -140,7 +140,7 @@ export default function LoginPage() {
             { key: 'SALE_LOG', path: '/sale' },
             { key: 'HEALTH', path: '/farm/tkp?tab=health' },
             { key: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
-            { key: 'GRASS', path: '/farm/tkp?tab=grass' },
+            { key: 'GRASS', path: '/grass' },
             { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
             { key: 'MILK', path: '/farm/tkp?tab=milk_prod' }
           ];

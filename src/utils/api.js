@@ -40,7 +40,7 @@ const ROUTE_PERMISSION_MAP = {
   '/api/medicines':                    ['HEALTH', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
   '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
   '/api/animals':                      ['ANIMAL_MANAGEMENT', 'FARM_ADMIN', 'CATTLE'],
-  '/api/lands':                        ['LAND', 'LAND_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/lands':                        ['LAND', 'LAND_MANAGEMENT', 'FARM_ADMIN', 'INCHARGE', 'GRASS_COLLECTION', 'GRASS'],
   '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
   '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],

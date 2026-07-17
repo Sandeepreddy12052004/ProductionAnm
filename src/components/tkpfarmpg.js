@@ -208,16 +208,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         )
       ]
     },
-    {
-      id: 'grass',
-      name: 'Grass Collection',
-      icon: '🌿',
-      fields: [
-        { name: 'date', label: 'Date', type: 'date' },
-        { name: 'noOfLoads', label: 'No. of Loads', type: 'number' },
-        { name: 'weight', label: 'Weight (KG)', type: 'number' }
-      ]
-    },
+
     {
       id: 'med_inv',
       name: 'Medicine Inventory',
@@ -308,7 +299,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
     vaccine:   'HEALTH',
     med_inv:   'INVENTORY',
     feed_inv:  'INVENTORY',
-    grass:     'GRASS',
     feeding:   'FEEDING',
     milk_prod: 'MILK',
     components:'MILK',
@@ -336,8 +326,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         data = await api.inventory.medicines.getAll();
       } else if (activeTab === 'feed_inv') {
         data = await api.inventory.feed.getAll();
-      } else if (activeTab === 'grass') {
-        data = await api.operations.grassCollection.getAll();
       } else if (activeTab === 'feeding') {
         data = await api.operations.dailyFeeding.getAll();
       } else if (activeTab === 'milk_prod') {
@@ -642,7 +630,6 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'vaccine') await api.health.vaccinations.update(entryId, payload);
         else if (activeTab === 'med_inv') await api.inventory.medicines.update(entryId, payload);
         else if (activeTab === 'feed_inv') await api.inventory.feed.update(entryId, payload);
-        else if (activeTab === 'grass') await api.operations.grassCollection.update(entryId, payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
         else if (activeTab === 'milk_prod') await api.milk.collections.update(entryId, payload);
         else if (activeTab === 'components') await api.milk.quality.update(entryId, payload);
@@ -663,7 +650,6 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);
         else if (activeTab === 'med_inv') await api.inventory.medicines.create(payload);
         else if (activeTab === 'feed_inv') await api.inventory.feed.create(payload);
-        else if (activeTab === 'grass') await api.operations.grassCollection.create(payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
         else if (activeTab === 'milk_prod') await api.milk.collections.create(payload);
         else if (activeTab === 'components') await api.milk.quality.create(payload);
@@ -692,7 +678,6 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         else if (activeTab === 'vaccine') await api.health.vaccinations.delete(entryId);
         else if (activeTab === 'med_inv') await api.inventory.medicines.delete(entryId);
         else if (activeTab === 'feed_inv') await api.inventory.feed.delete(entryId);
-        else if (activeTab === 'grass') await api.operations.grassCollection.delete(entryId);
         else if (activeTab === 'feeding') {
           if (selectedEntry._ids && selectedEntry._ids.length > 0) {
             await Promise.all(selectedEntry._ids.map(id => api.operations.dailyFeeding.delete(id)));
