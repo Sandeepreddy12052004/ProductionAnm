@@ -318,7 +318,20 @@ const OpsLogPg = ({ moduleConfig }) => {
       api.procurementSources.getAll()
         .then(res => {
           const list = Array.isArray(res) ? res : (res?.data ?? []);
-          procured_from_opts = list.filter(item => item.status !== false).map(item => item.name).filter(Boolean);
+          const activeFarmId = getActiveFarmId();
+          let filtered = list.filter(item => item.status !== false && item.isDeleted !== true);
+          if (activeFarmId) {
+            filtered = filtered.filter(item => {
+              const resFarmId = item.farmId && typeof item.farmId === 'object'
+                ? (item.farmId._id || item.farmId.id)
+                : item.farmId;
+              return String(resFarmId) === activeFarmId;
+            });
+          }
+          procured_from_opts = filtered.map(item => ({
+            label: `${item.name} (${item.code})`,
+            value: item.name
+          }));
           tryMerge();
         })
         .catch(err => {

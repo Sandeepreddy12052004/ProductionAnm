@@ -1038,6 +1038,26 @@
       autofetchParentsForCalf(formData.tag || formData.tagId || formData.tag_id || "", "Yes");
     }
 
+    if (name === "procuredFrom" && value) {
+      import('../utils/api').then(({ api }) => {
+        api.procurementResources.getAll().then(res => {
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          const matched = list.find(item => item.name === value);
+          if (matched) {
+            const matchedFarmId = matched.farmId && typeof matched.farmId === 'object'
+              ? (matched.farmId._id || matched.farmId.id)
+              : matched.farmId;
+            if (matchedFarmId) {
+              setFormData(prev => ({
+                ...prev,
+                farmId: matchedFarmId
+              }));
+            }
+          }
+        }).catch(console.error);
+      });
+    }
+
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
 
