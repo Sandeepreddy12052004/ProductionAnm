@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
+import { hasActionPermission } from "../utils/permission";
 
 const HealthManagementPg = () => {
   const [activeTab, setActiveTab] = useState("treatments");
@@ -16,6 +17,10 @@ const HealthManagementPg = () => {
   const [filters, setFilters] = useState([{ field: "symptoms", value: "" }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: "symptoms", value: "" }]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
+
+  const canCreate = hasActionPermission('HEALTH_MANAGEMENT', 'HEALTH', 'create');
+  const canEdit   = hasActionPermission('HEALTH_MANAGEMENT', 'HEALTH', 'edit');
+  const canDelete = hasActionPermission('HEALTH_MANAGEMENT', 'HEALTH', 'delete');
 
   const treatmentFields = [
     { name: "symptoms", label: "Symptoms", type: "text" },
@@ -460,47 +465,27 @@ const HealthManagementPg = () => {
             Centralized health monitoring, treatment journals, and dynamic immunization plans.
           </p>
         </div>
-
-        <button
-          onClick={() => {
-            if (activeTab === "treatments") {
-              setTreatmentFormData({
-                id: null,
-                symptoms: "",
-                diagnosis: "",
-              });
-              setSelectedMedicines([""]);
-            } else if (activeTab === "vaccinations") {
-              setVaccineFormData({
-                id: null,
-                tag_id: "GENERAL",
-                vaccinationName: "",
-                batchNo: "",
-                manufactureDate: "",
-                expiryDate: "",
-              });
-            } else {
-              setMedicineFormData({
-                id: null,
-                name: "",
-                type: "Injection",
-                description: "",
-                status: true,
-              });
-            }
-            setShowForm(true);
-          }}
-          className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
-        >
-          <span>
-            + Add{" "}
-            {activeTab === "treatments"
-              ? "Treatment Record"
-              : activeTab === "vaccinations"
-              ? "Vaccine"
-              : "Medicine"}
-          </span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => {
+              if (activeTab === "treatments") {
+                setTreatmentFormData({ id: null, symptoms: "", diagnosis: "" });
+                setSelectedMedicines([""]);
+              } else if (activeTab === "vaccinations") {
+                setVaccineFormData({ id: null, tag_id: "GENERAL", vaccinationName: "", batchNo: "", manufactureDate: "", expiryDate: "" });
+              } else {
+                setMedicineFormData({ id: null, name: "", type: "", quantityAvailable: "", status: true });
+              }
+              setShowForm(true);
+            }}
+            className="bg-[#16223F] hover:bg-[#2a3f75] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>
+              + Add{" "}
+              {activeTab === "treatments" ? "Treatment Record" : activeTab === "vaccinations" ? "Vaccine" : "Medicine"}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* STATS */}
@@ -642,18 +627,22 @@ const HealthManagementPg = () => {
                         <td className="p-4 text-sm text-gray-500 truncate max-w-[350px]">{log.treatment}</td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => handleEditTreatment(log)}
-                              className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTreatment(log.id || log._id)}
-                              className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
-                            >
-                              Delete
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleEditTreatment(log)}
+                                className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteTreatment(log.id || log._id)}
+                                className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -698,18 +687,22 @@ const HealthManagementPg = () => {
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => handleEditVaccine(log)}
-                              className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteVaccine(log.id || log._id)}
-                              className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
-                            >
-                              Delete
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleEditVaccine(log)}
+                                className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteVaccine(log.id || log._id)}
+                                className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -760,18 +753,22 @@ const HealthManagementPg = () => {
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => handleEditMedicine(med)}
-                              className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMedicine(med.id || med._id)}
-                              className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
-                            >
-                              Delete
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleEditMedicine(med)}
+                                className="text-[11px] bg-slate-50 text-slate-600 hover:bg-slate-100 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteMedicine(med.id || med._id)}
+                                className="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 font-bold px-2.5 py-1.5 rounded-lg border border-red-100"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import LogForm from './LogForm';
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { api } from '@/utils/api';
-import { swalSuccess, swalError, swalConfirm } from '@/utils/swal';
+import { api } from "../utils/api";
+import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
+import SkeletonLoader from './SkeletonLoader';
+import { hasActionPermission } from "../utils/permission";
 import FarmOverview from './FarmOverview';
 
 const toCamelCase = (str) => {
@@ -21,6 +23,8 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [showForm, setShowForm] = useState(false);
+
+  const canDelete = hasActionPermission('SHED_LOG', 'SHED_LOG', 'delete');
 
   const [userObj, setUserObj] = useState(null);
 
@@ -1341,12 +1345,14 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
                   ✏️ Edit Entry
                 </button>
               )}
-              <button 
-                onClick={handleDelete} 
-                className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"
-              >
-                🗑️ Delete Entry
-              </button>
+              {canDelete && (
+                <button 
+                  onClick={handleDelete} 
+                  className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"
+                >
+                  🗑️ Delete Entry
+                </button>
+              )}
               <button onClick={() => setSelectedEntry(null)} className="w-full text-black opacity-50 py-2 hover:opacity-100 transition-colors">Close Menu</button>
             </div>
           </div>

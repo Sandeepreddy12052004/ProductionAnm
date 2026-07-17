@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
+import { hasActionPermission } from "../utils/permission";
 
 // ---------------------------------------------------------------------------
 // Capacity colour helpers
@@ -103,6 +104,10 @@ const FarmsPg = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+
+  const canCreate = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'create');
+  const canEdit   = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'edit');
+  const canDelete = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'delete');
 
   const [formData, setFormData] = useState({
     name: "",
@@ -340,20 +345,24 @@ const FarmsPg = () => {
 
                   {/* ── Action Buttons ──────────────────────────────────────── */}
                   <div className="flex gap-4 mt-auto pt-5 border-t border-[#edf1f7] relative z-20 mt-5">
-                    <button
-                      id={`edit-farm-${farmId}`}
-                      onClick={(e) => { e.stopPropagation(); handleEdit(farm); }}
-                      className="flex-1 py-3 rounded-xl bg-[#f0f4f8] text-[#071437] font-black hover:bg-[#071437] hover:text-white transition-all shadow-sm hover:shadow-md text-sm"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      id={`delete-farm-${farmId}`}
-                      onClick={(e) => { e.stopPropagation(); handleDelete(farmId); }}
-                      className="flex-1 py-3 rounded-xl bg-red-50 text-red-600 font-black hover:bg-red-600 hover:text-white transition-all shadow-sm hover:shadow-md text-sm"
-                    >
-                      Delete
-                    </button>
+                    {canEdit && (
+                      <button
+                        id={`edit-farm-${farmId}`}
+                        onClick={(e) => { e.stopPropagation(); handleEdit(farm); }}
+                        className="flex-1 py-3 rounded-xl bg-[#f0f4f8] text-[#071437] font-black hover:bg-[#071437] hover:text-white transition-all shadow-sm hover:shadow-md text-sm"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        id={`delete-farm-${farmId}`}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(farmId); }}
+                        className="flex-1 py-3 rounded-xl bg-red-50 text-red-600 font-black hover:bg-red-600 hover:text-white transition-all shadow-sm hover:shadow-md text-sm"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               );

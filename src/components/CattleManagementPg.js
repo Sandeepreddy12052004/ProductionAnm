@@ -6,6 +6,7 @@ import SkeletonLoader from "./SkeletonLoader";
 import { api } from "@/utils/api";
 import ModulePageHeader from "./ModulePageHeader";
 import FarmFilterSelector from "./FarmFilterSelector";
+import { hasActionPermission } from "@/utils/permission";
 import {
   Search,
   Filter,
@@ -90,6 +91,10 @@ export default function CattleManagementPg({
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
+
+  const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
+  const canEdit   = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
+  const canDelete = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'delete');
 
   const statusStyles = {
     ACTIVE: "bg-emerald-50 text-emerald-700 border border-emerald-100",
@@ -1200,23 +1205,27 @@ export default function CattleManagementPg({
                 👁️ View Details
               </button>
 
-              <button 
-                onClick={() => {
-                  setShowActionModal(false);
-                  setShowEditModal(true);
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#b06a62] transition-all"
-              >
-                ✏️ Edit Cattle
-              </button>
+              {canEdit && (
+                <button 
+                  onClick={() => {
+                    setShowActionModal(false);
+                    setShowEditModal(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#b06a62] transition-all"
+                >
+                  ✏️ Edit Cattle
+                </button>
+              )}
 
-              <button 
-                onClick={handleDelete}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
-              >
-                🗑️ Delete
-              </button>
+              {canDelete && (
+                <button 
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
+                >
+                  🗑️ Delete
+                </button>
+              )}
 
               <button 
                 onClick={() => {

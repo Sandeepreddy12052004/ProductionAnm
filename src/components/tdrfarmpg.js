@@ -7,6 +7,7 @@ import autoTable from "jspdf-autotable";
 import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
+import { hasActionPermission } from "../utils/permission";
 
 const toCamelCase = (str) => {
   return str
@@ -33,6 +34,8 @@ const FarmTDR = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const canDelete = hasActionPermission('SHED_LOG', 'SHED_LOG', 'delete');
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -1022,7 +1025,9 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
               {activeTab !== 'feeding' && (
                 <button onClick={() => { setIsEditing(true); setShowForm(true); }} className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-[#D1867D]/90 hover:shadow-md hover:-translate-y-[1px]">✏️ Edit Entry</button>
               )}
-              <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-red-100 hover:shadow-md hover:-translate-y-[1px]">🗑️ Delete Entry</button>
+              {canDelete && (
+                <button onClick={handleDelete} className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-red-100 hover:shadow-md hover:-translate-y-[1px]">🗑️ Delete Entry</button>
+              )}
               <button onClick={() => setSelectedEntry(null)} className="w-full text-gray-400 py-2 transition-all duration-200 ease-out hover:text-gray-700 hover:bg-gray-100 rounded-lg">Close</button>
             </div>
           </div>
