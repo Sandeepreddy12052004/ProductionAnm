@@ -647,6 +647,7 @@ export const api = {
     create:              (data)     => apiRequest('/api/roles', 'POST', data),
     update:              (id, data) => apiRequest(`/api/roles/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/roles/${id}`, 'DELETE'),
+    getModules:          ()         => apiRequest('/api/roles/modules'),
   },
 
 

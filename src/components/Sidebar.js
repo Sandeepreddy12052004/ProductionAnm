@@ -4,6 +4,49 @@ import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+const DEFAULT_MODULE_GROUPS = {
+  CORE: {
+    title: 'Core Modules',
+    modules: [
+      { name: 'User Management', baseToken: 'USERS', prefix: 'USER_MANAGEMENT', icon: '👥', path: '/users' },
+      { name: 'Department', baseToken: 'DEPARTMENTS', prefix: 'DEPARTMENT', icon: '🏢', path: '/department' },
+      { name: 'Role & Permissions', baseToken: 'ROLES', prefix: 'ROLES', icon: '🛡️', path: '/roles' },
+      { name: 'Farm Management', baseToken: 'FARMS', prefix: 'FARM_MANAGEMENT', icon: '🏠', path: '/farms' },
+      { name: 'Land Management', baseToken: 'LAND', prefix: 'LAND_MANAGEMENT', icon: '🗺️', path: '/land-management' },
+      { name: 'BMC Management', baseToken: 'BMC', prefix: 'BMC', icon: '❄️', path: '/bmc-management' },
+      { name: 'Shed Management', baseToken: 'SHEDS', prefix: 'SHED_MANAGEMENT', icon: '⚙️', path: '/shed-management' },
+      { name: 'Line Management', baseToken: 'SHEDS', prefix: 'SHED_MANAGEMENT', icon: '📏', path: '/line-management' },
+      { name: 'Cattle Management', baseToken: 'CATTLE', prefix: 'CATTLE_MANAGEMENT', icon: '🐄', path: '/cattle-management' },
+      { name: 'Health Management', baseToken: 'HEALTH', prefix: 'HEALTH_MANAGEMENT', icon: '🩺', path: '/health-management' },
+      { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS', icon: '🌾', path: '/feed-items' },
+      { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT', icon: '🏷️', path: '/tag-management' },
+      { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT', icon: '🧬', path: '/breed-management' },
+      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏', path: '/animal-management' },
+      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬', path: '/insemination' }
+    ]
+  },
+  MODULES: {
+    title: 'Modules',
+    modules: [
+      { name: 'Live Stock', baseToken: 'CATTLE', prefix: 'LIVESTOCK', icon: '🐄', path: '/animals' },
+      { name: 'Shed Log', baseToken: 'SHED_LOG', prefix: 'SHED_LOG', icon: '📝', path: '/shed' },
+      { name: 'Crossing Log', baseToken: 'CROSSING_LOG', prefix: 'CROSSING_LOG', icon: '🧬', path: '/crossing' },
+      { name: 'Purchase Log', baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG', icon: '📥', path: '/purchase' },
+      { name: 'Sale Log', baseToken: 'SALE_LOG', prefix: 'SALE_LOG', icon: '📤', path: '/sale' },
+      { name: 'Treatment Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '📋', path: '/treatment' },
+      { name: 'Vaccination Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '💉', path: '/vaccination' },
+      { name: 'Feed Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY', icon: '📦', path: '/feed-inventory' },
+      { name: 'Medicine Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY', icon: '💊', path: '/medicine-inventory' },
+      { name: 'Grass Collection', baseToken: 'GRASS', prefix: 'GRASS', icon: '🌿', path: '/grass' },
+      { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING', icon: '🌾', path: '/feeding' },
+      { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK', icon: '🥛', path: '/milk' },
+      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🔬', path: '/milk-quality' },
+      { name: 'Milk Procurement', baseToken: 'MILK', prefix: 'MILK', icon: '🥛', path: '/milk-procurement' },
+      { name: 'Milking Performance', baseToken: 'MILK_PERFORMANCE', prefix: 'MILK_PERFORMANCE', icon: '🥛', path: '/milking-performance' }
+    ]
+  }
+};
+
 const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const router = useRouter();
   const isFarmRoute = router.pathname.startsWith("/farm/[code]");
@@ -53,6 +96,26 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   const [userRole, setUserRole] = useState(null);
   /** @type {Record<string, any> | null} */
   const [userObj, setUserObj] = useState(null);
+  const [moduleGroups, setModuleGroups] = useState(DEFAULT_MODULE_GROUPS);
+
+  // Fetch dynamic modules list from backend
+  useEffect(() => {
+    let isMounted = true;
+    const fetchModules = async () => {
+      try {
+        const { api } = await import('../utils/api');
+        const res = await api.roles.getModules();
+        const data = res?.data || res;
+        if (isMounted && data && typeof data === 'object' && (data.CORE || data.MODULES)) {
+          setModuleGroups(data);
+        }
+      } catch (err) {
+        console.error("[Sidebar] Failed to load dynamic modules:", err);
+      }
+    };
+    fetchModules();
+    return () => { isMounted = false; };
+  }, []);
 
   // Collapse states
   const [shedOpen, setShedOpen] = useState(false);
@@ -324,367 +387,99 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
                 )}
 
                 {/* CORE MODULES GROUP */}
-                {userRole && (hasAccess('USER_MANAGEMENT') || hasAccess('DEPARTMENT') || hasAccess('ROLES') || hasAccess('FARM_MANAGEMENT') || hasAccess('LAND') || hasAccess('SHED_MANAGEMENT') || hasAccess('CATTLE_MANAGEMENT') || hasAccess('HEALTH_MANAGEMENT') || hasAccess('FEED_ITEMS') || hasAccess('TAG_MANAGEMENT') || hasAccess('BREED_MANAGEMENT') || hasAccess('ANIMAL_MANAGEMENT') || hasAccess('GRASS_MANAGEMENT') || hasAccess('LABOR_MANAGEMENT') || hasAccess('BMC') || hasAccess('CROSSING_LOG')) && (
-                  <li className="mt-4">
-                    <button
-                      onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
-                      className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>Core Modules</span>
-                      <motion.span animate={{ rotate: coreOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
+                {/* CORE MODULES GROUP */}
+                {(() => {
+                  const allowedModules = (moduleGroups.CORE?.modules || []).filter(mod => 
+                    mod.path && (hasAccess(mod.prefix) || hasAccess(mod.baseToken))
+                  );
+                  if (allowedModules.length === 0) return null;
+                  
+                  return (
+                    <li className="mt-4">
+                      <button
+                        onClick={() => toggleState(setCoreOpen, 'coreOpen', coreOpen)}
+                        className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                      >
+                        <span>{moduleGroups.CORE?.title || 'Core Modules'}</span>
+                        <motion.span animate={{ rotate: coreOpen ? 180 : 0 }}>
+                          ▼
+                        </motion.span>
+                      </button>
 
-                    <AnimatePresence>
-                      {coreOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-2 space-y-2 pl-2 overflow-hidden"
-                        >
-
-                          {hasAccess('USER_MANAGEMENT') && (
-                            <li>
-                              <Link href="/users" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/users") ? activeStyle : normalStyle}`}>
-                                👥 User Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('DEPARTMENT') && (
-                            <li>
-                              <Link href="/department" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/department") ? activeStyle : normalStyle}`}>
-                                🏢 Department
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('ROLES') && (
-                            <li>
-                              <Link href="/roles" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/roles") ? activeStyle : normalStyle}`}>
-                                🛡️ Role & Permissions
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Farm Management Navigation */}
-                          {hasAccess('FARM_MANAGEMENT') && (
-                            <li>
-                              <Link href="/farms" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${router.pathname.startsWith("/farm") ? activeStyle : normalStyle}`}>
-                                🏠 Farm Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Land Management Navigation */}
-                          {hasAccess('LAND') && (
-                            <li>
-                              <Link href="/land-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${router.pathname === "/land-management" ? activeStyle : normalStyle}`}>
-                                🗺️ Land Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* BMC Management Navigation */}
-                          {hasAccess('BMC') && (
-                            <li>
-                              <Link href="/bmc-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${router.pathname === "/bmc-management" ? activeStyle : normalStyle}`}>
-                                ❄️ BMC Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* SHED MANAGEMENT Navigation */}
-                          {hasAccess('SHED_MANAGEMENT') && (
-                            <li>
-                              <Link href="/shed-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${router.pathname === "/shed-management" ? activeStyle : normalStyle}`}>
-                                ⚙️ Shed Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* LINE MANAGEMENT Navigation */}
-                          {hasAccess('SHED_MANAGEMENT') && (
-                            <li>
-                              <Link href="/line-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${router.pathname === "/line-management" ? activeStyle : normalStyle}`}>
-                                📏 Line Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('CATTLE_MANAGEMENT') && (
-                            <li>
-                              <Link href="/cattle-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/cattle-management") ? activeStyle : normalStyle}`}>
-                                🐄 Cattle Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('HEALTH_MANAGEMENT') && (
-                            <li>
-                              <Link href="/health-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/health-management") ? activeStyle : normalStyle}`}>
-                                🩺 Health Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('FEED_ITEMS') && (
-                            <li>
-                              <Link href="/feed-items" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/feed-items") ? activeStyle : normalStyle}`}>
-                                🌾 Feed Items
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('TAG_MANAGEMENT') && (
-                            <li>
-                              <Link href="/tag-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/tag-management") ? activeStyle : normalStyle}`}>
-                                🏷️ Tag Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('BREED_MANAGEMENT') && (
-                            <li>
-                              <Link href="/breed-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/breed-management") ? activeStyle : normalStyle}`}>
-                                🧬 Breed Management
-                              </Link>
-                            </li>
-                          )}
-
-                          {hasAccess('ANIMAL_MANAGEMENT') && (
-                            <li>
-                              <Link href="/animal-management" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/animal-management") ? activeStyle : normalStyle}`}>
-                                🐏 Animal Management
-                              </Link>
-                            </li>
-                          )}
-
-
-
-
-
-                          {hasAccess('CROSSING_LOG') && (
-                            <li>
-                              <Link href="/insemination" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/insemination") ? activeStyle : normalStyle}`}>
-                                🧬 Insemination Management
-                              </Link>
-                            </li>
-                          )}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
-                )}
+                      <AnimatePresence>
+                        {coreOpen && (
+                          <motion.ul
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="mt-2 space-y-2 pl-2 overflow-hidden"
+                          >
+                            {allowedModules.map((mod) => {
+                              const isActive = mod.path === '/farms' 
+                                ? router.pathname.startsWith("/farm") 
+                                : isLinkActive(mod.path);
+                              return (
+                                <li key={mod.path}>
+                                  <Link href={mod.path} onClick={handleCloseSidebar}
+                                    className={`block p-2 rounded border-l-4 ${isActive ? activeStyle : normalStyle}`}>
+                                    {mod.icon} {mod.name}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </li>
+                  );
+                })()}
 
                 {/* NORMAL MODULES GROUP */}
-                {(hasAccess('LIVESTOCK') || hasAccess('SHED_LOG') || hasAccess('CROSSING_LOG') || hasAccess('PURCHASE_LOG') || hasAccess('SALE_LOG') || hasAccess('HEALTH') || hasAccess('INVENTORY') || hasAccess('GRASS') || hasAccess('FEEDING') || hasAccess('MILK')) && (
-                  <li className="mt-4 border-t border-slate-100 pt-4">
-                    <button
-                      onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
-                      className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
-                    >
-                      <span>Modules</span>
-                      <motion.span animate={{ rotate: normalOpen ? 180 : 0 }}>
-                        ▼
-                      </motion.span>
-                    </button>
+                {(() => {
+                  const allowedModules = (moduleGroups.MODULES?.modules || []).filter(mod => 
+                    mod.path && (hasAccess(mod.prefix) || hasAccess(mod.baseToken))
+                  );
+                  if (allowedModules.length === 0) return null;
 
-                    <AnimatePresence>
-                      {normalOpen && (
-                        <motion.ul
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="mt-2 space-y-2 pl-2 overflow-hidden"
-                        >
-                          {/* Live Stock */}
-                          {hasAccess('LIVESTOCK') && (
-                            <li>
-                              <Link href="/animals" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/animals") ? activeStyle : normalStyle}`}>
-                                🐄 Live Stock
-                              </Link>
-                            </li>
-                          )}
+                  return (
+                    <li className="mt-4 border-t border-slate-100 pt-4">
+                      <button
+                        onClick={() => toggleState(setNormalOpen, 'normalOpen', normalOpen)}
+                        className="w-full flex justify-between items-center text-gray-700 text-[13px] uppercase font-black px-2 py-2 cursor-pointer hover:bg-slate-50 rounded"
+                      >
+                        <span>{moduleGroups.MODULES?.title || 'Modules'}</span>
+                        <motion.span animate={{ rotate: normalOpen ? 180 : 0 }}>
+                          ▼
+                        </motion.span>
+                      </button>
 
-                          {/* Shed Log */}
-                          {hasAccess('SHED_LOG') && (
-                            <li>
-                              <Link href="/shed" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/shed") ? activeStyle : normalStyle}`}>
-                                📝 Shed Log
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Crossing Log */}
-                          {hasAccess('CROSSING_LOG') && (
-                            <li>
-                              <Link href="/crossing" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/crossing") ? activeStyle : normalStyle}`}>
-                                🧬 Crossing Log
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Purchase Log */}
-                          {hasAccess('PURCHASE_LOG') && (
-                            <li>
-                              <Link href="/purchase" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/purchase") ? activeStyle : normalStyle}`}>
-                                📥 Purchase Log
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Sale Log */}
-                          {hasAccess('SALE_LOG') && (
-                            <li>
-                              <Link href="/sale" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/sale") ? activeStyle : normalStyle}`}>
-                                📤 Sale Log
-                              </Link>
-                            </li>
-                          )}
-
-
-                          {/* Health Dropdown */}
-                          {/* Treatment Log */}
-                          {hasAccess('HEALTH') && (
-                            <li>
-                              <Link href="/treatment" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/treatment") ? activeStyle : normalStyle
-                                  }`}>
-                                📋 Treatment Log
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Vaccination Log */}
-                          {hasAccess('HEALTH') && (
-                            <li>
-                              <Link href="/vaccination" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/vaccination") ? activeStyle : normalStyle
-                                  }`}>
-                                💉 Vaccination Log
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Inventory Dropdown */}
-                          {/* Feed Inventory */}
-                          {hasAccess('INVENTORY') && (
-                            <li>
-                              <Link href="/feed-inventory" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/feed-inventory") ? activeStyle : normalStyle
-                                  }`}>
-                                📦 Feed Inventory
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Medicine Inventory */}
-                          {hasAccess('INVENTORY') && (
-                            <li>
-                              <Link href="/medicine-inventory" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/medicine-inventory") ? activeStyle : normalStyle
-                                  }`}>
-                                💊 Medicine Inventory
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Grass Collection */}
-                          {hasAccess('GRASS') && (
-                            <li>
-                              <Link href="/grass" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/grass") ? activeStyle : normalStyle
-                                  }`}>
-                                🌿 Grass Collection
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Daily Feeding */}
-                          {hasAccess('FEEDING') && (
-                            <li>
-                              <Link href="/feeding" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/feeding") ? activeStyle : normalStyle
-                                  }`}>
-                                🌾 Daily Feeding
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Milk Production Dropdown */}
-                          {/* Daily Milk Collection */}
-                          {hasAccess('MILK') && (
-                            <li>
-                              <Link href="/milk" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milk") ? activeStyle : normalStyle
-                                  }`}>
-                                🥛 Daily Milk Collection
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Milk Procurement */}
-                          {hasAccess('MILK') && (
-                            <li>
-                              <Link href="/milk-procurement" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milk-procurement") ? activeStyle : normalStyle
-                                  }`}>
-                                🥛 Milk Procurement
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Milk QA */}
-                          {hasAccess('MILK') && (
-                            <li>
-                              <Link href="/milk-quality" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milk-quality") ? activeStyle : normalStyle
-                                  }`}>
-                                🔬 Milk QA
-                              </Link>
-                            </li>
-                          )}
-
-                          {/* Milking Performance */}
-                          {hasAccess('MILK') && (
-                            <li>
-                              <Link href="/milking-performance" onClick={handleCloseSidebar}
-                                className={`block p-2 rounded border-l-4 ${isLinkActive("/milking-performance") ? activeStyle : normalStyle
-                                  }`}>
-                                🥛 Milking Performance
-                              </Link>
-                            </li>
-                          )}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
-                )}
+                      <AnimatePresence>
+                        {normalOpen && (
+                          <motion.ul
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="mt-2 space-y-2 pl-2 overflow-hidden"
+                          >
+                            {allowedModules.map((mod) => {
+                              const isActive = isLinkActive(mod.path);
+                              return (
+                                <li key={mod.path}>
+                                  <Link href={mod.path} onClick={handleCloseSidebar}
+                                    className={`block p-2 rounded border-l-4 ${isActive ? activeStyle : normalStyle}`}>
+                                    {mod.icon} {mod.name}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </li>
+                  );
+                })()}
               </ul>
             </div>
           </>

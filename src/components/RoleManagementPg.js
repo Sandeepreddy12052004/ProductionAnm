@@ -18,37 +18,42 @@ import {
   Sliders 
 } from 'lucide-react';
 
-const MODULE_GROUPS = {
+const DEFAULT_MODULE_GROUPS = {
   CORE: {
     title: 'CORE SETUP MODULES',
     modules: [
-      { name: 'User Management',          baseToken: 'USERS',          prefix: 'USER_MANAGEMENT',   icon: '👥' },
-      { name: 'Department',               baseToken: 'DEPARTMENTS',    prefix: 'DEPARTMENT',         icon: '🏢' },
-      { name: 'Farm Management',          baseToken: 'FARMS',          prefix: 'FARM_MANAGEMENT',    icon: '🏠' },
-      { name: 'Land Management',          baseToken: 'LAND_MANAGEMENT',prefix: 'LAND_MANAGEMENT',    icon: '🗺️' },
-      { name: 'BMC Management',           baseToken: 'BMC_MANAGEMENT', prefix: 'BMC_MANAGEMENT',     icon: '❄️' },
-      { name: 'Shed Management',          baseToken: 'SHEDS',          prefix: 'SHED_MANAGEMENT',    icon: '⚙️' },
-      { name: 'Cattle Management',        baseToken: 'CATTLE',         prefix: 'CATTLE_MANAGEMENT',  icon: '🐄' },
-      { name: 'Health Management',        baseToken: 'HEALTH',         prefix: 'HEALTH_MANAGEMENT',  icon: '🩺' },
-      { name: 'Feed Items',               baseToken: 'INVENTORY',      prefix: 'FEED_ITEMS',         icon: '🌾' },
-      { name: 'Tag Management',           baseToken: 'CATTLE',         prefix: 'TAG_MANAGEMENT',     icon: '🏷️' },
-      { name: 'Breed Management',         baseToken: 'CATTLE',         prefix: 'BREED_MANAGEMENT',   icon: '🧬' },
-      { name: 'Animal Management',        baseToken: 'CATTLE',         prefix: 'ANIMAL_MANAGEMENT',  icon: '🐏' },
-      { name: 'Insemination Management',  baseToken: 'CROSSING_LOG',   prefix: 'CROSSING_LOG',       icon: '🧬' }
+      { name: 'User Management', baseToken: 'USERS', prefix: 'USER_MANAGEMENT', icon: '👥' },
+      { name: 'Department', baseToken: 'DEPARTMENTS', prefix: 'DEPARTMENT', icon: '🏢' },
+      { name: 'Farm Management', baseToken: 'FARMS', prefix: 'FARM_MANAGEMENT', icon: '🏠' },
+      { name: 'Land Management', baseToken: 'LAND_MANAGEMENT', prefix: 'LAND_MANAGEMENT', icon: '🗺️' },
+      { name: 'BMC Management', baseToken: 'BMC_MANAGEMENT', prefix: 'BMC_MANAGEMENT', icon: '❄️' },
+      { name: 'Shed Management', baseToken: 'SHEDS', prefix: 'SHED_MANAGEMENT', icon: '⚙️' },
+      { name: 'Cattle Management', baseToken: 'CATTLE', prefix: 'CATTLE_MANAGEMENT', icon: '🐄' },
+      { name: 'Health Management', baseToken: 'HEALTH', prefix: 'HEALTH_MANAGEMENT', icon: '🩺' },
+      { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS', icon: '🌾' },
+      { name: 'Tag Management', baseToken: 'CATTLE', prefix: 'TAG_MANAGEMENT', icon: '🏷️' },
+      { name: 'Breed Management', baseToken: 'CATTLE', prefix: 'BREED_MANAGEMENT', icon: '🧬' },
+      { name: 'Animal Management', baseToken: 'CATTLE', prefix: 'ANIMAL_MANAGEMENT', icon: '🐏' }
     ]
   },
   MODULES: {
     title: 'OPERATIONAL LOGS & INVENTORY',
     modules: [
-      { name: 'Live Stock',            baseToken: 'CATTLE',       prefix: 'LIVESTOCK',    icon: '🐄' },
-      { name: 'Shed Log',              baseToken: 'SHED_LOG',     prefix: 'SHED_LOG',     icon: '📝' },
-      { name: 'Purchase Log',          baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG', icon: '📥' },
-      { name: 'Sale Log',              baseToken: 'SALE_LOG',     prefix: 'SALE_LOG',     icon: '📤' },
-      { name: 'Treatment Log',         baseToken: 'HEALTH',       prefix: 'HEALTH',       icon: '📋' },
-      { name: 'Feed Inventory',        baseToken: 'INVENTORY',    prefix: 'INVENTORY',    icon: '📦' },
-      { name: 'Grass Collection',      baseToken: 'GRASS',        prefix: 'GRASS',        icon: '🌿' },
-      { name: 'Daily Feeding',         baseToken: 'FEEDING',      prefix: 'FEEDING',      icon: '🍽️' },
-      { name: 'Daily Milk Collection', baseToken: 'MILK',         prefix: 'MILK',         icon: '🥛' }
+      { name: 'Live Stock', baseToken: 'CATTLE', prefix: 'LIVESTOCK', icon: '🐄' },
+      { name: 'Shed Log', baseToken: 'SHED_LOG', prefix: 'SHED_LOG', icon: '📝' },
+      { name: 'Crossing Log', baseToken: 'CROSSING_LOG', prefix: 'CROSSING_LOG', icon: '🧬' },
+      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬' },
+      { name: 'Purchase Log', baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG', icon: '📥' },
+      { name: 'Sale Log', baseToken: 'SALE_LOG', prefix: 'SALE_LOG', icon: '📤' },
+      { name: 'Treatment Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '🩺' },
+      { name: 'Vaccination Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '💉' },
+      { name: 'Feed Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY', icon: '🌾' },
+      { name: 'Medicine Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY', icon: '💊' },
+      { name: 'Grass Collection', baseToken: 'GRASS', prefix: 'GRASS', icon: '🌿' },
+      { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING', icon: '🍽️' },
+      { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK', icon: '🥛' },
+      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' },
+      { name: 'Milk Performance', baseToken: 'MILK', prefix: 'MILK_PERFORMANCE', icon: '📈' }
     ]
   }
 };
@@ -86,9 +91,28 @@ const RoleManagementPg = () => {
   const [roleSearchQuery, setRoleSearchQuery] = useState('');
   const [moduleSearchQuery, setModuleSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL', 'CORE', 'OPERATIONS'
+  const [moduleGroups, setModuleGroups] = useState(DEFAULT_MODULE_GROUPS);
   
   // Permission Matrix State: { [modulePrefix]: { view: boolean, create: boolean, edit: boolean, delete: boolean } }
   const [matrixState, setMatrixState] = useState({});
+
+  // Fetch dynamic modules list from backend
+  useEffect(() => {
+    let isMounted = true;
+    const loadModules = async () => {
+      try {
+        const res = await api.roles.getModules();
+        const data = res?.data || res;
+        if (isMounted && data && typeof data === 'object' && (data.CORE || data.MODULES)) {
+          setModuleGroups(data);
+        }
+      } catch (err) {
+        console.error("Failed to load modules dynamically:", err);
+      }
+    };
+    loadModules();
+    return () => { isMounted = false; };
+  }, []);
 
   // Fetch roles from backend
   const fetchRoles = async () => {
@@ -117,12 +141,12 @@ const RoleManagementPg = () => {
   }, []);
 
   // Parse string array permissions from database into standard checked matrix states
-  const parsePermissionsToMatrix = (perms) => {
+  const parsePermissionsToMatrix = (perms, groups = moduleGroups) => {
     const newMatrix = {};
     const uppercasePerms = (perms || []).map((p) => String(p).trim().toUpperCase());
     const isSuperAdmin = uppercasePerms.includes('ALL');
 
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(groups).forEach((group) => {
       group.modules.forEach((mod) => {
         const modState = {};
         ACTIONS.forEach((act) => {
@@ -142,7 +166,7 @@ const RoleManagementPg = () => {
     const perms = [];
     let allChecked = true;
 
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(moduleGroups).forEach((group) => {
       group.modules.forEach((mod) => {
         ACTIONS.forEach((act) => {
           const isChecked = customMatrix[mod.prefix]?.[act];
@@ -164,11 +188,17 @@ const RoleManagementPg = () => {
     return Array.from(new Set(perms));
   };
 
+  // Automatically update permission matrix state when selected role or loaded module groups change
+  useEffect(() => {
+    if (selectedRole) {
+      setMatrixState(parsePermissionsToMatrix(selectedRole.permissions, moduleGroups));
+    }
+  }, [selectedRole, moduleGroups]);
+
   const handleSelectRole = (role) => {
     setSelectedRole(role);
     setRoleName(role.name || '');
     setRoleDescription(role.description || '');
-    setMatrixState(parsePermissionsToMatrix(role.permissions));
   };
 
   const handleOpenCreateModal = () => {
@@ -178,7 +208,7 @@ const RoleManagementPg = () => {
     
     // Clear all checkbox states
     const emptyMatrix = {};
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(moduleGroups).forEach((group) => {
       group.modules.forEach((mod) => {
         emptyMatrix[mod.prefix] = { view: false, create: false, edit: false, delete: false };
       });
@@ -198,7 +228,7 @@ const RoleManagementPg = () => {
     
     // Clear all checkbox states
     const emptyMatrix = {};
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(moduleGroups).forEach((group) => {
       group.modules.forEach((mod) => {
         emptyMatrix[mod.prefix] = { view: false, create: false, edit: false, delete: false };
       });
@@ -240,7 +270,7 @@ const RoleManagementPg = () => {
 
     // Check if any check box is currently unchecked
     let isAnyUnchecked = false;
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(moduleGroups).forEach((group) => {
       group.modules.forEach((mod) => {
         ACTIONS.forEach((act) => {
           if (!matrixState[mod.prefix]?.[act]) {
@@ -251,7 +281,7 @@ const RoleManagementPg = () => {
     });
 
     const newMatrix = {};
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(moduleGroups).forEach((group) => {
       group.modules.forEach((mod) => {
         const modState = {};
         ACTIONS.forEach((act) => {
@@ -274,7 +304,7 @@ const RoleManagementPg = () => {
     let allChecked = true;
     let totalItems = 0;
 
-    Object.values(MODULE_GROUPS).forEach((group) => {
+    Object.values(moduleGroups).forEach((group) => {
       group.modules.forEach((mod) => {
         ACTIONS.forEach((act) => {
           totalItems++;
@@ -402,7 +432,7 @@ const RoleManagementPg = () => {
     }
   };
 
-  const totalPossible = Object.values(MODULE_GROUPS).reduce((acc, g) => acc + g.modules.length * 4, 0);
+  const totalPossible = Object.values(moduleGroups).reduce((acc, g) => acc + g.modules.length * 4, 0);
   const checkedCount = getCheckedPermissionsCount();
   const percent = totalPossible > 0 ? Math.round((checkedCount / totalPossible) * 100) : 0;
 
@@ -455,7 +485,7 @@ const RoleManagementPg = () => {
           </div>
           <div>
             <span className="block text-2xl font-black text-amber-600">
-              {Object.values(MODULE_GROUPS).reduce((acc, g) => acc + g.modules.length, 0)}
+              {Object.values(moduleGroups).reduce((acc, g) => acc + g.modules.length, 0)}
             </span>
             <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mt-0.5">Secured Modules</span>
           </div>
@@ -672,7 +702,7 @@ const RoleManagementPg = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(() => {
                   const list = [];
-                  Object.entries(MODULE_GROUPS).forEach(([groupKey, group]) => {
+                  Object.entries(moduleGroups).forEach(([groupKey, group]) => {
                     if (activeTab === 'CORE' && groupKey !== 'CORE') return;
                     if (activeTab === 'OPERATIONS' && groupKey !== 'MODULES') return;
 

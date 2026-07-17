@@ -334,7 +334,12 @@
         return !!formData["actualCalvingDate"];
       }
       if (field.name === "purchaseDate") {
-        return title?.toLowerCase().includes("feed") ? !!Number(formData.bought) : formData.farmBorn === "No";
+        const isFeed = title?.toLowerCase().includes("feed") || fields.some(f => f.name === 'feedType');
+        const isMedicine = title?.toLowerCase().includes("medicine") || fields.some(f => f.name === 'medicineName');
+        if (isFeed || isMedicine) {
+          return !!Number(formData.bought);
+        }
+        return formData.farmBorn === "No";
       }
       if (["sireId", "dameId", "sireBreed", "dameBreed", "calvings"].includes(field.name)) {
         return formData.farmBorn === "Yes";
@@ -730,7 +735,38 @@
         import('../utils/api').then(({ api }) => {
           api.lands.getAll().then(res => {
             const raw = Array.isArray(res) ? res : (res?.data ?? []);
-            setGrassFarmsList(raw.filter(item => item.status !== 'MAINTENANCE' && item.isDeleted !== true));
+            
+            // Resolve active farm ID
+            const activeFarmId = (() => {
+              try {
+                const storedUser = localStorage.getItem("user");
+                if (storedUser) {
+                  const user = JSON.parse(storedUser);
+                  const rawFarmId = user.farmId && typeof user.farmId === 'object'
+                    ? (user.farmId._id || user.farmId.id)
+                    : user.farmId;
+                  const isGlobal =
+                    !rawFarmId ||
+                    rawFarmId === 'ALL' ||
+                    String(user.role).toUpperCase() === 'SUPER_ADMIN';
+                  if (!isGlobal) return String(rawFarmId);
+                }
+                const activeFarm = localStorage.getItem("__active_farm_id__");
+                if (activeFarm && activeFarm !== 'ALL') return String(activeFarm);
+              } catch (e) {}
+              return null;
+            })();
+
+            let filtered = raw.filter(item => item.status !== 'MAINTENANCE' && item.isDeleted !== true);
+            if (activeFarmId) {
+              filtered = filtered.filter(item => {
+                const landFarmId = item.farmId && typeof item.farmId === 'object'
+                  ? (item.farmId._id || item.farmId.id)
+                  : item.farmId;
+                return String(landFarmId) === activeFarmId;
+              });
+            }
+            setGrassFarmsList(filtered);
           }).catch(err => console.error("Failed to load lands in LogForm:", err));
         });
       }
@@ -1519,7 +1555,13 @@
                   };
                   await onSubmit(finalData);
                 } else {
-                  await onSubmit(formData); 
+                   const finalData = { ...formData };
+                  const isFeed = title?.toLowerCase().includes("feed") || fields.some(f => f.name === 'feedType');
+                  const isMedicine = title?.toLowerCase().includes("medicine") || fields.some(f => f.name === 'medicineName');
+                  if ((isFeed || isMedicine) && !Number(finalData.bought)) {
+                    finalData.purchaseDate = "";
+                  }
+                  await onSubmit(finalData); 
                 }
               } catch (err) {
                 console.error(err);
@@ -2153,7 +2195,9 @@
         ? "-"
         : (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
           (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||
-          (field.name === "purchaseDate" && formData.farmBorn === "Yes")
+          (field.name === "purchaseDate" && formData.farmBorn === "Yes") ||
+          (field.name === "purchaseDate" && (title?.toLowerCase().includes("feed") || fields.some(f => f.name === 'feedType')) && !Number(formData.bought)) ||
+          (field.name === "purchaseDate" && (title?.toLowerCase().includes("medicine") || fields.some(f => f.name === 'medicineName')) && !Number(formData.bought))
         ? "-" 
         : (field.name === "dateOfBirth" || field.name === "dob")
         ? (() => {
@@ -2182,7 +2226,8 @@
     disabled={
       field.disabled === true ||
       (field.name === "calvings" && String(formData.gender).toUpperCase() === "MALE") ||
-      (field.name === "purchaseDate" && title?.toLowerCase().includes("feed") && !Number(formData.bought)) ||
+      (field.name === "purchaseDate" && (title?.toLowerCase().includes("feed") || fields.some(f => f.name === 'feedType')) && !Number(formData.bought)) ||
+      (field.name === "purchaseDate" && (title?.toLowerCase().includes("medicine") || fields.some(f => f.name === 'medicineName')) && !Number(formData.bought)) ||
       (field.name === "pregnantAge" && formData["pregnancyStatus"] !== "Positive") ||
       (["pregnancyConfirmedDate", "estimatedCalvingDate", "actualCalvingDate", "calvingStatus", "calfTag", "heatMonitoring2ndNotification"].includes(field.name) && formData["pregnancyStatus"] !== "Positive") ||
       (field.name === "heatMonitoring1stNotification" && !["Positive", "Negative"].includes(formData["pregnancyStatus"])) ||

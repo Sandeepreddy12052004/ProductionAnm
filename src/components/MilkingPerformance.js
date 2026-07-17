@@ -21,8 +21,10 @@ export default function MilkingPerformance() {
   // Filter States
   const [selectedShed, setSelectedShed] = useState('ALL');
   const [selectedAnimalType, setSelectedAnimalType] = useState('ALL');
+  const [selectedAnimal, setSelectedAnimal] = useState('ALL');
+  const [metricType, setMetricType] = useState('SUM'); // 'SUM' or 'AVG'
   const [lowYieldThreshold, setLowYieldThreshold] = useState(15);
-  const [datePreset, setDatePreset] = useState('7_DAYS');
+  const [datePreset, setDatePreset] = useState('10_DAYS');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -79,38 +81,67 @@ export default function MilkingPerformance() {
     return map;
   }, [cattleList]);
 
+  const uniqueMilkCattleTags = useMemo(() => {
+    const tags = new Set();
+    milkLogs.forEach(log => {
+      const tag = String(log.tag_id || log.tagId || '').trim();
+      if (tag) tags.add(tag);
+    });
+    return Array.from(tags).sort();
+  }, [milkLogs]);
+
   // Date range calculation helper
   const getDateRange = () => {
     const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    const toDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    
     let start = new Date();
-    start.setHours(0, 0, 0, 0);
-
+    
     if (datePreset === '7_DAYS') {
       start.setDate(today.getDate() - 6);
+    } else if (datePreset === '10_DAYS') {
+      start.setDate(today.getDate() - 9);
     } else if (datePreset === '30_DAYS') {
       start.setDate(today.getDate() - 29);
     } else if (datePreset === 'THIS_MONTH') {
       start.setDate(1);
     } else if (datePreset === 'CUSTOM') {
-      if (startDate) {
-        start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-      }
-      const end = endDate ? new Date(endDate) : new Date();
-      end.setHours(23, 59, 59, 999);
-      return { start, end };
+      const startStr = startDate || toDateStr(new Date());
+      const endStr = endDate || toDateStr(new Date());
+      return { startStr, endStr };
     }
-    return { start, end: today };
+    return { startStr: toDateStr(start), endStr: toDateStr(today) };
   };
 
-  const { start: filterStart, end: filterEnd } = getDateRange();
+  const toYYYYMMDD = (dateVal) => {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  };
+
+  const { startStr, endStr } = getDateRange();
 
   // Apply filters to milk collections
   const filteredLogs = milkLogs.filter(log => {
+    // 0. Farm Filter
+    const activeFarmId = (() => {
+      try {
+        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+        return localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+      } catch (e) {}
+      return 'ALL';
+    })();
+    if (activeFarmId && activeFarmId !== 'ALL') {
+      const logFarmId = log.farmId && typeof log.farmId === 'object'
+        ? (log.farmId._id || log.farmId.id)
+        : log.farmId;
+      if (String(logFarmId) !== String(activeFarmId)) return false;
+    }
+
     // 1. Date Filter
-    const logDate = new Date(log.date);
-    if (logDate < filterStart || logDate > filterEnd) return false;
+    const logDateStr = toYYYYMMDD(log.date);
+    if (logDateStr < startStr || logDateStr > endStr) return false;
 
     // 2. Shed Filter
     if (selectedShed !== 'ALL') {
@@ -137,6 +168,13 @@ export default function MilkingPerformance() {
       if (type !== selectedAnimalType) return false;
     }
 
+    // 4. Specific Animal Filter
+    if (selectedAnimal !== 'ALL') {
+      const logTag = String(log.tag_id || log.tagId || '').trim().toUpperCase();
+      const targetTag = String(selectedAnimal).trim().toUpperCase();
+      if (logTag !== targetTag) return false;
+    }
+
     return true;
   });
 
@@ -146,111 +184,201 @@ export default function MilkingPerformance() {
   const totalDayTotal = filteredLogs.reduce((sum, log) => sum + Number(log.dayTotal || 0), 0);
 
   // Group by Date for trend analysis
-  const dailyGroups = {};
-  filteredLogs.forEach(log => {
-    const d = new Date(log.date);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (!dailyGroups[dateStr]) {
-      dailyGroups[dateStr] = { morning: 0, evening: 0, self: 0, total: 0, count: 0 };
+  const sortedDates = useMemo(() => {
+    const dates = [];
+    if (!startStr || !endStr) return dates;
+    const parts = startStr.split('-');
+    const curr = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const endParts = endStr.split('-');
+    const end = new Date(Number(endParts[0]), Number(endParts[1]) - 1, Number(endParts[2]));
+    
+    let safetyCounter = 0;
+    while (curr <= end && safetyCounter < 366) {
+      const dateStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+      dates.push(dateStr);
+      curr.setDate(curr.getDate() + 1);
+      safetyCounter++;
     }
-    dailyGroups[dateStr].morning += log.session === 'MORNING' ? Number(log.quantity || 0) : 0;
-    dailyGroups[dateStr].evening += log.session === 'EVENING' ? Number(log.quantity || 0) : 0;
-    dailyGroups[dateStr].self += Number(log.selfConsumption || 0);
-    dailyGroups[dateStr].total += Number(log.quantity || 0);
-    dailyGroups[dateStr].count += 1;
-  });
+    return dates;
+  }, [startStr, endStr]);
 
-  const sortedDates = Object.keys(dailyGroups).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-  const activeDays = sortedDates.length;
+  const dailyGroups = useMemo(() => {
+    const groups = {};
+    sortedDates.forEach(dateStr => {
+      groups[dateStr] = { 
+        morningSum: 0, morningCount: 0, 
+        eveningSum: 0, eveningCount: 0, 
+        selfSum: 0, 
+        totalSum: 0, totalCount: 0,
+        morning: 0, evening: 0, self: 0, total: 0, count: 0 
+      };
+    });
+
+    filteredLogs.forEach(log => {
+      const dateStr = toYYYYMMDD(log.date);
+      if (!groups[dateStr]) {
+        groups[dateStr] = { 
+          morningSum: 0, morningCount: 0, 
+          eveningSum: 0, eveningCount: 0, 
+          selfSum: 0, 
+          totalSum: 0, totalCount: 0,
+          morning: 0, evening: 0, self: 0, total: 0, count: 0 
+        };
+      }
+      if (log.session === 'MORNING') {
+        groups[dateStr].morningSum += Number(log.quantity || 0);
+        groups[dateStr].morningCount += 1;
+      } else if (log.session === 'EVENING') {
+        groups[dateStr].eveningSum += Number(log.quantity || 0);
+        groups[dateStr].eveningCount += 1;
+      }
+      groups[dateStr].selfSum += Number(log.selfConsumption || 0);
+      groups[dateStr].totalSum += Number(log.quantity || 0);
+      groups[dateStr].totalCount += 1;
+      groups[dateStr].count += 1;
+    });
+
+    Object.keys(groups).forEach(dateStr => {
+      const g = groups[dateStr];
+      if (metricType === 'AVG') {
+        g.morning = g.morningCount > 0 ? (g.morningSum / g.morningCount) : 0;
+        g.evening = g.eveningCount > 0 ? (g.eveningSum / g.eveningCount) : 0;
+        g.self = g.totalCount > 0 ? (g.selfSum / g.totalCount) : 0;
+        g.total = g.totalCount > 0 ? (g.totalSum / g.totalCount) : 0;
+      } else {
+        g.morning = g.morningSum;
+        g.evening = g.eveningSum;
+        g.self = g.selfSum;
+        g.total = g.totalSum;
+      }
+    });
+
+    return groups;
+  }, [sortedDates, filteredLogs, metricType]);
+
+  const activeDays = sortedDates.filter(d => dailyGroups[d]?.count > 0).length;
   const avgDailyYield = activeDays > 0 ? (totalYield / activeDays) : 0;
 
   // Find Peak day
   let peakDayStr = '-';
   let peakDayValue = 0;
-  Object.keys(dailyGroups).forEach(dateStr => {
-    if (dailyGroups[dateStr].total > peakDayValue) {
-      peakDayValue = dailyGroups[dateStr].total;
+  sortedDates.forEach(dateStr => {
+    const info = dailyGroups[dateStr];
+    if (info && info.total > peakDayValue) {
+      peakDayValue = info.total;
       peakDayStr = dateStr;
     }
   });
 
   // Group by Shed for shed comparisons
-  const shedGroups = {};
-  filteredLogs.forEach(log => {
-    const shedCode = String(log.shedId || log.shed || 'Shed ?').trim().toUpperCase();
-    if (!shedGroups[shedCode]) {
-      shedGroups[shedCode] = 0;
-    }
-    shedGroups[shedCode] += Number(log.quantity || 0);
-  });
+  const shedGroups = useMemo(() => {
+    const sums = {};
+    const counts = {};
+    filteredLogs.forEach(log => {
+      const shedCode = String(log.shedId || log.shed || 'Shed ?').trim().toUpperCase();
+      if (!sums[shedCode]) {
+        sums[shedCode] = 0;
+        counts[shedCode] = 0;
+      }
+      sums[shedCode] += Number(log.quantity || 0);
+      counts[shedCode] += 1;
+    });
+
+    const resolved = {};
+    Object.keys(sums).forEach(shedCode => {
+      resolved[shedCode] = metricType === 'AVG'
+        ? (sums[shedCode] / (counts[shedCode] || 1))
+        : sums[shedCode];
+    });
+    return resolved;
+  }, [filteredLogs, metricType]);
 
   // Find top yielding animals
-  const animalYieldMap = {};
-  filteredLogs.forEach(log => {
-    const tag = String(log.tag_id || log.tagId || '').trim().toUpperCase();
-    if (tag) {
-      if (!animalYieldMap[tag]) {
-        animalYieldMap[tag] = 0;
+  const animalYieldMap = useMemo(() => {
+    const sums = {};
+    const counts = {};
+    filteredLogs.forEach(log => {
+      const tag = String(log.tag_id || log.tagId || '').trim().toUpperCase();
+      if (tag) {
+        if (!sums[tag]) {
+          sums[tag] = 0;
+          counts[tag] = 0;
+        }
+        sums[tag] += Number(log.quantity || 0);
+        counts[tag] += 1;
       }
-      animalYieldMap[tag] += Number(log.quantity || 0);
-    }
-  });
+    });
 
-  const topAnimals = Object.entries(animalYieldMap)
-    .map(([tag, yieldL]) => {
-      const animal = cattleMap.get(tag);
-      return {
-        tag,
-        yieldL,
-        breed: animal?.breed || 'Unknown',
-        shed: animal?.shedId || animal?.shed || '-',
-        type: animal?.cattleType || animal?.animalType || 'Cow'
-      };
-    })
-    .sort((a, b) => b.yieldL - a.yieldL)
-    .slice(0, 5);
+    const resolved = {};
+    Object.keys(sums).forEach(tag => {
+      resolved[tag] = metricType === 'AVG'
+        ? (sums[tag] / (counts[tag] || 1))
+        : sums[tag];
+    });
+    return resolved;
+  }, [filteredLogs, metricType]);
 
-  const lowAnimals = Object.entries(animalYieldMap)
-    .map(([tag, yieldL]) => {
-      const animal = cattleMap.get(tag);
-      return {
-        tag,
-        yieldL,
-        breed: animal?.breed || 'Unknown',
-        shed: animal?.shedId || animal?.shed || '-',
-        type: animal?.cattleType || animal?.animalType || 'Cow',
-        gender: animal?.gender || 'Female'
-      };
-    })
-    .filter(animal => {
-      const isCalf = String(animal.type).toUpperCase().includes('CALF') || String(animal.tag).toUpperCase().includes('CALF');
-      const isMale = String(animal.gender).toUpperCase() === 'MALE';
-      const passesThreshold = lowYieldThreshold === '' || animal.yieldL <= Number(lowYieldThreshold);
-      return !isCalf && !isMale && passesThreshold;
-    })
-    .sort((a, b) => a.yieldL - b.yieldL)
-    .slice(0, 5);
+  const topAnimals = useMemo(() => {
+    return Object.entries(animalYieldMap)
+      .map(([tag, yieldL]) => {
+        const animal = cattleMap.get(tag);
+        return {
+          tag,
+          yieldL,
+          breed: animal?.breed || 'Unknown',
+          shed: animal?.shedId || animal?.shed || '-',
+          type: animal?.cattleType || animal?.animalType || 'Cow'
+        };
+      })
+      .sort((a, b) => b.yieldL - a.yieldL)
+      .slice(0, 5);
+  }, [animalYieldMap, cattleMap]);
+
+  const lowAnimals = useMemo(() => {
+    return Object.entries(animalYieldMap)
+      .map(([tag, yieldL]) => {
+        const animal = cattleMap.get(tag);
+        return {
+          tag,
+          yieldL,
+          breed: animal?.breed || 'Unknown',
+          shed: animal?.shedId || animal?.shed || '-',
+          type: animal?.cattleType || animal?.animalType || 'Cow',
+          gender: animal?.gender || 'Female'
+        };
+      })
+      .filter(animal => {
+        const isCalf = String(animal.type).toUpperCase().includes('CALF') || String(animal.tag).toUpperCase().includes('CALF');
+        const isMale = String(animal.gender).toUpperCase() === 'MALE';
+        const passesThreshold = lowYieldThreshold === '' || animal.yieldL <= Number(lowYieldThreshold);
+        return !isCalf && !isMale && passesThreshold;
+      })
+      .sort((a, b) => a.yieldL - b.yieldL)
+      .slice(0, 5);
+  }, [animalYieldMap, cattleMap, lowYieldThreshold]);
 
   // Table Logs Search & Pagination
   const formatTableDate = (dateStr) => {
-    const d = new Date(dateStr);
-    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    if (!dateStr || !dateStr.includes('-')) return '-';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
   };
 
-  const detailedTableLogs = sortedDates.map(dateStr => {
-    const info = dailyGroups[dateStr];
-    return {
-      date: dateStr,
-      formattedDate: formatTableDate(dateStr),
-      morning: info.morning,
-      evening: info.evening,
-      self: info.self,
-      total: info.total
-    };
-  }).filter(row => {
-    if (!searchQuery) return true;
-    return row.formattedDate.includes(searchQuery) || String(row.total).includes(searchQuery);
-  });
+  const detailedTableLogs = sortedDates
+    .map(dateStr => {
+      const info = dailyGroups[dateStr];
+      return {
+        date: dateStr,
+        formattedDate: formatTableDate(dateStr),
+        morning: info.morning,
+        evening: info.evening,
+        self: info.self,
+        total: info.total
+      };
+    }).filter(row => {
+      if (!searchQuery) return true;
+      return row.formattedDate.includes(searchQuery) || String(row.total).includes(searchQuery);
+    });
 
   // Sort logs table showing most recent dates first
   const sortedTableLogs = [...detailedTableLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -404,7 +532,8 @@ export default function MilkingPerformance() {
               }}
               className="h-10 px-3 pr-8 rounded-xl border border-slate-200 text-xs font-semibold text-[#16223F] bg-white outline-none cursor-pointer focus:border-[#D1867D] appearance-none"
             >
-              <option value="7_DAYS">Last 7 Days</option>
+              <option value="10_DAYS">Last 10 Days</option>
+              <option value="7_DAYS">Last 7 Days (1 Week)</option>
               <option value="30_DAYS">Last 30 Days</option>
               <option value="THIS_MONTH">This Month</option>
               <option value="CUSTOM">Custom Range</option>
@@ -478,6 +607,36 @@ export default function MilkingPerformance() {
               className="h-10 w-28 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
             />
           </div>
+
+          {/* Animal Selector */}
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">Specific Animal</label>
+            <select
+              value={selectedAnimal}
+              onChange={(e) => { setSelectedAnimal(e.target.value); setCurrentPage(1); }}
+              className="h-10 px-3 pr-8 rounded-xl border border-slate-200 text-xs font-semibold text-[#16223F] bg-white outline-none cursor-pointer focus:border-[#D1867D] appearance-none"
+            >
+              <option value="ALL">All Animals</option>
+              {uniqueMilkCattleTags.map(tag => (
+                <option key={tag} value={tag}>
+                  Tag {tag}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Calculation Metric Selector */}
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">Metric Mode</label>
+            <select
+              value={metricType}
+              onChange={(e) => { setMetricType(e.target.value); setCurrentPage(1); }}
+              className="h-10 px-3 pr-8 rounded-xl border border-slate-200 text-xs font-semibold text-[#16223F] bg-white outline-none cursor-pointer focus:border-[#D1867D] appearance-none"
+            >
+              <option value="SUM">Sum of Liters</option>
+              <option value="AVG">Average of Liters</option>
+            </select>
+          </div>
         </div>
 
         {/* Clear Filters Indicator */}
@@ -485,8 +644,10 @@ export default function MilkingPerformance() {
           onClick={() => {
             setSelectedShed('ALL');
             setSelectedAnimalType('ALL');
+            setSelectedAnimal('ALL');
+            setMetricType('SUM');
             setLowYieldThreshold(15);
-            setDatePreset('7_DAYS');
+            setDatePreset('10_DAYS');
             setStartDate('');
             setEndDate('');
             setCurrentPage(1);
@@ -507,29 +668,52 @@ export default function MilkingPerformance() {
       ) : (
         <>
           {/* KPI METRIC CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Total Yield</p>
-              <p className="text-3xl font-black text-[#16223F] mt-1.5">{totalYield.toFixed(1)} <span className="text-base font-bold">L</span></p>
-            </div>
+          {(() => {
+            const displayYield = metricType === 'SUM'
+              ? totalYield
+              : (filteredLogs.length > 0 ? (totalYield / filteredLogs.length) : 0);
 
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Daily Average</p>
-              <p className="text-3xl font-black text-[#16223F] mt-1.5">{avgDailyYield.toFixed(1)} <span className="text-base font-bold">L/day</span></p>
-            </div>
+            const displaySelfConsumption = metricType === 'SUM'
+              ? totalSelfConsumption
+              : (filteredLogs.length > 0 ? (totalSelfConsumption / filteredLogs.length) : 0);
 
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Peak Production</p>
-              <p className="text-3xl font-black text-emerald-600 mt-1.5">{peakDayValue.toFixed(1)} <span className="text-base font-bold text-[#16223F]">L</span></p>
-              <p className="text-[9px] font-bold text-slate-400 mt-0.5">Date: {peakDayStr !== '-' ? formatTableDate(peakDayStr) : '-'}</p>
-            </div>
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">
+                    {metricType === 'SUM' ? 'Total Yield' : 'Average Yield'}
+                  </p>
+                  <p className="text-3xl font-black text-[#16223F] mt-1.5">{displayYield.toFixed(1)} <span className="text-base font-bold">L</span></p>
+                </div>
 
-            <div className={cardClass}>
-              <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Self-Consumption</p>
-              <p className="text-3xl font-black text-[#D1867D] mt-1.5">{totalSelfConsumption.toFixed(1)} <span className="text-base font-bold">L</span></p>
-              <p className="text-[9px] font-bold text-slate-400 mt-0.5">Net Sale: {(totalYield - totalSelfConsumption).toFixed(1)} L</p>
-            </div>
-          </div>
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">Daily Average</p>
+                  <p className="text-3xl font-black text-[#16223F] mt-1.5">{avgDailyYield.toFixed(1)} <span className="text-base font-bold">L/day</span></p>
+                </div>
+
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">
+                    {metricType === 'SUM' ? 'Peak Production' : 'Peak Avg Yield'}
+                  </p>
+                  <p className="text-3xl font-black text-emerald-600 mt-1.5">{peakDayValue.toFixed(1)} <span className="text-base font-bold text-[#16223F]">L</span></p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-0.5">Date: {peakDayStr !== '-' ? formatTableDate(peakDayStr) : '-'}</p>
+                </div>
+
+                <div className={cardClass}>
+                  <p className="text-[10px] uppercase text-slate-400 font-black tracking-wider">
+                    {metricType === 'SUM' ? 'Self-Consumption' : 'Self-Consumption Avg'}
+                  </p>
+                  <p className="text-3xl font-black text-[#D1867D] mt-1.5">{displaySelfConsumption.toFixed(1)} <span className="text-base font-bold">L</span></p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-0.5">
+                    {metricType === 'SUM' 
+                      ? `Net Sale: ${(totalYield - totalSelfConsumption).toFixed(1)} L`
+                      : `Net Sale Avg: ${(displayYield - displaySelfConsumption).toFixed(1)} L`
+                    }
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* MAIN GRAPH/CHARTS SECTIONS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -547,70 +731,88 @@ export default function MilkingPerformance() {
                 </div>
               ) : (
                 <div className="relative w-full overflow-x-auto select-none">
-                  <svg viewBox={`0 0 ${trendSvgWidth} ${trendSvgHeight}`} className="w-full h-auto min-w-[640px]">
-                    <defs>
-                      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#D1867D" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#D1867D" stopOpacity="0.00" />
-                      </linearGradient>
-                    </defs>
+                  <div className="relative min-w-[640px] w-full">
+                    <svg viewBox={`0 0 ${trendSvgWidth} ${trendSvgHeight}`} className="w-full h-auto">
+                      <defs>
+                        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#D1867D" stopOpacity="0.25" />
+                          <stop offset="100%" stopColor="#D1867D" stopOpacity="0.00" />
+                        </linearGradient>
+                      </defs>
 
-                    {/* Horizontal gridlines */}
-                    {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
-                      const y = trendPadding + (trendSvgHeight - trendPadding * 2) * ratio;
-                      const labelVal = trendMaxVal - trendMaxVal * ratio;
-                      return (
+                      {/* Horizontal gridlines */}
+                      {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+                        const y = trendPadding + (trendSvgHeight - trendPadding * 2) * ratio;
+                        const labelVal = trendMaxVal - trendMaxVal * ratio;
+                        return (
+                          <g key={i}>
+                            <line x1={trendPadding} y1={y} x2={trendSvgWidth - trendPadding} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+                            <text x={trendPadding - 8} y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-bold">{labelVal.toFixed(0)}</text>
+                          </g>
+                        );
+                      })}
+
+                      {/* Render Area Filled Gradient */}
+                      <path d={areaPath} fill="url(#areaGrad)" />
+
+                      {/* Render Main Trend Line */}
+                      <path d={linePath} fill="none" stroke="#D1867D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                      {/* Render circles & labels */}
+                      {trendPoints.map((pt, i) => (
                         <g key={i}>
-                          <line x1={trendPadding} y1={y} x2={trendSvgWidth - trendPadding} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                          <text x={trendPadding - 8} y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-bold">{labelVal.toFixed(0)}</text>
+                          <circle
+                            cx={pt.x}
+                            cy={pt.y}
+                            r={hoveredPoint?.date === pt.date ? "6" : "3.5"}
+                            fill={hoveredPoint?.date === pt.date ? "#16223F" : "#D1867D"}
+                            stroke="#ffffff"
+                            strokeWidth="1.5"
+                            onMouseEnter={() => setHoveredPoint({ x: pt.x, y: pt.y, label: pt.label, value: pt.value, date: pt.date, type: 'trend' })}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                            className="transition-all duration-200 cursor-pointer"
+                          />
+                           {/* Value text label above dot (only when hovered) */}
+                          {hoveredPoint?.date === pt.date && (
+                            <text
+                              x={pt.x}
+                              y={pt.y - 8}
+                              textAnchor="middle"
+                              className="text-[9px] fill-[#16223F] font-black"
+                            >
+                              {pt.value.toFixed(1)}L
+                            </text>
+                          )}
+                          {/* Render X-Axis labels at lower boundary */}
+                          {(sortedDates.length < 15 || i % Math.ceil(sortedDates.length / 10) === 0) && (
+                            <text x={pt.x} y={trendSvgHeight - trendPadding + 15} textAnchor="middle" className="text-[9px] fill-slate-400 font-bold">
+                              {pt.label}
+                            </text>
+                          )}
                         </g>
+                      ))}
+                    </svg>
+
+                    {/* Dynamic Floating Tooltip */}
+                    {hoveredPoint && hoveredPoint.type === 'trend' && (() => {
+                      const isHigh = hoveredPoint.y < 65;
+                      return (
+                        <div
+                          className="absolute bg-[#16223F] text-white p-2.5 rounded-xl shadow-lg border border-slate-700 pointer-events-none text-[10px] font-bold z-10 transition-all duration-150"
+                          style={{
+                            left: `${(hoveredPoint.x / trendSvgWidth) * 100}%`,
+                            top: isHigh 
+                              ? `${(hoveredPoint.y / trendSvgHeight) * 100 + 10}%`
+                              : `${(hoveredPoint.y / trendSvgHeight) * 100 - 15}%`,
+                            transform: isHigh ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'
+                          }}
+                        >
+                          <p className="text-[#D1867D]">{formatTableDate(hoveredPoint.date)}</p>
+                          <p className="mt-0.5 text-sm font-black">{hoveredPoint.value.toFixed(1)} Liters</p>
+                        </div>
                       );
-                    })}
-
-                    {/* Render Area Filled Gradient */}
-                    <path d={areaPath} fill="url(#areaGrad)" />
-
-                    {/* Render Main Trend Line */}
-                    <path d={linePath} fill="none" stroke="#D1867D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
-                    {/* Render circles & labels */}
-                    {trendPoints.map((pt, i) => (
-                      <g key={i}>
-                        <circle
-                          cx={pt.x}
-                          cy={pt.y}
-                          r={hoveredPoint?.date === pt.date ? "6" : "3.5"}
-                          fill={hoveredPoint?.date === pt.date ? "#16223F" : "#D1867D"}
-                          stroke="#ffffff"
-                          strokeWidth="1.5"
-                          onMouseEnter={() => setHoveredPoint({ x: pt.x, y: pt.y, label: pt.label, value: pt.value, date: pt.date, type: 'trend' })}
-                          onMouseLeave={() => setHoveredPoint(null)}
-                          className="transition-all duration-200 cursor-pointer"
-                        />
-                        {/* Render X-Axis labels at lower boundary */}
-                        {(sortedDates.length < 15 || i % Math.ceil(sortedDates.length / 10) === 0) && (
-                          <text x={pt.x} y={trendSvgHeight - trendPadding + 15} textAnchor="middle" className="text-[9px] fill-slate-400 font-bold">
-                            {pt.label}
-                          </text>
-                        )}
-                      </g>
-                    ))}
-                  </svg>
-
-                  {/* Dynamic Floating Tooltip */}
-                  {hoveredPoint && hoveredPoint.type === 'trend' && (
-                    <div
-                      className="absolute bg-[#16223F] text-white p-2.5 rounded-xl shadow-lg border border-slate-700 pointer-events-none text-[10px] font-bold z-10 transition-all duration-150"
-                      style={{
-                        left: `${(hoveredPoint.x / trendSvgWidth) * 100}%`,
-                        top: `${(hoveredPoint.y / trendSvgHeight) * 100 - 15}%`,
-                        transform: 'translate(-50%, -100%)'
-                      }}
-                    >
-                      <p className="text-[#D1867D]">{formatTableDate(hoveredPoint.date)}</p>
-                      <p className="mt-0.5 text-sm font-black">{hoveredPoint.value.toFixed(1)} Liters</p>
-                    </div>
-                  )}
+                    })()}
+                  </div>
                 </div>
               )}
             </div>
@@ -649,21 +851,41 @@ export default function MilkingPerformance() {
               )}
 
               <div className="mt-8 border-t border-slate-100 pt-5">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Session Breakdown</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase">Morning Session</span>
-                    <span className="text-xl font-black text-[#16223F] mt-1">
-                      {filteredLogs.filter(l => l.session === 'MORNING').reduce((sum, l) => sum + Number(l.quantity || 0), 0).toFixed(0)} L
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase">Evening Session</span>
-                    <span className="text-xl font-black text-[#16223F] mt-1">
-                      {filteredLogs.filter(l => l.session === 'EVENING').reduce((sum, l) => sum + Number(l.quantity || 0), 0).toFixed(0)} L
-                    </span>
-                  </div>
-                </div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">
+                  {metricType === 'SUM' ? 'Session Breakdown' : 'Session Averages'}
+                </h4>
+                {(() => {
+                  const morningLogs = filteredLogs.filter(l => l.session === 'MORNING');
+                  const morningVal = metricType === 'SUM'
+                    ? morningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0)
+                    : (morningLogs.length > 0 ? morningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0) / morningLogs.length : 0);
+
+                  const eveningLogs = filteredLogs.filter(l => l.session === 'EVENING');
+                  const eveningVal = metricType === 'SUM'
+                    ? eveningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0)
+                    : (eveningLogs.length > 0 ? eveningLogs.reduce((sum, l) => sum + Number(l.quantity || 0), 0) / eveningLogs.length : 0);
+
+                  return (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">
+                          {metricType === 'SUM' ? 'Morning Session' : 'Morning Average'}
+                        </span>
+                        <span className="text-xl font-black text-[#16223F] mt-1">
+                          {morningVal.toFixed(1)} L
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 rounded-2xl p-3 flex flex-col justify-between">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">
+                          {metricType === 'SUM' ? 'Evening Session' : 'Evening Average'}
+                        </span>
+                        <span className="text-xl font-black text-[#16223F] mt-1">
+                          {eveningVal.toFixed(1)} L
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -774,10 +996,10 @@ export default function MilkingPerformance() {
                   <thead>
                     <tr className="border-b border-slate-100 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">
                       <th className="pb-3 text-center">Date</th>
-                      <th className="pb-3 text-center">Morning Yield (L)</th>
-                      <th className="pb-3 text-center">Evening Yield (L)</th>
-                      <th className="pb-3 text-center">Self-Consumption (L)</th>
-                      <th className="pb-3 text-center">Day Total (L)</th>
+                      <th className="pb-3 text-center">{metricType === 'SUM' ? 'Morning Yield (L)' : 'Morning Avg (L)'}</th>
+                      <th className="pb-3 text-center">{metricType === 'SUM' ? 'Evening Yield (L)' : 'Evening Avg (L)'}</th>
+                      <th className="pb-3 text-center">{metricType === 'SUM' ? 'Self-Consumption (L)' : 'Self-Consumption Avg (L)'}</th>
+                      <th className="pb-3 text-center">{metricType === 'SUM' ? 'Day Total (L)' : 'Day Avg (L)'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
