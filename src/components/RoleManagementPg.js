@@ -25,6 +25,8 @@ const DEFAULT_MODULE_GROUPS = {
       { name: 'User Management', baseToken: 'USERS', prefix: 'USER_MANAGEMENT', icon: '👥' },
       { name: 'Department', baseToken: 'DEPARTMENTS', prefix: 'DEPARTMENT', icon: '🏢' },
       { name: 'Farm Management', baseToken: 'FARMS', prefix: 'FARM_MANAGEMENT', icon: '🏠' },
+      { name: 'Land Management', baseToken: 'LAND_MANAGEMENT', prefix: 'LAND_MANAGEMENT', icon: '🗺️' },
+      { name: 'BMC Management', baseToken: 'BMC_MANAGEMENT', prefix: 'BMC_MANAGEMENT', icon: '❄️' },
       { name: 'Shed Management', baseToken: 'SHEDS', prefix: 'SHED_MANAGEMENT', icon: '⚙️' },
       { name: 'Cattle Management', baseToken: 'CATTLE', prefix: 'CATTLE_MANAGEMENT', icon: '🐄' },
       { name: 'Health Management', baseToken: 'HEALTH', prefix: 'HEALTH_MANAGEMENT', icon: '🩺' },
@@ -40,6 +42,7 @@ const DEFAULT_MODULE_GROUPS = {
       { name: 'Live Stock', baseToken: 'CATTLE', prefix: 'LIVESTOCK', icon: '🐄' },
       { name: 'Shed Log', baseToken: 'SHED_LOG', prefix: 'SHED_LOG', icon: '📝' },
       { name: 'Crossing Log', baseToken: 'CROSSING_LOG', prefix: 'CROSSING_LOG', icon: '🧬' },
+      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬' },
       { name: 'Purchase Log', baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG', icon: '📥' },
       { name: 'Sale Log', baseToken: 'SALE_LOG', prefix: 'SALE_LOG', icon: '📤' },
       { name: 'Treatment Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '🩺' },
@@ -50,7 +53,6 @@ const DEFAULT_MODULE_GROUPS = {
       { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING', icon: '🍽️' },
       { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK', icon: '🥛' },
       { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' },
-      { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬' },
       { name: 'Milk Performance', baseToken: 'MILK', prefix: 'MILK_PERFORMANCE', icon: '📈' }
     ]
   }
