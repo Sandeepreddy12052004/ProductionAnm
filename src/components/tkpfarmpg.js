@@ -12,7 +12,7 @@ import FarmOverview from './FarmOverview';
 
 const toCamelCase = (str) => {
   return str
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) =>
       index === 0 ? word.toLowerCase() : word.toUpperCase()
     )
     .replace(/\s+/g, '')
@@ -69,7 +69,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   useEffect(() => {
     if (!userObj) return;
     let isMounted = true;
-    
+
     // Fetch sheds for the form dropdown
     api.sheds.getAll()
       .then(res => {
@@ -80,7 +80,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         }
       })
       .catch(console.error);
-      
+
     // Fetch cattle for tag lookups
     api.cattle.getAll()
       .then(res => {
@@ -186,29 +186,29 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: animals },
         ...(feeds.length > 0
           ? feeds.map(feedName => {
-              const camelName = toCamelCase(feedName);
-              let unit = 'KG';
-              const lowerName = feedName.toLowerCase();
-              if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
-              else if (lowerName.includes('calcium')) unit = 'ML';
-              return {
-                name: camelName,
-                label: `${feedName} (${unit})`,
-                type: 'number',
-                optional: true
-              };
-            })
+            const camelName = toCamelCase(feedName);
+            let unit = 'KG';
+            const lowerName = feedName.toLowerCase();
+            if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
+            else if (lowerName.includes('calcium')) unit = 'ML';
+            return {
+              name: camelName,
+              label: `${feedName} (${unit})`,
+              type: 'number',
+              optional: true
+            };
+          })
           : [
-              { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
-              { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
-              { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
-              { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
-              { name: 'maize', label: 'Maize (KG)', type: 'number' },
-              { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
-              { name: 'salt', label: 'Salt (G)', type: 'number' },
-              { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
-              { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
-            ]
+            { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
+            { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
+            { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
+            { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
+            { name: 'maize', label: 'Maize (KG)', type: 'number' },
+            { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
+            { name: 'salt', label: 'Salt (G)', type: 'number' },
+            { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
+            { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
+          ]
         )
       ]
     },
@@ -299,13 +299,13 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
   // Tab-to-permission mapping — each tab key maps to the module key guarding it
   const tabPermissionMap = {
-    health:    'HEALTH',
-    vaccine:   'HEALTH',
-    med_inv:   'INVENTORY',
-    feed_inv:  'INVENTORY',
-    feeding:   'FEEDING',
+    health: 'HEALTH',
+    vaccine: 'HEALTH',
+    med_inv: 'INVENTORY',
+    feed_inv: 'INVENTORY',
+    feeding: 'FEEDING',
     milk_prod: 'MILK',
-    components:'MILK',
+    components: 'MILK',
     pashudhan: 'CATTLE_MANAGEMENT',
   };
 
@@ -363,7 +363,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
               });
             }
           }
-        } catch (_) {}
+        } catch (_) { }
 
         if (Object.keys(livestockMap).length === 0) {
           try {
@@ -373,7 +373,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
               const key = String(a.tag_id || a.tag || '').trim().toUpperCase();
               if (key) livestockMap[key] = a;
             });
-          } catch (_) {}
+          } catch (_) { }
         }
 
         rawList = rawList.map(log => {
@@ -490,130 +490,130 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
 
   useEffect(() => {
-  let lastScrollY = window.scrollY;
+    let lastScrollY = window.scrollY;
 
-  const handleScroll = () => {
-    if (Math.abs(window.scrollY - lastScrollY) < 10) return;
+    const handleScroll = () => {
+      if (Math.abs(window.scrollY - lastScrollY) < 10) return;
 
-    if (window.scrollY > lastScrollY) {
-      setShowFAB(false); // scrolling down → hide
+      if (window.scrollY > lastScrollY) {
+        setShowFAB(false); // scrolling down → hide
+      } else {
+        setShowFAB(true); // scrolling up → show
+      }
+
+      lastScrollY = window.scrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (showTabDropdown || showFilters || viewMode || showForm) {
+      document.body.style.overflow = "hidden";
     } else {
-      setShowFAB(true); // scrolling up → show
+      document.body.style.overflow = "auto";
     }
 
-    lastScrollY = window.scrollY;
-  };
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [showTabDropdown, showFilters, viewMode, showForm]);
 
-  window.addEventListener("scroll", handleScroll);
+  useEffect(() => {
 
-  return () => window.removeEventListener("scroll", handleScroll);
-}, []);
+    if (showForm) {
+      document.body.classList.add("hide-mobile-footer");
+    } else {
+      document.body.classList.remove("hide-mobile-footer");
+    }
 
-useEffect(() => {
-  if (showTabDropdown || showFilters || viewMode || showForm) {
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "auto";
-  }
+    return () => {
+      document.body.classList.remove("hide-mobile-footer");
+    };
 
-  return () => {
-    document.body.style.overflow = "auto";
-  };
-}, [showTabDropdown, showFilters, viewMode, showForm]);
+  }, [showForm]);
 
-useEffect(() => {
+  useEffect(() => {
 
-  if (showForm) {
-    document.body.classList.add("hide-mobile-footer");
-  } else {
-    document.body.classList.remove("hide-mobile-footer");
-  }
+    if (
+      showForm ||
+      showFilters ||
+      viewMode ||
+      selectedEntry
+    ) {
+      document.body.classList.add("hide-mobile-footer");
+    } else {
+      document.body.classList.remove("hide-mobile-footer");
+    }
 
-  return () => {
-    document.body.classList.remove("hide-mobile-footer");
-  };
+    return () => {
+      document.body.classList.remove("hide-mobile-footer");
+    };
 
-}, [showForm]);
-
-useEffect(() => {
-
-  if (
-    showForm ||
-    showFilters ||
-    viewMode ||
-    selectedEntry
-  ) {
-    document.body.classList.add("hide-mobile-footer");
-  } else {
-    document.body.classList.remove("hide-mobile-footer");
-  }
-
-  return () => {
-    document.body.classList.remove("hide-mobile-footer");
-  };
-
-}, [showForm, showFilters, viewMode, selectedEntry]);
+  }, [showForm, showFilters, viewMode, selectedEntry]);
 
   // FIXED FILTER LOGIC
- const filteredLogs = logs.filter(log => {
-  return filters.every(f => {
+  const filteredLogs = logs.filter(log => {
+    return filters.every(f => {
 
-    // 📅 DATE RANGE
-    if (f.field.toLowerCase().includes("date")) {
-      if (!f.from && !f.to) return true;
+      // 📅 DATE RANGE
+      if (f.field.toLowerCase().includes("date")) {
+        if (!f.from && !f.to) return true;
 
-      const logDate = log[f.field] || (f.field === 'date' ? log.entryDate : null);
-      if (!logDate) return false;
+        const logDate = log[f.field] || (f.field === 'date' ? log.entryDate : null);
+        if (!logDate) return false;
 
-      let current;
-      if (logDate.includes("/")) {
-        const parts = logDate.split("/");
-        if (parts.length === 3) {
-          const [d, m, y] = parts;
-          current = new Date(`${y}-${m}-${d}`);
+        let current;
+        if (logDate.includes("/")) {
+          const parts = logDate.split("/");
+          if (parts.length === 3) {
+            const [d, m, y] = parts;
+            current = new Date(`${y}-${m}-${d}`);
+          } else {
+            current = new Date(logDate);
+          }
         } else {
           current = new Date(logDate);
         }
-      } else {
-        current = new Date(logDate);
+
+        if (isNaN(current.getTime())) return false;
+        current.setHours(0, 0, 0, 0);
+
+        if (f.from) {
+          const [fd, fm, fy] = f.from.split("/");
+          const fromDate = new Date(`${fy}-${fm}-${fd}`);
+          fromDate.setHours(0, 0, 0, 0);
+          if (current < fromDate) return false;
+        }
+
+        if (f.to) {
+          const [td, tm, ty] = f.to.split("/");
+          const toDate = new Date(`${ty}-${tm}-${td}`);
+          toDate.setHours(0, 0, 0, 0);
+          if (current > toDate) return false;
+        }
+
+        return true;
       }
 
-      if (isNaN(current.getTime())) return false;
-      current.setHours(0, 0, 0, 0);
+      // 🔁 NORMAL FILTER
+      if (!f.value) return true;
 
-      if (f.from) {
-        const [fd, fm, fy] = f.from.split("/");
-        const fromDate = new Date(`${fy}-${fm}-${fd}`);
-        fromDate.setHours(0, 0, 0, 0);
-        if (current < fromDate) return false;
-      }
-
-      if (f.to) {
-        const [td, tm, ty] = f.to.split("/");
-        const toDate = new Date(`${ty}-${tm}-${td}`);
-        toDate.setHours(0, 0, 0, 0);
-        if (current > toDate) return false;
-      }
-
-      return true;
-    }
-
-    // 🔁 NORMAL FILTER
-    if (!f.value) return true;
-
-    return String(log[f.field] || "")
-      .toLowerCase()
-      .includes(f.value.toLowerCase());
+      return String(log[f.field] || "")
+        .toLowerCase()
+        .includes(f.value.toLowerCase());
+    });
   });
-});
 
 
   const totalItems = filteredLogs.length;
 
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
 
-const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
 
   const saveToStorage = (updatedLogs) => {
@@ -628,7 +628,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     try {
       const payload = { ...data, farm: farmCode, farmId: farmCode };
       const entryId = selectedEntry?.id || selectedEntry?._id;
-      
+
       if (isEditing) {
         if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.update(entryId, payload);
@@ -649,7 +649,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
         payload.entryDate = formattedDate;
         payload.date = now.toISOString();
-        
+
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);
         else if (activeTab === 'med_inv') await api.inventory.medicines.create(payload);
@@ -712,7 +712,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     setSelectedEntry(null);
     setIsEditing(false);
     setViewMode(false);
-  
+
   };
 
   /* ---------- EXPORT EXCEL ---------- */
@@ -905,14 +905,14 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   };
 
 
-const activeFilterCount = filters.filter(
-  f => (f.value && f.value.trim() !== "") || f.from || f.to
-).length;
+  const activeFilterCount = filters.filter(
+    f => (f.value && f.value.trim() !== "") || f.from || f.to
+  ).length;
   return (
     <div className="w-full flex flex-col bg-transparent text-slate-800">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="flex items-center gap-5">
-          <button 
+          <button
             onClick={() => router.push('/farms')}
             className="flex items-center justify-center w-12 h-12 rounded-[1rem] bg-white border border-[#e3e8f2] text-[#16223F] hover:bg-[#16223F] hover:text-white hover:border-[#16223F] shadow-sm hover:shadow-md transition-all duration-200 group"
             title="Back to Farms"
@@ -927,28 +927,28 @@ const activeFilterCount = filters.filter(
           </div>
         </div>
         {activeTab !== 'overview' && (
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          {/* Export Buttons Added to your custom header */}
-          <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all">📊 Excel</button>
-          <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all">📄 PDF</button>
-          
-         <button
-  onClick={() => setShowFilters(!showFilters)}
-  className={`
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            {/* Export Buttons Added to your custom header */}
+            <button onClick={exportExcel} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all">📊 Excel</button>
+            <button onClick={exportPDF} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all">📄 PDF</button>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`
     relative
     px-4 py-2 rounded-lg font-bold border
     transition-all duration-200 ease-out 
     hover:-translate-y-[1px] hover:shadow-md
-    ${showFilters 
-      ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
-      : 'bg-white border-gray-300 hover:bg-gray-50'}
+    ${showFilters
+                  ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20'
+                  : 'bg-white border-gray-300 hover:bg-gray-50'}
   `}
->
-  {showFilters ? '✕ Hide Filter' : '🔍 Filters'}
+            >
+              {showFilters ? '✕ Hide Filter' : '🔍 Filters'}
 
-  {/* 🔴 FILTER COUNT BADGE */}
-  {activeFilterCount > 0 && (
-  <span className="
+              {/* 🔴 FILTER COUNT BADGE */}
+              {activeFilterCount > 0 && (
+                <span className="
     absolute -top-2 -right-2
     bg-red-600 text-white
     text-[10px] font-bold
@@ -957,28 +957,28 @@ const activeFilterCount = filters.filter(
     min-w-[18px]
     text-center
   ">
-    {activeFilterCount}
-  </span>
-)}
-</button>
-          <button 
-            onClick={() => { setIsEditing(false); setShowForm(true); }} 
-            className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all"
-          >
-            + Add Entry
-          </button>
-        </div>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setIsEditing(false); setShowForm(true); }}
+              className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold shadow-lg hover:bg-[#16223F]/90 transition-all"
+            >
+              + Add Entry
+            </button>
+          </div>
         )}
       </header>
 
       {/* PILL TABS */}
       {activeTab !== 'overview' && (
-      <div className="relative mb-6 w-full md:w-auto">
+        <div className="relative mb-6 w-full md:w-auto">
 
-  {/* CAPSULE BUTTON */}
-  <button
-    onClick={() => setShowTabDropdown(prev => !prev)}
-    className="
+          {/* CAPSULE BUTTON */}
+          <button
+            onClick={() => setShowTabDropdown(prev => !prev)}
+            className="
       w-full md:w-auto
       flex items-center justify-between
       px-4 py-2 
@@ -988,72 +988,72 @@ const activeFilterCount = filters.filter(
       text-sm font-bold
       shadow-sm
     "
-  >
-    <span>🏢 {
-      (Array.isArray(availableFarms) ? availableFarms.find(f => f?.code === farmCode) : null)?.name || `${farmCode} Farm`
-    }</span>
+          >
+            <span>🏢 {
+              (Array.isArray(availableFarms) ? availableFarms.find(f => f?.code === farmCode) : null)?.name || `${farmCode} Farm`
+            }</span>
 
-    {/* 🔽 ROTATING ARROW */}
-    <span
-      className={`
+            {/* 🔽 ROTATING ARROW */}
+            <span
+              className={`
         ml-2 transition-transform duration-300
         ${showTabDropdown ? "rotate-180" : "rotate-0"}
       `}
-    >
-      ▼
-    </span>
-  </button>
+            >
+              ▼
+            </span>
+          </button>
 
-  {/* OVERLAY */}
-  {showTabDropdown && (
-    <div
-      className="fixed inset-0 z-40"
-      onClick={() => setShowTabDropdown(false)}
-    />
-  )}
+          {/* OVERLAY */}
+          {showTabDropdown && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowTabDropdown(false)}
+            />
+          )}
 
-  {/* DROPDOWN */}
-  <div
-    className={`
+          {/* DROPDOWN */}
+          <div
+            className={`
       absolute left-0 mt-2 w-full 
       bg-white border rounded-xl shadow-lg z-50
       transform transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]
-      ${showTabDropdown 
-        ? "opacity-100 translate-y-0" 
-        : "opacity-0 -translate-y-6 pointer-events-none"}
+      ${showTabDropdown
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-6 pointer-events-none"}
     `}
-  >
-    {Array.isArray(availableFarms) && availableFarms.map(f => (
-      <button
-        key={f?._id || f?.id}
-        onClick={() => {
-          setShowTabDropdown(false);
-          router.push(`/farm/${f?.code}?tab=${activeTab}`);
-        }}
-        className={`
+          >
+            {Array.isArray(availableFarms) && availableFarms.map(f => (
+              <button
+                key={f?._id || f?.id}
+                onClick={() => {
+                  setShowTabDropdown(false);
+                  router.push(`/farm/${f?.code}?tab=${activeTab}`);
+                }}
+                className={`
           w-full text-left px-4 py-2 text-sm
           hover:bg-gray-100 transition
           ${farmCode === f?.code ? 'bg-[#D1867D]/10 text-[#16223F] font-bold' : ''}
         `}
-      >
-        🏢 {f?.name}
-      </button>
-    ))}
-  </div>
+              >
+                🏢 {f?.name}
+              </button>
+            ))}
+          </div>
 
-</div>
-)}
-        
-      
+        </div>
+      )}
+
+
 
       {/* Filter Bar */}
-      
+
 
 
       {showFilters && (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
 
-      <div className="
+          <div className="
         bg-white 
         w-full 
         max-w-md 
@@ -1064,177 +1064,178 @@ const activeFilterCount = filters.filter(
         p-4
       ">
 
-        {/* HEADER */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-black">Filters</h3>
+            {/* HEADER */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-black">Filters</h3>
 
-          <button
-            onClick={() => setShowFilters(false)}
-            className="text-gray-500 text-xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* FILTER LIST */}
-        <div className="space-y-3">
-
-          {filters.map((f, index) => (
-            <div key={`filter-${f.field}-${index}`} className="flex flex-col gap-2">
-
-              {/* FIELD */}
-              <select
-                className="px-2 py-1.5 border rounded-lg text-sm"
-                value={f.field}
-                onChange={(e) => {
-                  const updated = [...filters];
-                  updated[index].field = e.target.value;
-                  updated[index].value = "";
-                  setFilters(updated);
-                }}
-              >
-                <option value="entryDate">Date</option>
-                {current.fields.map(field => (
-                  <option key={field.name} value={field.name}>
-                    {field.label}
-                  </option>
-                ))}
-              </select>
-
-              
-            {/* VALUE */}
-{(() => {
-  const fieldConfig = current.fields.find(field => field.name === f.field);
-
-  // 📅 DATE RANGE
-  if (f.field.toLowerCase().includes("date")) {
-    return (
-      <div className="flex gap-2">
-        <input
-          type="date"
-          className="px-2 py-1.5 border rounded-lg text-sm w-full text-black"
-          value={f.from ? f.from.split("/").reverse().join("-") : ""}
-          onChange={(e) => {
-            const updated = [...filters];
-            updated[index].from = e.target.value
-              ? e.target.value.split("-").reverse().join("/")
-              : "";
-            setFilters(updated);
-          }}
-        />
-        <input
-          type="date"
-          className="px-2 py-1.5 border rounded-lg text-sm w-full text-black"
-          value={f.to ? f.to.split("/").reverse().join("-") : ""}
-          onChange={(e) => {
-            const updated = [...filters];
-            updated[index].to = e.target.value
-              ? e.target.value.split("-").reverse().join("/")
-              : "";
-            setFilters(updated);
-          }}
-        />
-      </div>
-    );
-  }
-
-  // 🔢 NUMBER
-  if (fieldConfig?.type === "number") {
-    return (
-      <input
-        type="number"
-        className="px-2 py-1.5 border rounded-lg text-sm text-black"
-        value={f.value}
-        onChange={(e) => {
-          const updated = [...filters];
-          updated[index].value = e.target.value;
-          setFilters(updated);
-        }}
-      />
-    );
-  }
-
-  // 📋 SELECT
-  if (fieldConfig?.type === "select") {
-    return (
-      <select
-        className="px-2 py-1.5 border rounded-lg text-sm"
-        value={f.value}
-        onChange={(e) => {
-          const updated = [...filters];
-          updated[index].value = e.target.value;
-          setFilters(updated);
-        }}
-      >
-        <option value="">Select...</option>
-        {fieldConfig.options.map(opt => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
-      </select>
-    );
-  }
-
-  // ✏️ DEFAULT
-  return (
-    <input
-      type="text"
-      className="px-2 py-1.5 border rounded-lg text-sm"
-      value={f.value}
-      onChange={(e) => {
-        const updated = [...filters];
-        updated[index].value = e.target.value;
-        setFilters(updated);
-      }}
-    />
-  );
-})()}
-
-              {/* REMOVE */}
               <button
-                onClick={() => {
-                  const updated = filters.filter((_, i) => i !== index);
-setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);                }}
-                className="text-red-600 text-xs font-bold self-end"
+                onClick={() => setShowFilters(false)}
+                className="text-gray-500 text-xl font-bold"
               >
-                Remove
+                ✕
+              </button>
+            </div>
+
+            {/* FILTER LIST */}
+            <div className="space-y-3">
+
+              {filters.map((f, index) => (
+                <div key={`filter-${f.field}-${index}`} className="flex flex-col gap-2">
+
+                  {/* FIELD */}
+                  <select
+                    className="px-2 py-1.5 border rounded-lg text-sm"
+                    value={f.field}
+                    onChange={(e) => {
+                      const updated = [...filters];
+                      updated[index].field = e.target.value;
+                      updated[index].value = "";
+                      setFilters(updated);
+                    }}
+                  >
+                    <option value="entryDate">Date</option>
+                    {current.fields.map(field => (
+                      <option key={field.name} value={field.name}>
+                        {field.label}
+                      </option>
+                    ))}
+                  </select>
+
+
+                  {/* VALUE */}
+                  {(() => {
+                    const fieldConfig = current.fields.find(field => field.name === f.field);
+
+                    // 📅 DATE RANGE
+                    if (f.field.toLowerCase().includes("date")) {
+                      return (
+                        <div className="flex gap-2">
+                          <input
+                            type="date"
+                            className="px-2 py-1.5 border rounded-lg text-sm w-full text-black"
+                            value={f.from ? f.from.split("/").reverse().join("-") : ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].from = e.target.value
+                                ? e.target.value.split("-").reverse().join("/")
+                                : "";
+                              setFilters(updated);
+                            }}
+                          />
+                          <input
+                            type="date"
+                            className="px-2 py-1.5 border rounded-lg text-sm w-full text-black"
+                            value={f.to ? f.to.split("/").reverse().join("-") : ""}
+                            onChange={(e) => {
+                              const updated = [...filters];
+                              updated[index].to = e.target.value
+                                ? e.target.value.split("-").reverse().join("/")
+                                : "";
+                              setFilters(updated);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+
+                    // 🔢 NUMBER
+                    if (fieldConfig?.type === "number") {
+                      return (
+                        <input
+                          type="number"
+                          className="px-2 py-1.5 border rounded-lg text-sm text-black"
+                          value={f.value}
+                          onChange={(e) => {
+                            const updated = [...filters];
+                            updated[index].value = e.target.value;
+                            setFilters(updated);
+                          }}
+                        />
+                      );
+                    }
+
+                    // 📋 SELECT
+                    if (fieldConfig?.type === "select") {
+                      return (
+                        <select
+                          className="px-2 py-1.5 border rounded-lg text-sm"
+                          value={f.value}
+                          onChange={(e) => {
+                            const updated = [...filters];
+                            updated[index].value = e.target.value;
+                            setFilters(updated);
+                          }}
+                        >
+                          <option value="">Select...</option>
+                          {fieldConfig.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      );
+                    }
+
+                    // ✏️ DEFAULT
+                    return (
+                      <input
+                        type="text"
+                        className="px-2 py-1.5 border rounded-lg text-sm"
+                        value={f.value}
+                        onChange={(e) => {
+                          const updated = [...filters];
+                          updated[index].value = e.target.value;
+                          setFilters(updated);
+                        }}
+                      />
+                    );
+                  })()}
+
+                  {/* REMOVE */}
+                  <button
+                    onClick={() => {
+                      const updated = filters.filter((_, i) => i !== index);
+                      setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);
+                    }}
+                    className="text-red-600 text-xs font-bold self-end"
+                  >
+                    Remove
+                  </button>
+
+                </div>
+              ))}
+
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex justify-between mt-6 gap-2">
+
+              <button
+                onClick={() => setFilters([...filters, { field: "entryDate", value: "", from: "", to: "" }])}
+                className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
+              >
+                + Add Filter
+              </button>
+
+              <button
+                onClick={clearAllFilters}
+                className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm"
+              >
+                Clear
               </button>
 
             </div>
-          ))}
+
+            {/* APPLY BUTTON */}
+            <button
+              onClick={() => setShowFilters(false)}
+              className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold"
+            >
+              Apply Filters
+            </button>
+
+          </div>
 
         </div>
-
-        {/* ACTIONS */}
-        <div className="flex justify-between mt-6 gap-2">
-
-          <button
-            onClick={() => setFilters([...filters, { field: "entryDate", value: "" , from: "", to: "" }])}
-            className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
-          >
-            + Add Filter
-          </button>
-
-          <button
-            onClick={clearAllFilters}
-            className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm"
-          >
-            Clear
-          </button>
-
-        </div>
-
-        {/* APPLY BUTTON */}
-        <button
-          onClick={() => setShowFilters(false)}
-          className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold"
-        >
-          Apply Filters
-        </button>
-
-      </div>
-
-    </div>
-  )}
+      )}
 
       {/* Data Table or Overview */}
       {activeTab === 'overview' ? (
@@ -1242,87 +1243,87 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
           <table className="w-full text-left min-w-full md:min-w-[600px]">
-          <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
-            <tr>
-              <th className="p-4 border-b">Date</th>
-              {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
-              <th className="p-4 border-b w-10 text-center"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading ? (
-              <>
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <tr key={i} className="animate-pulse border-b border-gray-100">
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
-                    <td className="p-4"><div className="h-4 bg-slate-200 rounded w-full max-w-[120px]"></div></td>
-                  </tr>
-                ))}
-              </>
-            ) : paginatedLogs.length > 0 ? (
-              paginatedLogs.map(log => (
-                <tr 
-                  key={log._id || log.id || log.entryDate} 
-                  className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors" 
-                  onClick={() => setSelectedEntry(log)}
-                >
-                  <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
-  {current.fields.map(f => (
-    <td key={f.name} className="p-4 font-semibold text-black">{log[f.name]}</td>
-  ))}
-  <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
-</tr>
-              ))
-            ) : (
+            <thead className="bg-[#16223F]/5 text-[#16223F] uppercase text-[10px] font-black tracking-widest">
               <tr>
-                <td colSpan={current.fields.length + 2} className="p-12 text-center text-black text-sm font-medium opacity-50">
-                   No records found for {current.name}.
-                </td>
+                <th className="p-4 border-b">Date</th>
+                {current.fields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
+                <th className="p-4 border-b w-10 text-center"></th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {isLoading ? (
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i} className="animate-pulse border-b border-gray-100">
+                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
+                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
+                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
+                      <td className="p-4"><div className="h-4 bg-slate-200 rounded w-full max-w-[120px]"></div></td>
+                    </tr>
+                  ))}
+                </>
+              ) : paginatedLogs.length > 0 ? (
+                paginatedLogs.map(log => (
+                  <tr
+                    key={log._id || log.id || log.entryDate}
+                    className="hover:bg-[#D1867D]/5 cursor-pointer group transition-colors"
+                    onClick={() => setSelectedEntry(log)}
+                  >
+                    <td className="p-4 text-sm text-black font-sans">{log.entryDate}</td>
+                    {current.fields.map(f => (
+                      <td key={f.name} className="p-4 font-semibold text-black">{log[f.name]}</td>
+                    ))}
+                    <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors">⋮</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={current.fields.length + 2} className="p-12 text-center text-black text-sm font-medium opacity-50">
+                    No records found for {current.name}.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
 
       {/* Pagination Controls */}
       {activeTab !== 'overview' && (
-      <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center mt-4">
 
-  <p className="text-sm text-black opacity-60">
-    Showing {totalItems === 0 ? 0 : startIndex + 1}–
-    {Math.min(endIndex, totalItems)} of {totalItems} records
-  </p>
+          <p className="text-sm text-black opacity-60">
+            Showing {totalItems === 0 ? 0 : startIndex + 1}–
+            {Math.min(endIndex, totalItems)} of {totalItems} records
+          </p>
 
-  <div className="flex gap-2">
+          <div className="flex gap-2">
 
-    <button
-      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-      className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition"
-    >
-      Prev
-    </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition"
+            >
+              Prev
+            </button>
 
-    <span className="px-3 py-1 font-semibold text-sm">
-      Page {currentPage}
-    </span>
+            <span className="px-3 py-1 font-semibold text-sm">
+              Page {currentPage}
+            </span>
 
-    <button
-      onClick={() => setCurrentPage(prev => prev + 1)}
-      disabled={endIndex >= totalItems}
-      className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition"
-    >
-      Next
-    </button>
+            <button
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              disabled={endIndex >= totalItems}
+              className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition"
+            >
+              Next
+            </button>
 
-  </div>
-</div>
-)}
+          </div>
+        </div>
+      )}
 
 
       {/* Popover Action Menu (MODAL) */}
@@ -1331,23 +1332,23 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-[320px] transform transition-all scale-100">
             <h3 className="font-bold text-lg mb-4 text-center text-black">Manage Record</h3>
             <div className="space-y-2">
-              <button 
-  onClick={() => setViewMode(true)}
-  className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all"
->
-  👁️ View Details
-</button>
+              <button
+                onClick={() => setViewMode(true)}
+                className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all"
+              >
+                👁️ View Details
+              </button>
               {activeTab !== 'feeding' && (
-                <button 
-                  onClick={() => { setIsEditing(true); setShowForm(true); }} 
+                <button
+                  onClick={() => { setIsEditing(true); setShowForm(true); }}
                   className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
                 >
                   ✏️ Edit Entry
                 </button>
               )}
               {canDelete && (
-                <button 
-                  onClick={handleDelete} 
+                <button
+                  onClick={handleDelete}
                   className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"
                 >
                   🗑️ Delete Entry
@@ -1359,89 +1360,89 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
         </div>
       )}
       {selectedEntry && viewMode && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    
-    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
-      
-      {/* CLOSE CROSS ICON */}
-      <button 
-        onClick={() => setViewMode(false)}
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
-      >
-        ✕
-      </button>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
 
-      <h3 className="text-lg font-bold mb-4 text-center text-black">
-        {current.name} Details
-      </h3>
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
 
-      <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
+            {/* CLOSE CROSS ICON */}
+            <button
+              onClick={() => setViewMode(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
+            >
+              ✕
+            </button>
 
-        {/* DATE */}
-        <div className="flex justify-between border-b pb-2">
-          <span className="font-semibold text-gray-500">Date</span>
-          <span className="text-right">{selectedEntry.entryDate}</span>
-        </div>
+            <h3 className="text-lg font-bold mb-4 text-center text-black">
+              {current.name} Details
+            </h3>
 
-        {/* FIELDS */}
-        {current.fields.map(field => (
-          <div key={field.name} className="flex justify-between border-b pb-2">
-            <span className="font-semibold text-gray-500">
-              {field.label}
-            </span>
-            <span className="text-right font-medium">
-              {selectedEntry[field.name] || "-"}
-            </span>
+            <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
+
+              {/* DATE */}
+              <div className="flex justify-between border-b pb-2">
+                <span className="font-semibold text-gray-500">Date</span>
+                <span className="text-right">{selectedEntry.entryDate}</span>
+              </div>
+
+              {/* FIELDS */}
+              {current.fields.map(field => (
+                <div key={field.name} className="flex justify-between border-b pb-2">
+                  <span className="font-semibold text-gray-500">
+                    {field.label}
+                  </span>
+                  <span className="text-right font-medium">
+                    {selectedEntry[field.name] || "-"}
+                  </span>
+                </div>
+              ))}
+
+            </div>
+
+            <button
+              onClick={() => setViewMode(false)}
+              className="mt-6 w-full bg-gray-300 py-2 rounded-lg font-semibold"
+            >
+              Close
+            </button>
+
           </div>
-        ))}
-
-      </div>
-
-      <button
-        onClick={() => setViewMode(false)}
-        className="mt-6 w-full bg-gray-300 py-2 rounded-lg font-semibold"
-      >
-        Close
-      </button>
-
-    </div>
-  </div>
-)}
+        </div>
+      )}
       {showForm && (
-        <LogForm 
-          title={isEditing ? `Update ${current.name}` : `New ${current.name}`} 
-          fields={current.fields} 
-          initialData={isEditing ? selectedEntry : {}} 
-          onSubmit={handleSave} 
-          onClose={closeAllModals} 
+        <LogForm
+          title={isEditing ? `Update ${current.name}` : `New ${current.name}`}
+          fields={current.fields}
+          initialData={isEditing ? selectedEntry : {}}
+          onSubmit={handleSave}
+          onClose={closeAllModals}
         />
       )}
       {/* MOBILE FLOATING ADD BUTTON */}
-{/* MOBILE FLOATING ADD BUTTON */}
-{!showForm &&
- !selectedEntry &&
- !viewMode &&
- !showFilters &&
- !showTabDropdown &&
- activeTab !== 'overview' && (
-  <div
-    className={`
+      {/* MOBILE FLOATING ADD BUTTON */}
+      {!showForm &&
+        !selectedEntry &&
+        !viewMode &&
+        !showFilters &&
+        !showTabDropdown &&
+        activeTab !== 'overview' && (
+          <div
+            className={`
       md:hidden
       fixed bottom-20 right-6
       z-[100]
       transition-all duration-300
       ${showFAB
-        ? 'translate-y-0 opacity-100'
-        : 'translate-y-24 opacity-0 pointer-events-none'}
+                ? 'translate-y-0 opacity-100'
+                : 'translate-y-24 opacity-0 pointer-events-none'}
     `}
-  >
+          >
 
-    <button
-      onClick={() => {
-        setIsEditing(false);
-        setShowForm(true);
-      }}
-      className="
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setShowForm(true);
+              }}
+              className="
         w-14 h-14
         bg-[#D1867D] text-white
         rounded-full
@@ -1452,12 +1453,12 @@ setFilters([{ field: "entryDate", value: "", from: "", to: "" }]);              
         active:scale-95
         transition-all duration-200
       "
-    >
-      +
-    </button>
+            >
+              +
+            </button>
 
-  </div>
-)}
+          </div>
+        )}
     </div>
   );
 };

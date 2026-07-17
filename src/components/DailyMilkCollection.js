@@ -5,16 +5,16 @@ import { swalSuccess, swalError } from "../utils/swal";
 import LivestockTagInput from "./LivestockTagInput";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Home as HomeIcon, 
-  Settings, 
-  Search, 
-  Save, 
-  RefreshCw, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Home as HomeIcon,
+  Settings,
+  Search,
+  Save,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
   ArrowUpDown,
   TrendingUp,
   FileSpreadsheet,
@@ -120,13 +120,13 @@ export default function DailyMilkCollection() {
                 finalFarms = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
               }
             }
-          } catch (e) {}
+          } catch (e) { }
         }
 
         const sorted = sortFarms(finalFarms);
         setFarms(sorted);
         setSheds(shedsData || []);
-        
+
         const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
         setAnimals(rawAnimals);
 
@@ -172,7 +172,7 @@ export default function DailyMilkCollection() {
     if (!selectedFarmId) return [];
     return sheds.filter(
       (s) => String(s.farmId?._id || s.farmId?.id || s.farmId) === String(selectedFarmId) &&
-             s.milking === "Yes"
+        s.milking === "Yes"
     );
   }, [selectedFarmId, sheds]);
 
@@ -183,8 +183,8 @@ export default function DailyMilkCollection() {
         const count = animals.filter(
           (a) =>
             (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
-             String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
-             String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
+              String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+              String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
             String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
             !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
             String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
@@ -235,7 +235,7 @@ export default function DailyMilkCollection() {
   // Calculations
   const calculations = useMemo(() => {
     const targetDateStr = new Date(selectedDate).toDateString();
-    
+
     // Day collections overall
     const dayCollections = collections.filter(
       (c) => new Date(c.date).toDateString() === targetDateStr
@@ -255,12 +255,12 @@ export default function DailyMilkCollection() {
     // Table summary of all sheds for active session
     const shedsSummary = farmSheds.map((s) => {
       const shedKey = s.name || s.code || String(s._id);
-      
+
       const shedAnimals = animals.filter(
         (a) =>
           (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
-           String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
-           String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
+            String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+            String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
           String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
           !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
           String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
@@ -320,7 +320,7 @@ export default function DailyMilkCollection() {
 
   const activeShedObj = useMemo(() => {
     if (!activeShedId) return null;
-    return sheds.find(s => 
+    return sheds.find(s =>
       String(s.name || s.code || s._id).trim().toUpperCase() === String(activeShedId).trim().toUpperCase()
     );
   }, [activeShedId, sheds]);
@@ -332,8 +332,8 @@ export default function DailyMilkCollection() {
     return animals.filter(
       (a) =>
         (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.code || '').trim().toUpperCase() ||
-         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.name || '').trim().toUpperCase() ||
-         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj._id || '').trim().toUpperCase()) &&
+          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.name || '').trim().toUpperCase() ||
+          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj._id || '').trim().toUpperCase()) &&
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
         !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
         String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
@@ -496,7 +496,7 @@ export default function DailyMilkCollection() {
   const moveFarm = (index, direction) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= tempFarmsOrder.length) return;
-    
+
     const updated = [...tempFarmsOrder];
     const temp = updated[index];
     updated[index] = updated[nextIndex];
@@ -522,7 +522,7 @@ export default function DailyMilkCollection() {
 
   return (
     <div className="w-full flex flex-col bg-transparent text-slate-800 font-sans">
-      
+
       {/* A. Header & Sub-Header Section */}
       <ModulePageHeader
         title="Daily Milk Collection"
@@ -541,10 +541,10 @@ export default function DailyMilkCollection() {
         <SkeletonLoader type="table" columns={4} />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-          
+
           {/* LEFT COLUMN: Configuration Panel, Overall Stats, & Workspace */}
           <div className="xl:col-span-8 flex flex-col gap-8">
-            
+
             {/* 1. Session & Parameters Selection Grid (Horizontal Selection) */}
             <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -638,7 +638,7 @@ export default function DailyMilkCollection() {
 
             {/* 2. Interactive Shed Workspace Section */}
             <div className="flex flex-col gap-5">
-              
+
               {/* Shed Navigation Tabs */}
               <div className="flex flex-wrap gap-2.5">
                 {farmSheds.map((s) => {
@@ -654,17 +654,15 @@ export default function DailyMilkCollection() {
                         setActiveShedId(shedKey);
                         setFilters([{ field: "tag", value: "" }]);
                       }}
-                      className={`h-12 px-5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2.5 border active:scale-[0.98] ${
-                        activeShedId === shedKey
+                      className={`h-12 px-5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2.5 border active:scale-[0.98] ${activeShedId === shedKey
                           ? "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/10"
                           : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200/60 shadow-[0_4px_12px_rgba(0,0,0,0.01)]"
-                      }`}
+                        }`}
                     >
                       <HomeIcon className="w-3.5 h-3.5" />
                       <span>{shedKey}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
-                        activeShedId === shedKey ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                      }`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${activeShedId === shedKey ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                        }`}>
                         {animalCount} head · {netYield} L
                       </span>
                     </button>
@@ -676,7 +674,7 @@ export default function DailyMilkCollection() {
               {/* Selected Shed Data Entry Card */}
               {activeShedId ? (
                 <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] overflow-hidden">
-                  
+
                   {/* Card Section Header */}
                   <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-50/30">
                     <div>
@@ -697,9 +695,8 @@ export default function DailyMilkCollection() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`relative px-4 py-2 rounded-xl font-bold border text-xs transition-all duration-200 hover:-translate-y-px hover:shadow-md cursor-pointer flex items-center gap-2 h-10 ${
-                          showFilters ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-white border-slate-200 hover:bg-slate-50'
-                        }`}
+                        className={`relative px-4 py-2 rounded-xl font-bold border text-xs transition-all duration-200 hover:-translate-y-px hover:shadow-md cursor-pointer flex items-center gap-2 h-10 ${showFilters ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-white border-slate-200 hover:bg-slate-50'
+                          }`}
                       >
                         🔍 Filters
                         {activeFilterCount > 0 && (
@@ -887,7 +884,7 @@ export default function DailyMilkCollection() {
                           </span>
                         </div>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setShowUnassignedModal(true)}
                         className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black shadow-md shadow-amber-600/10 active:scale-95 transition-all duration-200 cursor-pointer"
                       >
@@ -923,21 +920,21 @@ export default function DailyMilkCollection() {
                                   {tag}
                                 </span>
                               </div>
-                              {((String(animal.status).toUpperCase() === 'PREGNANT') || 
+                              {((String(animal.status).toUpperCase() === 'PREGNANT') ||
                                 (activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0))) && (
-                                <div className="flex flex-wrap gap-1.5 mb-3">
-                                  {String(animal.status).toUpperCase() === 'PREGNANT' && (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold text-[#D1867D] bg-[#D1867D]/10 border border-[#D1867D]/20 rounded-md uppercase tracking-wider animate-pulse" title="Pregnant">
-                                      🤰 Pregnant
-                                    </span>
-                                  )}
-                                  {activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0) && (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-black text-red-600 bg-red-50 border border-red-100 rounded-md uppercase tracking-wider" title="Unassigned in Line Management">
-                                      ⚠️ Unassigned
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                                  <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {String(animal.status).toUpperCase() === 'PREGNANT' && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-extrabold text-[#D1867D] bg-[#D1867D]/10 border border-[#D1867D]/20 rounded-md uppercase tracking-wider animate-pulse" title="Pregnant">
+                                        🤰 Pregnant
+                                      </span>
+                                    )}
+                                    {activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0) && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-black text-red-600 bg-red-50 border border-red-100 rounded-md uppercase tracking-wider" title="Unassigned in Line Management">
+                                        ⚠️ Unassigned
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               <label className="block text-[8px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
                                 Volume (Liters)
                               </label>
@@ -959,7 +956,7 @@ export default function DailyMilkCollection() {
 
                   {/* Form Footer: Pagination, Self Consumption, & Inline Shed Action */}
                   <div className="p-8 border-t border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-6 bg-slate-50/20">
-                    
+
                     {/* Self consumption parameter input */}
                     {activeShedId !== "PREGNANT_WORKFLOW" && (
                       <div className="flex items-center gap-4 bg-white border border-slate-200/80 rounded-2xl p-4 max-w-sm w-full shadow-[0_4px_12px_rgba(0,0,0,0.01)]">
@@ -999,11 +996,10 @@ export default function DailyMilkCollection() {
                           <button
                             key={p}
                             onClick={() => setCurrentPage(p)}
-                            className={`w-9 h-9 rounded-xl text-[10px] font-bold border transition-all duration-300 ${
-                              currentPage === p
+                            className={`w-9 h-9 rounded-xl text-[10px] font-bold border transition-all duration-300 ${currentPage === p
                                 ? "bg-slate-800 border-slate-800 text-white"
                                 : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                            }`}
+                              }`}
                           >
                             {p}
                           </button>
@@ -1022,11 +1018,10 @@ export default function DailyMilkCollection() {
                     <button
                       onClick={handleSaveActiveShed}
                       disabled={isSaving}
-                      className={`px-6 h-12 text-white font-extrabold rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 ml-auto lg:ml-0 ${
-                        activeShedId === "PREGNANT_WORKFLOW"
+                      className={`px-6 h-12 text-white font-extrabold rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 ml-auto lg:ml-0 ${activeShedId === "PREGNANT_WORKFLOW"
                           ? "bg-violet-600 hover:bg-violet-700 shadow-violet-600/10 hover:shadow-violet-600/20"
                           : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 hover:shadow-emerald-600/20"
-                      }`}
+                        }`}
                     >
                       <Save className="w-4 h-4" />
                       <span>{isSaving ? "Saving..." : `Save ${activeShedId === "PREGNANT_WORKFLOW" ? "Pregnant Animals" : activeShedId}`}</span>
@@ -1046,7 +1041,7 @@ export default function DailyMilkCollection() {
 
           {/* RIGHT COLUMN: Real-Time Sheds Summary & Global Operations */}
           <div className="xl:col-span-4 flex flex-col gap-6">
-            
+
             {/* Sheds Summary Board */}
             <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
               <div className="flex flex-col gap-1 mb-6">
@@ -1096,11 +1091,10 @@ export default function DailyMilkCollection() {
               <button
                 onClick={handleSaveActiveShed}
                 disabled={isSaving || !activeShedId}
-                className={`w-full py-4 text-white font-extrabold rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 disabled:opacity-40 ${
-                  activeShedId === "PREGNANT_WORKFLOW"
+                className={`w-full py-4 text-white font-extrabold rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 disabled:opacity-40 ${activeShedId === "PREGNANT_WORKFLOW"
                     ? "bg-violet-600 hover:bg-violet-700 shadow-violet-600/10 hover:shadow-violet-600/20"
                     : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 hover:shadow-emerald-600/20"
-                }`}
+                  }`}
               >
                 <Save className="w-4 h-4" />
                 <span>{isSaving ? "Saving..." : `Save ${activeShedId === "PREGNANT_WORKFLOW" ? "Pregnant Animals" : (session === "MORNING" ? "Morning" : "Evening")} Data`}</span>
@@ -1146,7 +1140,7 @@ export default function DailyMilkCollection() {
                   <span className="font-bold text-xs text-slate-800 flex items-center gap-2">
                     🏡 {farm.name}
                   </span>
-                  
+
                   <div className="flex gap-1">
                     <button
                       onClick={() => moveFarm(index, -1)}
@@ -1191,7 +1185,7 @@ export default function DailyMilkCollection() {
       {showUnassignedModal && activeShedObj && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[250] p-4">
           <div className="bg-white w-full max-w-md rounded-[30px] shadow-2xl p-6 relative">
-            <button 
+            <button
               onClick={() => setShowUnassignedModal(false)}
               className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 cursor-pointer"
             >
@@ -1224,7 +1218,7 @@ export default function DailyMilkCollection() {
                 </div>
               ))}
             </div>
-            <button 
+            <button
               onClick={() => setShowUnassignedModal(false)}
               className="mt-6 w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold text-sm shadow-md transition-colors"
             >

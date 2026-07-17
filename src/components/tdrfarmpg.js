@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import LogForm from './LogForm';
-import ExcelJS from "exceljs"; 
+import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { api } from "../utils/api";
@@ -11,7 +11,7 @@ import { hasActionPermission } from "../utils/permission";
 
 const toCamelCase = (str) => {
   return str
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) =>
       index === 0 ? word.toLowerCase() : word.toUpperCase()
     )
     .replace(/\s+/g, '')
@@ -36,7 +36,7 @@ const FarmTDR = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const canDelete = hasActionPermission('SHED_LOG', 'SHED_LOG', 'delete');
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -131,29 +131,29 @@ const FarmTDR = () => {
         { name: 'animalId', label: 'Cattle', type: 'select', options: animals },
         ...(feeds.length > 0
           ? feeds.map(feedName => {
-              const camelName = toCamelCase(feedName);
-              let unit = 'KG';
-              const lowerName = feedName.toLowerCase();
-              if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
-              else if (lowerName.includes('calcium')) unit = 'ML';
-              return {
-                name: camelName,
-                label: `${feedName} (${unit})`,
-                type: 'number',
-                optional: true
-              };
-            })
+            const camelName = toCamelCase(feedName);
+            let unit = 'KG';
+            const lowerName = feedName.toLowerCase();
+            if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
+            else if (lowerName.includes('calcium')) unit = 'ML';
+            return {
+              name: camelName,
+              label: `${feedName} (${unit})`,
+              type: 'number',
+              optional: true
+            };
+          })
           : [
-              { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
-              { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
-              { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
-              { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
-              { name: 'maize', label: 'Maize (KG)', type: 'number' },
-              { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
-              { name: 'salt', label: 'Salt (G)', type: 'number' },
-              { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
-              { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
-            ]
+            { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
+            { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
+            { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
+            { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
+            { name: 'maize', label: 'Maize (KG)', type: 'number' },
+            { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
+            { name: 'salt', label: 'Salt (G)', type: 'number' },
+            { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
+            { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
+          ]
         )
       ]
     },
@@ -286,136 +286,136 @@ const FarmTDR = () => {
     setCurrentPage(1);
   }, [activeTab]);
   useEffect(() => {
-  let lastScrollY = window.scrollY;
+    let lastScrollY = window.scrollY;
 
-  const handleScroll = () => {
-    if (Math.abs(window.scrollY - lastScrollY) < 10) return;
+    const handleScroll = () => {
+      if (Math.abs(window.scrollY - lastScrollY) < 10) return;
 
-    if (window.scrollY > lastScrollY) {
-      setShowFAB(false); // scrolling down → hide
+      if (window.scrollY > lastScrollY) {
+        setShowFAB(false); // scrolling down → hide
+      } else {
+        setShowFAB(true); // scrolling up → show
+      }
+
+      lastScrollY = window.scrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const fullHeight = document.body.scrollHeight;
+
+      // distance from bottom
+      const distanceFromBottom = fullHeight - (scrollY + windowHeight);
+
+      // hide when near bottom (adjust threshold)
+      if (distanceFromBottom < 120) {
+        setHideFABNearBottom(true);
+      } else {
+        setHideFABNearBottom(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (showTabDropdown || showFilters || viewMode || showForm) {
+      document.body.style.overflow = "hidden";
     } else {
-      setShowFAB(true); // scrolling up → show
+      document.body.style.overflow = "auto";
     }
 
-    lastScrollY = window.scrollY;
-  };
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [showTabDropdown, showFilters, viewMode, showForm]);
 
-  window.addEventListener("scroll", handleScroll);
+  useEffect(() => {
 
-  return () => window.removeEventListener("scroll", handleScroll);
-}, []);
-
-useEffect(() => {
-  const handleScroll = () => {
-    const scrollY = window.scrollY;
-    const windowHeight = window.innerHeight;
-    const fullHeight = document.body.scrollHeight;
-
-    // distance from bottom
-    const distanceFromBottom = fullHeight - (scrollY + windowHeight);
-
-    // hide when near bottom (adjust threshold)
-    if (distanceFromBottom < 120) {
-      setHideFABNearBottom(true);
+    if (
+      showForm ||
+      showFilters ||
+      viewMode ||
+      selectedEntry
+    ) {
+      document.body.classList.add("hide-mobile-footer");
     } else {
-      setHideFABNearBottom(false);
+      document.body.classList.remove("hide-mobile-footer");
     }
-  };
 
-  window.addEventListener("scroll", handleScroll);
-  return () => window.removeEventListener("scroll", handleScroll);
-}, []);
+    return () => {
+      document.body.classList.remove("hide-mobile-footer");
+    };
 
-useEffect(() => {
-  if (showTabDropdown || showFilters || viewMode || showForm) {
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "auto";
-  }
-
-  return () => {
-    document.body.style.overflow = "auto";
-  };
-}, [showTabDropdown, showFilters, viewMode, showForm]);
-
-useEffect(() => {
-
-  if (
-    showForm ||
-    showFilters ||
-    viewMode ||
-    selectedEntry
-  ) {
-    document.body.classList.add("hide-mobile-footer");
-  } else {
-    document.body.classList.remove("hide-mobile-footer");
-  }
-
-  return () => {
-    document.body.classList.remove("hide-mobile-footer");
-  };
-
-}, [showForm, showFilters, viewMode, selectedEntry]);
+  }, [showForm, showFilters, viewMode, selectedEntry]);
 
 
   const filteredLogs = logs.filter(log => {
-  return filters.every(f => {
+    return filters.every(f => {
 
-    // 📅 DATE RANGE
-    if (f.field.toLowerCase().includes("date")) {
-      if (!f.from && !f.to) return true;
+      // 📅 DATE RANGE
+      if (f.field.toLowerCase().includes("date")) {
+        if (!f.from && !f.to) return true;
 
-      const logDate = log[f.field] || (f.field === 'date' ? log.entryDate : null);
-      if (!logDate) return false;
+        const logDate = log[f.field] || (f.field === 'date' ? log.entryDate : null);
+        if (!logDate) return false;
 
-      let current;
-      if (logDate.includes("/")) {
-        const parts = logDate.split("/");
-        if (parts.length === 3) {
-          const [d, m, y] = parts;
-          current = new Date(`${y}-${m}-${d}`);
+        let current;
+        if (logDate.includes("/")) {
+          const parts = logDate.split("/");
+          if (parts.length === 3) {
+            const [d, m, y] = parts;
+            current = new Date(`${y}-${m}-${d}`);
+          } else {
+            current = new Date(logDate);
+          }
         } else {
           current = new Date(logDate);
         }
-      } else {
-        current = new Date(logDate);
+
+        if (isNaN(current.getTime())) return false;
+        current.setHours(0, 0, 0, 0);
+
+        if (f.from) {
+          const [fd, fm, fy] = f.from.split("/");
+          const fromDate = new Date(`${fy}-${fm}-${fd}`);
+          fromDate.setHours(0, 0, 0, 0);
+          if (current < fromDate) return false;
+        }
+
+        if (f.to) {
+          const [td, tm, ty] = f.to.split("/");
+          const toDate = new Date(`${ty}-${tm}-${td}`);
+          toDate.setHours(0, 0, 0, 0);
+          if (current > toDate) return false;
+        }
+
+        return true;
       }
 
-      if (isNaN(current.getTime())) return false;
-      current.setHours(0, 0, 0, 0);
+      // NORMAL FILTER
+      if (!f.value) return true;
 
-      if (f.from) {
-        const [fd, fm, fy] = f.from.split("/");
-        const fromDate = new Date(`${fy}-${fm}-${fd}`);
-        fromDate.setHours(0, 0, 0, 0);
-        if (current < fromDate) return false;
-      }
-
-      if (f.to) {
-        const [td, tm, ty] = f.to.split("/");
-        const toDate = new Date(`${ty}-${tm}-${td}`);
-        toDate.setHours(0, 0, 0, 0);
-        if (current > toDate) return false;
-      }
-
-      return true;
-    }
-
-    // NORMAL FILTER
-    if (!f.value) return true;
-
-    return String(log[f.field] || "")
-      .toLowerCase()  
-      .includes(f.value.toLowerCase());
+      return String(log[f.field] || "")
+        .toLowerCase()
+        .includes(f.value.toLowerCase());
+    });
   });
-});
-  
+
   const totalItems = filteredLogs.length;
 
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
 
-const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
   const saveToStorage = (updatedLogs) => {
     setLogs(updatedLogs);
@@ -427,7 +427,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     try {
       const payload = { ...data, farm: 'TDR' };
       const entryId = selectedEntry?.id || selectedEntry?._id;
-      
+
       if (isEditing) {
         if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
@@ -442,7 +442,7 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
         const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
         payload.date = now.toISOString(); // Send ISO string for backend
         payload.entryDate = formattedDate; // Keep formattedDate for frontend table display if needed
-        
+
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
         else if (activeTab === 'medicine') await api.inventory.medicines.create(payload);
@@ -701,52 +701,52 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
   };
 
   const activeFilterCount = filters.filter(
-  f => (f.value && f.value.trim() !== "") || f.from || f.to
-).length;
+    f => (f.value && f.value.trim() !== "") || f.from || f.to
+  ).length;
 
   return (
     <div className="w-full flex flex-col bg-transparent text-slate-800">
       <div className="flex-none">
 
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-[#16223F] opacity-80">TDR Farm</h1>
-          <p className="text-gray-500 italic">Module: {current.name}</p>
-        </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          
-          
-          <button 
-            onClick={exportExcel} 
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2"
-          >
-            📊 Excel
-          </button>
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-[#16223F] opacity-80">TDR Farm</h1>
+            <p className="text-gray-500 italic">Module: {current.name}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
 
-          
-          <button 
-            onClick={exportPDF} 
-            className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all flex items-center gap-2"
-          >
-            📄 PDF
-          </button>
 
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`
+            <button
+              onClick={exportExcel}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2"
+            >
+              📊 Excel
+            </button>
+
+
+            <button
+              onClick={exportPDF}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold shadow-md hover:bg-red-700 transition-all flex items-center gap-2"
+            >
+              📄 PDF
+            </button>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`
   relative
   px-4 py-2 rounded-lg font-bold border
   transition-all duration-200 ease-out 
   hover:-translate-y-[1px] hover:shadow-md
-  ${showFilters 
-    ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
-    : 'bg-white border-gray-300 hover:bg-gray-50'}
+  ${showFilters
+                  ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20'
+                  : 'bg-white border-gray-300 hover:bg-gray-50'}
 `}
-          >
-            {showFilters ? '✕ Hide Filter' : '🔍 Filters'}
+            >
+              {showFilters ? '✕ Hide Filter' : '🔍 Filters'}
 
-{activeFilterCount > 0 && (
-  <span className="
+              {activeFilterCount > 0 && (
+                <span className="
     absolute -top-2 -right-2
     bg-red-600 text-white
     text-[10px] font-bold
@@ -755,194 +755,193 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
     min-w-[18px]
     text-center
   ">
-    {activeFilterCount}
-  </span>
-)}
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            <button onClick={() => { setIsEditing(false); setShowForm(true); }} className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold hover:bg-[#16223F]/90 shadow-md transition-all">
+              + Add {current.name}
+            </button>
+          </div>
+        </header>
+
+        {/* Tabs and rest of your UI remains exactly the same... */}
+        {/* <div className="flex flex-wrap gap-3 mb-8"> */}
+        <div className="relative flex items-center gap-2 mb-6 w-full md:w-auto">
+
+          {/* DROPDOWN BUTTON */}
+          <button
+            onClick={() => setShowTabDropdown(!showTabDropdown)}
+            className="flex-1 flex items-center justify-between px-3 py-2 rounded-full border bg-white text-sm font-semibold shadow-sm"
+          >
+            <span className="truncate">
+              {current.icon} {current.name}
+            </span>
+
+            <span className={`ml-2 transition-transform ${showTabDropdown ? "rotate-180" : ""}`}>
+              ▼
+            </span>
           </button>
 
-          <button onClick={() => { setIsEditing(false); setShowForm(true); }} className="hidden md:block bg-[#16223F] text-white px-5 py-2 rounded-lg font-bold hover:bg-[#16223F]/90 shadow-md transition-all">
-            + Add {current.name}
+          {/* MOBILE ADD BUTTON ONLY */}
+          <button
+            onClick={() => { setIsEditing(false); setShowForm(true); }}
+            className="md:hidden shrink-0 px-4 py-2 bg-[#16223F] text-white rounded-full font-bold shadow-md hover:bg-[#16223F]/90"
+          >
+            + Add
           </button>
-        </div>
-      </header>
 
-      {/* Tabs and rest of your UI remains exactly the same... */}
-      {/* <div className="flex flex-wrap gap-3 mb-8"> */}
-      <div className="relative flex items-center gap-2 mb-6 w-full md:w-auto">
+          {/* OVERLAY */}
+          {showTabDropdown && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowTabDropdown(false)}
+            />
+          )}
 
-  {/* DROPDOWN BUTTON */}
-  <button
-    onClick={() => setShowTabDropdown(!showTabDropdown)}
-    className="flex-1 flex items-center justify-between px-3 py-2 rounded-full border bg-white text-sm font-semibold shadow-sm"
-  >
-    <span className="truncate">
-      {current.icon} {current.name}
-    </span>
-
-    <span className={`ml-2 transition-transform ${showTabDropdown ? "rotate-180" : ""}`}>
-      ▼
-    </span>
-  </button>
-
-  {/* MOBILE ADD BUTTON ONLY */}
-  <button
-    onClick={() => { setIsEditing(false); setShowForm(true); }}
-    className="md:hidden shrink-0 px-4 py-2 bg-[#16223F] text-white rounded-full font-bold shadow-md hover:bg-[#16223F]/90"
-  >
-    + Add
-  </button>
-
-  {/* OVERLAY */}
-  {showTabDropdown && (
-    <div
-      className="fixed inset-0 z-40"
-      onClick={() => setShowTabDropdown(false)}
-    />
-  )}
-
-  {/* DROPDOWN */}
-  <div
-    className={`
+          {/* DROPDOWN */}
+          <div
+            className={`
       absolute left-0 top-full mt-2 
       w-full md:w-[280px]
       bg-white border rounded-xl shadow-lg z-50
       transition-all duration-300
-      ${showTabDropdown 
-        ? "opacity-100 translate-y-0" 
-        : "opacity-0 -translate-y-4 pointer-events-none"}
+      ${showTabDropdown
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-4 pointer-events-none"}
     `}
-  >
-    {modules.map(m => (
-      <button
-        key={m.id}
-        onClick={() => {
-          setActiveTab(m.id);
-          setShowTabDropdown(false);
-          const urlTab = m.id === 'medicine' ? 'med_inv' : m.id;
-          router.push({ query: { ...router.query, tab: urlTab } }, undefined, { shallow: true });
-        }}
-        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-          activeTab === m.id ? "bg-[#D1867D]/10 text-[#16223F] font-bold" : ""
-        }`}
-      >
-        {m.icon} {m.name}
-      </button>
-    ))}
-  </div>
-
-</div>
-  
-
-
-        
-      
-
-      {showFilters && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-
-    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto p-4">
-
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-black">Filters</h3>
-        <button onClick={() => setShowFilters(false)} className="text-gray-500 text-xl font-bold">✕</button>
-      </div>
-
-      <div className="space-y-3">
-
-        {filters.map((f, index) => (
-          <div key={index} className="flex flex-col gap-2">
-
-            {/* FIELD */}
-            <select
-              className="px-2 py-1.5 border rounded-lg text-sm"
-              value={f.field}
-              onChange={(e) => {
-                const updated = [...filters];
-                updated[index] = { field: e.target.value, value: "", from: "", to: "" };
-                setFilters(updated);
-              }}
-            >
-              <option value="date">Date</option>
-              {current.fields.map(field => (
-                <option key={field.name} value={field.name}>
-                  {field.label}
-                </option>
-              ))}
-            </select>
-
-            {/* VALUE */}
-            {f.field.includes("date") ? (
-              <div className="flex gap-2">
-                <input type="date" className="w-full border rounded px-2 py-1.5"
-                  onChange={(e) => {
-                    const updated = [...filters];
-                    updated[index].from = e.target.value.split("-").reverse().join("/");
-                    setFilters(updated);
-                  }}
-                />
-                <input type="date" className="w-full border rounded px-2 py-1.5"
-                  onChange={(e) => {
-                    const updated = [...filters];
-                    updated[index].to = e.target.value.split("-").reverse().join("/");
-                    setFilters(updated);
-                  }}
-                />
-              </div>
-            ) : (
-              <input
-                type="text"
-                placeholder="Enter value..."
-                className="px-2 py-1.5 border rounded-lg text-sm"
-                value={f.value}
-                onChange={(e) => {
-                  const updated = [...filters];
-                  updated[index].value = e.target.value;
-                  setFilters(updated);
+          >
+            {modules.map(m => (
+              <button
+                key={m.id}
+                onClick={() => {
+                  setActiveTab(m.id);
+                  setShowTabDropdown(false);
+                  const urlTab = m.id === 'medicine' ? 'med_inv' : m.id;
+                  router.push({ query: { ...router.query, tab: urlTab } }, undefined, { shallow: true });
                 }}
-              />
-            )}
-
-            <button
-              onClick={() => {
-                const updated = filters.filter((_, i) => i !== index);
-                setFilters(updated.length ? updated : [{ field: "date", value: "", from: "", to: "" }]);
-              }}
-              className="text-red-600 text-xs font-bold self-end"
-            >
-              Remove
-            </button>
-
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${activeTab === m.id ? "bg-[#D1867D]/10 text-[#16223F] font-bold" : ""
+                  }`}
+              >
+                {m.icon} {m.name}
+              </button>
+            ))}
           </div>
-        ))}
 
-      </div>
+        </div>
 
-      <div className="flex gap-2 mt-6">
-        <button
-          onClick={() => setFilters([...filters, { field: "date", value: "", from: "", to: "" }])}
-          className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
-        >
-          + Add Filter
-        </button>
 
-        <button
-          onClick={() => setFilters([{ field: "date", value: "", from: "", to: "" }])}
-          className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm"
-        >
-          Clear
-        </button>
-      </div>
 
-      <button
-        onClick={() => setShowFilters(false)}
-        className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold"
-      >
-        Apply Filters
-      </button>
 
-    </div>
-  </div>
-)}
+
+
+        {showFilters && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto p-4">
+
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-black">Filters</h3>
+                <button onClick={() => setShowFilters(false)} className="text-gray-500 text-xl font-bold">✕</button>
+              </div>
+
+              <div className="space-y-3">
+
+                {filters.map((f, index) => (
+                  <div key={index} className="flex flex-col gap-2">
+
+                    {/* FIELD */}
+                    <select
+                      className="px-2 py-1.5 border rounded-lg text-sm"
+                      value={f.field}
+                      onChange={(e) => {
+                        const updated = [...filters];
+                        updated[index] = { field: e.target.value, value: "", from: "", to: "" };
+                        setFilters(updated);
+                      }}
+                    >
+                      <option value="date">Date</option>
+                      {current.fields.map(field => (
+                        <option key={field.name} value={field.name}>
+                          {field.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* VALUE */}
+                    {f.field.includes("date") ? (
+                      <div className="flex gap-2">
+                        <input type="date" className="w-full border rounded px-2 py-1.5"
+                          onChange={(e) => {
+                            const updated = [...filters];
+                            updated[index].from = e.target.value.split("-").reverse().join("/");
+                            setFilters(updated);
+                          }}
+                        />
+                        <input type="date" className="w-full border rounded px-2 py-1.5"
+                          onChange={(e) => {
+                            const updated = [...filters];
+                            updated[index].to = e.target.value.split("-").reverse().join("/");
+                            setFilters(updated);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="Enter value..."
+                        className="px-2 py-1.5 border rounded-lg text-sm"
+                        value={f.value}
+                        onChange={(e) => {
+                          const updated = [...filters];
+                          updated[index].value = e.target.value;
+                          setFilters(updated);
+                        }}
+                      />
+                    )}
+
+                    <button
+                      onClick={() => {
+                        const updated = filters.filter((_, i) => i !== index);
+                        setFilters(updated.length ? updated : [{ field: "date", value: "", from: "", to: "" }]);
+                      }}
+                      className="text-red-600 text-xs font-bold self-end"
+                    >
+                      Remove
+                    </button>
+
+                  </div>
+                ))}
+
+              </div>
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => setFilters([...filters, { field: "date", value: "", from: "", to: "" }])}
+                  className="flex-1 bg-[#D1867D]/10 text-[#16223F] py-2 rounded-lg font-bold text-sm hover:bg-[#D1867D]/20"
+                >
+                  + Add Filter
+                </button>
+
+                <button
+                  onClick={() => setFilters([{ field: "date", value: "", from: "", to: "" }])}
+                  className="flex-1 bg-red-100 text-red-600 py-2 rounded-lg font-bold text-sm"
+                >
+                  Clear
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowFilters(false)}
+                className="mt-4 w-full bg-[#16223F] hover:bg-[#16223F]/90 text-white py-2 rounded-lg font-bold"
+              >
+                Apply Filters
+              </button>
+
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table Section */}
@@ -970,44 +969,44 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           </tbody>
         </table>
       </div>
-      
-    
-    <div className="flex justify-between items-center mt-4">
-
-  <p className="text-sm text-gray-600">
-    Showing {totalItems === 0 ? 0 : startIndex + 1}–
-    {Math.min(endIndex, totalItems)} of {totalItems} records
-  </p>
-
-  <div className="flex gap-2">
-
-    <button
-      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-      
-      className="px-4 py-1 rounded-lg border bg-white hover:bg-gray-100 hover:shadow-sm transition"
-    >
-      Prev
-    </button>
-
-    <span className="px-3 py-1 font-semibold">
-      Page {currentPage}
-    </span>
-
-    <button
-      onClick={() => setCurrentPage(prev => prev + 1)}
-      disabled={endIndex >= totalItems}
-    
-      className="px-4 py-1 rounded-lg border bg-white hover:bg-gray-100 hover:shadow-sm transition "
-    >
-      Next
-    </button>
-
-  </div>
-</div>
 
 
-      
+      <div className="flex justify-between items-center mt-4">
+
+        <p className="text-sm text-gray-600">
+          Showing {totalItems === 0 ? 0 : startIndex + 1}–
+          {Math.min(endIndex, totalItems)} of {totalItems} records
+        </p>
+
+        <div className="flex gap-2">
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+
+            className="px-4 py-1 rounded-lg border bg-white hover:bg-gray-100 hover:shadow-sm transition"
+          >
+            Prev
+          </button>
+
+          <span className="px-3 py-1 font-semibold">
+            Page {currentPage}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={endIndex >= totalItems}
+
+            className="px-4 py-1 rounded-lg border bg-white hover:bg-gray-100 hover:shadow-sm transition "
+          >
+            Next
+          </button>
+
+        </div>
+      </div>
+
+
+
       {selectedEntry && !showForm && !viewMode && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-[320px]">
@@ -1015,13 +1014,13 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
             {/* <div className="space-y-2"> */}
             <div className="space-y-2">
 
-  {/* ✅ VIEW BUTTON */}
-  <button 
-    onClick={() => {setViewMode(true);}}
-    className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all"
-  >
-    👁️ View Details
-  </button>
+              {/* ✅ VIEW BUTTON */}
+              <button
+                onClick={() => { setViewMode(true); }}
+                className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white py-3 rounded-xl font-semibold hover:bg-gray-600 transition-all"
+              >
+                👁️ View Details
+              </button>
               {activeTab !== 'feeding' && (
                 <button onClick={() => { setIsEditing(true); setShowForm(true); }} className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold transition-all duration-200 ease-out hover:bg-[#D1867D]/90 hover:shadow-md hover:-translate-y-[1px]">✏️ Edit Entry</button>
               )}
@@ -1032,60 +1031,60 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
             </div>
           </div>
         </div>
-        
+
       )}
-      
+
       {selectedEntry && viewMode && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    
-    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
-      
-      {/* CLOSE CROSS ICON */}
-      <button 
-        onClick={() => setViewMode(false)}
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
-      >
-        ✕
-      </button>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
 
-      <h3 className="text-lg font-bold mb-4 text-center text-black">
-        {current.name} Details
-      </h3>
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
 
-      {/* DATA DISPLAY */}
-      <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
+            {/* CLOSE CROSS ICON */}
+            <button
+              onClick={() => setViewMode(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
+            >
+              ✕
+            </button>
 
-        {/* DATE */}
-        <div className="flex justify-between border-b pb-2">
-          <span className="font-semibold text-gray-500">Date</span>
-          <span className="text-right">{selectedEntry.date}</span>
-        </div>
+            <h3 className="text-lg font-bold mb-4 text-center text-black">
+              {current.name} Details
+            </h3>
 
-        {/* FIELDS */}
-        {current.fields.map(field => (
-          <div key={field.name} className="flex justify-between border-b pb-2">
-            <span className="font-semibold text-gray-500">
-              {field.label}
-            </span>
-            <span className="text-right font-medium">
-              {selectedEntry[field.name] || "-"}
-            </span>
+            {/* DATA DISPLAY */}
+            <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
+
+              {/* DATE */}
+              <div className="flex justify-between border-b pb-2">
+                <span className="font-semibold text-gray-500">Date</span>
+                <span className="text-right">{selectedEntry.date}</span>
+              </div>
+
+              {/* FIELDS */}
+              {current.fields.map(field => (
+                <div key={field.name} className="flex justify-between border-b pb-2">
+                  <span className="font-semibold text-gray-500">
+                    {field.label}
+                  </span>
+                  <span className="text-right font-medium">
+                    {selectedEntry[field.name] || "-"}
+                  </span>
+                </div>
+              ))}
+
+            </div>
+
+            {/* CLOSE */}
+            <button
+              onClick={() => setViewMode(false)}
+              className="mt-6 w-full bg-gray-300 py-2 rounded-lg font-semibold"
+            >
+              Close
+            </button>
+
           </div>
-        ))}
-
-      </div>
-
-      {/* CLOSE */}
-      <button
-        onClick={() => setViewMode(false)}
-        className="mt-6 w-full bg-gray-300 py-2 rounded-lg font-semibold"
-      >
-        Close
-      </button>
-
-    </div>
-  </div>
-)}
+        </div>
+      )}
 
       {showForm && (
         <LogForm title={isEditing ? `Update ${current.name}` : `New ${current.name}`} fields={current.fields} initialData={isEditing ? selectedEntry : {}} onSubmit={handleSave} onClose={closeAllModals} />
@@ -1096,8 +1095,8 @@ const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
           className={`
             md:hidden fixed right-6 z-[100]
             transition-all duration-300
-            ${!showFAB || hideFABNearBottom 
-              ? "opacity-0 translate-y-10 pointer-events-none" 
+            ${!showFAB || hideFABNearBottom
+              ? "opacity-0 translate-y-10 pointer-events-none"
               : "opacity-100 translate-y-0"}
             bottom-20
           `}

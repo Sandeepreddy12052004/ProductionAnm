@@ -48,7 +48,7 @@ const LineManagementPg = () => {
       const lineManagedSheds = activeSheds.filter(s => s.lineManagement === "Yes");
 
       setSheds(lineManagedSheds);
-      
+
       let rawFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
       let finalFarms = Array.isArray(rawFarms) ? rawFarms : [];
       if (!Array.isArray(finalFarms) || finalFarms.length === 0) {
@@ -63,10 +63,10 @@ const LineManagementPg = () => {
               finalFarms = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       setFarms(finalFarms);
-      
+
       setCattleData(Array.isArray(cattleRes) ? cattleRes : (cattleRes?.data ?? []));
 
       // Handle selection updates
@@ -147,7 +147,7 @@ const LineManagementPg = () => {
     if (!selectedShed) return;
 
     const confirmed = await swalConfirm(
-      "Remove Animal?", 
+      "Remove Animal?",
       `Are you sure you want to remove animal #${animal.tag || animal.tag_id} from Row ${animal.lineNo}, Position ${animal.position}?`
     );
     if (!confirmed) return;
@@ -230,7 +230,7 @@ const LineManagementPg = () => {
 
   const getUnassignedAnimals = () => {
     if (!selectedShed) return [];
-    return cattleData.filter(animal => 
+    return cattleData.filter(animal =>
       String(animal.shed || animal.shedId || '').trim() === String(selectedShed.code || '').trim() &&
       (!animal.lineNo || Number(animal.lineNo) === 0) &&
       !animal.isDeleted &&
@@ -241,8 +241,8 @@ const LineManagementPg = () => {
 
   const getEmptySlotsInRow = (rowNum) => {
     if (!selectedShed) return [];
-    const rowAnimals = cattleData.filter(c => 
-      String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() && 
+    const rowAnimals = cattleData.filter(c =>
+      String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() &&
       Number(c.lineNo || 0) === Number(rowNum) &&
       Number(c.position || 0) > 0 &&
       Number(c.position || 0) <= 10 &&
@@ -285,7 +285,7 @@ const LineManagementPg = () => {
 
       await api.cattle.update(animalId, payload);
       swalSuccess("Success", `Assigned animal #${tag} to Row ${rowNum}, Position ${slotNum}`);
-      
+
       setUnassignedSelections(prev => {
         const copy = { ...prev };
         delete copy[animalId];
@@ -496,21 +496,21 @@ const LineManagementPg = () => {
                     {getUnassignedAnimals().length} Animals Need Row Assignment
                   </span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2">
                   {getUnassignedAnimals().map(animal => {
                     const animalId = animal._id || animal.id;
                     const selection = unassignedSelections[animalId] || { row: "", slot: "" };
-                    const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO' 
-                      ? '🐃' 
-                      : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF' 
-                        ? '🍼' 
+                    const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO'
+                      ? '🐃'
+                      : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF'
+                        ? '🍼'
                         : '🐄';
 
                     const availableSlots = selection.row ? getEmptySlotsInRow(selection.row) : [];
 
                     return (
-                      <div 
+                      <div
                         key={animalId}
                         className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-sm transition-all"
                       >
@@ -887,5 +887,7 @@ const LineManagementPg = () => {
     </div>
   );
 };
+
+export default LineManagementPg;
 
 export default LineManagementPg;

@@ -5,17 +5,17 @@ import { useRouter } from 'next/router';
 import { api } from '../utils/api';
 import { swalSuccess, swalError, swalConfirm } from '../utils/swal';
 import SkeletonLoader from './SkeletonLoader';
-import { 
-  Shield, 
-  Users, 
-  Layers, 
-  Search, 
-  Check, 
-  Edit3, 
-  Trash2, 
-  Info, 
-  Plus, 
-  Sliders 
+import {
+  Shield,
+  Users,
+  Layers,
+  Search,
+  Check,
+  Edit3,
+  Trash2,
+  Info,
+  Plus,
+  Sliders
 } from 'lucide-react';
 
 const DEFAULT_MODULE_GROUPS = {
@@ -93,7 +93,7 @@ const RoleManagementPg = () => {
   const [moduleSearchQuery, setModuleSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL', 'CORE', 'OPERATIONS'
   const [moduleGroups, setModuleGroups] = useState(DEFAULT_MODULE_GROUPS);
-  
+
   // Permission Matrix State: { [modulePrefix]: { view: boolean, create: boolean, edit: boolean, delete: boolean } }
   const [matrixState, setMatrixState] = useState({});
 
@@ -206,7 +206,7 @@ const RoleManagementPg = () => {
     setSelectedRole(null);
     setRoleName('');
     setRoleDescription('');
-    
+
     // Clear all checkbox states
     const emptyMatrix = {};
     Object.values(moduleGroups).forEach((group) => {
@@ -226,7 +226,7 @@ const RoleManagementPg = () => {
   const handleResetForm = () => {
     setRoleName('');
     setRoleDescription('');
-    
+
     // Clear all checkbox states
     const emptyMatrix = {};
     Object.values(moduleGroups).forEach((group) => {
@@ -240,7 +240,7 @@ const RoleManagementPg = () => {
   // Toggle single cell checkbox state
   const handleToggleCell = (modPrefix, action) => {
     if (selectedRole?.isSystem && selectedRole?.name === 'SUPER_ADMIN') return; // SUPER_ADMIN permissions locked
-    
+
     setMatrixState((prev) => {
       const modState = prev[modPrefix] ? { ...prev[modPrefix] } : { view: false, create: false, edit: false, delete: false };
       modState[action] = !modState[action];
@@ -255,7 +255,7 @@ const RoleManagementPg = () => {
     setMatrixState((prev) => {
       const modState = prev[modPrefix] ? { ...prev[modPrefix] } : { view: false, create: false, edit: false, delete: false };
       const isAnyUnchecked = ACTIONS.some((act) => !modState[act]);
-      
+
       const newActions = {};
       ACTIONS.forEach((act) => {
         newActions[act] = isAnyUnchecked; // Check all if any was unchecked, otherwise uncheck all
@@ -361,11 +361,11 @@ const RoleManagementPg = () => {
         fetchRoles();
       } else {
         await api.roles.create(payload);
-        
+
         // Dynamic End-To-End pipeline redirect handoff payload trigger
         setShowRoleModal(false);
         await swalSuccess('Success', `Role "${payload.name}" registered successfully! Redirecting you to register a user to this profile.`);
-        
+
         // Handoff to user creation form with clean locked-on role parameters
         router.push(`/users?action=create&role=${encodeURIComponent(payload.name)}`);
       }
@@ -504,7 +504,7 @@ const RoleManagementPg = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-start">
-          
+
           {/* LEFT PANEL: EXISTING PROFILES LIST */}
           <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-[#e3e8f2] shadow-sm flex flex-col w-full">
             <div className="mb-4">
@@ -534,16 +534,15 @@ const RoleManagementPg = () => {
                     <div
                       key={role._id || role.id}
                       onClick={() => handleSelectRole(role)}
-                      className={`group relative flex flex-col p-4 rounded-2xl cursor-pointer border transition-all duration-200 ${
-                        isSelected
+                      className={`group relative flex flex-col p-4 rounded-2xl cursor-pointer border transition-all duration-200 ${isSelected
                           ? 'bg-[#071437] text-white border-transparent shadow-md hover:translate-x-0.5'
                           : 'bg-[#f8fafc] hover:bg-slate-100/50 border-[#e3e8f2] hover:translate-x-0.5 text-[#071437]'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3 min-w-0">
                           {/* Colored Initials Avatar */}
-                          <div 
+                          <div
                             className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-xs border transition-all"
                             style={{
                               backgroundColor: isSelected ? 'rgba(255,255,255,0.1)' : roleProps.bg,
@@ -557,9 +556,8 @@ const RoleManagementPg = () => {
                             <span className="font-extrabold text-sm tracking-tight truncate flex items-center gap-1.5">
                               {role.name}
                               {role.isSystem && (
-                                <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider ${
-                                  isSelected ? 'bg-white/10 text-white border border-white/20' : 'bg-slate-200 text-slate-600 border border-slate-300'
-                                }`}>
+                                <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider ${isSelected ? 'bg-white/10 text-white border border-white/20' : 'bg-slate-200 text-slate-600 border border-slate-300'
+                                  }`}>
                                   System
                                 </span>
                               )}
@@ -572,9 +570,8 @@ const RoleManagementPg = () => {
                           {!(role.isSystem && role.name === 'SUPER_ADMIN') && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleOpenEditModal(role); }}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer transition-all duration-200 hover:scale-110 ${
-                                isSelected ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
-                              }`}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer transition-all duration-200 hover:scale-110 ${isSelected ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
+                                }`}
                               title="Edit config"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
@@ -583,9 +580,8 @@ const RoleManagementPg = () => {
                           {!role.isSystem && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteRole(role._id); }}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer transition-all duration-200 hover:scale-110 ${
-                                isSelected ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white border border-red-100'
-                              }`}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer transition-all duration-200 hover:scale-110 ${isSelected ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white border border-red-100'
+                                }`}
                               title="Delete Role"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -623,17 +619,15 @@ const RoleManagementPg = () => {
                 <div className="flex items-center gap-3 p-2 bg-white rounded-2xl border border-slate-150/70 shadow-sm flex-shrink-0">
                   <div className="flex flex-col items-end">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">Security Level</span>
-                    <span className={`text-xs font-black mt-1 ${
-                      percent === 100 ? 'text-emerald-600' : percent > 50 ? 'text-amber-600' : 'text-indigo-600'
-                    }`}>
+                    <span className={`text-xs font-black mt-1 ${percent === 100 ? 'text-emerald-600' : percent > 50 ? 'text-amber-600' : 'text-indigo-600'
+                      }`}>
                       {percent === 100 ? 'FULL MASTER ACCESS' : `${percent}% AUTHORIZED`}
                     </span>
                   </div>
                   <div className="w-12 h-1.5 bg-slate-150 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        percent === 100 ? 'bg-emerald-500' : percent > 50 ? 'bg-amber-500' : 'bg-indigo-500'
-                      }`} 
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${percent === 100 ? 'bg-emerald-500' : percent > 50 ? 'bg-amber-500' : 'bg-indigo-500'
+                        }`}
                       style={{ width: `${percent}%` }}
                     />
                   </div>
@@ -650,11 +644,10 @@ const RoleManagementPg = () => {
                     key={t}
                     type="button"
                     onClick={() => { setActiveTab(t); }}
-                    className={`px-4 py-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                      activeTab === t 
-                        ? 'bg-[#071437] text-white shadow-sm' 
+                    className={`px-4 py-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all duration-200 cursor-pointer ${activeTab === t
+                        ? 'bg-[#071437] text-white shadow-sm'
                         : 'text-[#071437] opacity-60 hover:opacity-100'
-                    }`}
+                      }`}
                   >
                     {t === 'ALL' ? 'All Modules' : t === 'CORE' ? 'Core Setup' : 'Operations'}
                   </button>
@@ -676,17 +669,16 @@ const RoleManagementPg = () => {
 
             {/* Grid Container */}
             <div className="p-6 overflow-y-auto max-h-[600px] custom-scrollbar bg-slate-50/20">
-              
+
               {/* Master Global Select toggle (hidden for system locks) */}
               {!(selectedRole?.isSystem && selectedRole?.name === 'SUPER_ADMIN') && (
-                <div 
+                <div
                   onClick={handleToggleGlobalAll}
                   className="mb-6 p-4 bg-white border border-[#e3e8f2] rounded-2xl shadow-sm flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                      isGlobalAllChecked() ? 'bg-[#071437] border-transparent text-white' : 'bg-white border-[#dbe4f0]'
-                    }`}>
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${isGlobalAllChecked() ? 'bg-[#071437] border-transparent text-white' : 'bg-white border-[#dbe4f0]'
+                      }`}>
                       {isGlobalAllChecked() && <Check className="w-3.5 h-3.5 font-bold" />}
                     </div>
                     <div>
@@ -726,7 +718,7 @@ const RoleManagementPg = () => {
                   return list.map((mod) => {
                     const isAllChecked = isRowAllChecked(mod.prefix);
                     return (
-                      <div 
+                      <div
                         key={mod.prefix}
                         className={`bg-white border rounded-2xl p-5 shadow-sm transition-all duration-200 flex flex-col justify-between border-[#e3e8f2] hover:border-[#071437]/20`}
                       >
@@ -746,11 +738,10 @@ const RoleManagementPg = () => {
                             type="button"
                             disabled={selectedRole?.isSystem && selectedRole?.name === 'SUPER_ADMIN'}
                             onClick={() => handleToggleRow(mod.prefix)}
-                            className={`text-[9px] px-2 py-1 rounded-lg font-black border uppercase tracking-wider transition-all cursor-pointer ${
-                              isAllChecked
+                            className={`text-[9px] px-2 py-1 rounded-lg font-black border uppercase tracking-wider transition-all cursor-pointer ${isAllChecked
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                 : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
-                            }`}
+                              }`}
                           >
                             {isAllChecked ? 'Full Access' : 'Grant All'}
                           </button>
@@ -766,16 +757,14 @@ const RoleManagementPg = () => {
                                 type="button"
                                 disabled={selectedRole?.isSystem && selectedRole?.name === 'SUPER_ADMIN'}
                                 onClick={() => handleToggleCell(mod.prefix, act)}
-                                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] font-black tracking-tight transition-all duration-150 ${
-                                  isChecked
+                                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] font-black tracking-tight transition-all duration-150 ${isChecked
                                     ? 'bg-[#071437] border-transparent text-white shadow-sm'
                                     : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
-                                } ${selectedRole?.isSystem && selectedRole?.name === 'SUPER_ADMIN' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.01]'}`}
+                                  } ${selectedRole?.isSystem && selectedRole?.name === 'SUPER_ADMIN' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.01]'}`}
                               >
                                 <span className="capitalize">{act}</span>
-                                <div className={`w-3 h-3 rounded-full flex items-center justify-center border ${
-                                  isChecked ? 'bg-emerald-500 border-transparent text-white' : 'bg-white border-slate-300'
-                                }`}>
+                                <div className={`w-3 h-3 rounded-full flex items-center justify-center border ${isChecked ? 'bg-emerald-500 border-transparent text-white' : 'bg-white border-slate-300'
+                                  }`}>
                                   {isChecked && <Check className="w-2 h-2 font-bold" />}
                                 </div>
                               </button>
@@ -810,7 +799,7 @@ const RoleManagementPg = () => {
       {showRoleModal && (
         <div className="fixed inset-0 bg-[#16223F]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
           <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-[680px] border border-slate-100 relative animate-in zoom-in-95 duration-200">
-            
+
             {/* CLOSE BUTTON */}
             <button
               onClick={() => setShowRoleModal(false)}
@@ -837,11 +826,10 @@ const RoleManagementPg = () => {
                     value={roleName}
                     onChange={(e) => setRoleName(e.target.value)}
                     placeholder="e.g. LAB_TECHNICIAN"
-                    className={`w-full border rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-[#071437]/10 focus:border-[#071437] font-semibold text-sm transition-all duration-200 ${
-                      selectedRole?.isSystem 
-                        ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed' 
+                    className={`w-full border rounded-2xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-[#071437]/10 focus:border-[#071437] font-semibold text-sm transition-all duration-200 ${selectedRole?.isSystem
+                        ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed'
                         : 'bg-white text-[#071437] border-[#dbe4f0]'
-                    }`}
+                      }`}
                   />
                 </div>
 
@@ -881,7 +869,7 @@ const RoleManagementPg = () => {
                   {/* Styled preview card */}
                   <div className="bg-white p-4 rounded-2xl border border-slate-150 shadow-sm flex flex-col">
                     <div className="flex items-center gap-3">
-                      <div 
+                      <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs border"
                         style={{
                           backgroundColor: getRoleColor(roleName || 'NEW_ROLE').bg,

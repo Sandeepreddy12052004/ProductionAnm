@@ -4,13 +4,13 @@ import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Home as HomeIcon, 
-  Settings, 
-  Save, 
-  ChevronDown 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Home as HomeIcon,
+  Settings,
+  Save,
+  ChevronDown
 } from "lucide-react";
 
 export default function DailyFeeding() {
@@ -46,14 +46,14 @@ export default function DailyFeeding() {
 
   // Feed types configuration
   const feedTypes = [
-    { name: "greenGrass",     label: "Green Grass (KG)" },
-    { name: "dryGrass",       label: "Dry Grass (KG)" },
-    { name: "cottonCake",     label: "C.Cake (KG)" },
-    { name: "chunni",         label: "Chunni (KG)" },
-    { name: "maize",          label: "Maize (KG)" },
-    { name: "wheatBran",      label: "Wheat Bran (KG)" },
-    { name: "salt",           label: "Salt (G)" },
-    { name: "oralCalcium",    label: "Oral Calcium (ML)" },
+    { name: "greenGrass", label: "Green Grass (KG)" },
+    { name: "dryGrass", label: "Dry Grass (KG)" },
+    { name: "cottonCake", label: "C.Cake (KG)" },
+    { name: "chunni", label: "Chunni (KG)" },
+    { name: "maize", label: "Maize (KG)" },
+    { name: "wheatBran", label: "Wheat Bran (KG)" },
+    { name: "salt", label: "Salt (G)" },
+    { name: "oralCalcium", label: "Oral Calcium (ML)" },
     { name: "mineralMixture", label: "Mineral Mixture (G)" }
   ];
 
@@ -109,14 +109,14 @@ export default function DailyFeeding() {
                 finalFarms = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm", code: user.farm || "My Assigned Farm" }];
               }
             }
-          } catch (e) {}
+          } catch (e) { }
         }
 
         const sorted = sortFarms(finalFarms);
         setFarms(sorted);
         setSheds(shedsData || []);
         setFeedItems(feedItemsData || []);
-        
+
         const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
         setAnimals(rawAnimals);
 
@@ -172,8 +172,8 @@ export default function DailyFeeding() {
         const count = animals.filter(
           (a) =>
             (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
-             String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
-             String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
+              String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+              String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
             String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
             !["SOLD", "DECEASED", "DEAD"].includes(a.status)
         ).length;
@@ -192,7 +192,7 @@ export default function DailyFeeding() {
 
   // Find active shed object configuration
   const activeShed = useMemo(() => {
-    return sheds.find(s => 
+    return sheds.find(s =>
       String(s.name || s.code || s._id).trim().toUpperCase() === String(activeShedId).trim().toUpperCase()
     );
   }, [activeShedId, sheds]);
@@ -203,8 +203,8 @@ export default function DailyFeeding() {
     return animals.filter(
       (a) =>
         (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
-         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase() ||
-         String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed._id || '').trim().toUpperCase()) &&
+          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase() ||
+          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed._id || '').trim().toUpperCase()) &&
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
         !["SOLD", "DECEASED", "DEAD"].includes(a.status)
     ).length;
@@ -222,7 +222,7 @@ export default function DailyFeeding() {
     if (clean === 'salt') return 'salt';
     if (clean === 'oral calcium') return 'oralCalcium';
     if (clean === 'mineral mixture') return 'mineralMixture';
-    
+
     // Dynamic camelCase fallback for new custom items
     return name
       .replace(/[^a-zA-Z0-9\s]/g, '') // remove special characters
@@ -250,16 +250,16 @@ export default function DailyFeeding() {
   useEffect(() => {
     const newQuantities = {};
     const targetDateStr = new Date(selectedDate).toDateString();
-    
+
     const activeDayLogs = logs.filter((c) => {
       const dateMatches = new Date(c.date).toDateString() === targetDateStr;
       const sessionMatches = c.session === session;
       if (!dateMatches || !sessionMatches) return false;
-      
+
       const logShed = String(c.shedId || '').trim().toUpperCase();
       return logShed === String(activeShed?.code || '').trim().toUpperCase() ||
-             logShed === String(activeShed?.name || '').trim().toUpperCase() ||
-             logShed === String(activeShed?._id || '').trim().toUpperCase();
+        logShed === String(activeShed?.name || '').trim().toUpperCase() ||
+        logShed === String(activeShed?._id || '').trim().toUpperCase();
     });
 
     activeDayLogs.forEach((c) => {
@@ -277,7 +277,7 @@ export default function DailyFeeding() {
   // Calculations for Side panel & overall stats
   const calculations = useMemo(() => {
     const targetDateStr = new Date(selectedDate).toDateString();
-    
+
     // Logs for selected date and summarySession (Morning, Evening, or All Day)
     const dayLogs = logs.filter((c) => {
       const dateMatches = new Date(c.date).toDateString() === targetDateStr;
@@ -289,12 +289,12 @@ export default function DailyFeeding() {
     // Summary of all sheds for active session
     const shedsSummary = farmSheds.map((s) => {
       const shedKey = s.name || s.code || String(s._id);
-      
+
       const shedAnimals = animals.filter(
         (a) =>
           (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
-           String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
-           String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
+            String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+            String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
           String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
           !["SOLD", "DECEASED", "DEAD"].includes(a.status)
       );
@@ -303,8 +303,8 @@ export default function DailyFeeding() {
       const shedLogs = dayLogs.filter((c) => {
         const logShed = String(c.shedId || '').trim().toUpperCase();
         return logShed === String(s.code || '').trim().toUpperCase() ||
-               logShed === String(s.name || '').trim().toUpperCase() ||
-               logShed === String(s._id || '').trim().toUpperCase();
+          logShed === String(s.name || '').trim().toUpperCase() ||
+          logShed === String(s._id || '').trim().toUpperCase();
       });
 
       // Calculate total for each active feed type in this shed
@@ -367,7 +367,7 @@ export default function DailyFeeding() {
       e.preventDefault();
       const isLastFeedInRow = feedIndex === activeFeedTypes.length - 1;
       const numRows = activeShed?.lines || 1;
-      
+
       if (!isLastFeedInRow) {
         const nextFeed = activeFeedTypes[feedIndex + 1];
         const nextInputId = `feed-input-${r}-${nextFeed.name}`;
@@ -425,9 +425,9 @@ export default function DailyFeeding() {
       };
 
       await api.operations.dailyFeeding.bulkCreate(payload);
-      
+
       // Auto transition popup logic
-      const activeIndex = farmSheds.findIndex(s => 
+      const activeIndex = farmSheds.findIndex(s =>
         String(s.name || s.code || s._id).trim().toUpperCase() === String(activeShedId).trim().toUpperCase()
       );
 
@@ -468,7 +468,7 @@ export default function DailyFeeding() {
   const moveFarm = (index, direction) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= tempFarmsOrder.length) return;
-    
+
     const updated = [...tempFarmsOrder];
     const temp = updated[index];
     updated[index] = updated[nextIndex];
@@ -494,7 +494,7 @@ export default function DailyFeeding() {
 
   return (
     <div className="w-full flex flex-col bg-transparent text-slate-800 font-sans">
-      
+
       {/* A. Header & Sub-Header Section */}
       <ModulePageHeader
         title="Daily Feeding Dashboard"
@@ -513,14 +513,14 @@ export default function DailyFeeding() {
         <SkeletonLoader type="table" columns={4} />
       ) : (
         <div className="flex flex-col gap-8 w-full">
-          
+
           {/* LEFT COLUMN: Configuration Panel, Overall Stats, & Workspace */}
           <div className="flex flex-col gap-6 w-full">
-            
+
             {/* 1. Global Setup Filters */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                
+
                 {/* Farm Selector */}
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">
@@ -594,13 +594,13 @@ export default function DailyFeeding() {
                 {farmSheds.map((s) => {
                   const shedKey = s.name || s.code || String(s._id);
                   const isCurrent = String(activeShedId).trim().toUpperCase() === String(shedKey).trim().toUpperCase();
-                  
+
                   // Count total animals in this shed
                   const shedAnimalsCount = animals.filter(
                     (a) =>
                       (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
-                       String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
-                       String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
+                        String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
+                        String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
                       String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
                       !["SOLD", "DECEASED", "DEAD"].includes(a.status)
                   ).length;
@@ -609,11 +609,10 @@ export default function DailyFeeding() {
                     <button
                       key={shedKey}
                       onClick={() => setActiveShedId(shedKey)}
-                      className={`px-6 py-3.5 rounded-2xl text-xs font-black tracking-wide shadow-sm transition-all duration-300 border flex items-center gap-2 ${
-                        isCurrent
+                      className={`px-6 py-3.5 rounded-2xl text-xs font-black tracking-wide shadow-sm transition-all duration-300 border flex items-center gap-2 ${isCurrent
                           ? "bg-slate-800 border-slate-800 text-white hover:bg-slate-900"
                           : "bg-white border-slate-200/60 hover:bg-slate-50 text-slate-700 hover:text-slate-900"
-                      }`}
+                        }`}
                     >
                       <span>🏚️ {s.name || s.code}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${isCurrent ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
@@ -629,7 +628,7 @@ export default function DailyFeeding() {
             <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_12px_45px_rgba(0,0,0,0.015)] overflow-hidden">
               {activeShedId ? (
                 <div>
-                  
+
                   {/* Top Bar inside Active Shed Workspace */}
                   <div className="p-8 border-b border-slate-100 bg-slate-50/30">
                     <div>
@@ -666,14 +665,14 @@ export default function DailyFeeding() {
                         const rowAnimalsCount = animals.filter(
                           (a) =>
                             (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.code || '').trim().toUpperCase() ||
-                             String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase()) &&
+                              String(a.shed || a.shedId).trim().toUpperCase() === String(activeShed.name || '').trim().toUpperCase()) &&
                             String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
                             !["SOLD", "DECEASED", "DEAD"].includes(a.status) &&
                             Number(a.lineNo) === r
                         ).length;
 
                         return (
-                          <div 
+                          <div
                             key={rowKey}
                             className="bg-slate-50/40 border border-slate-200/60 rounded-3xl p-6 shadow-[0_4px_16px_rgba(0,0,0,0.01)] hover:shadow-md transition-all duration-300"
                           >
@@ -749,7 +748,7 @@ export default function DailyFeeding() {
 
           {/* LOWER SECTION: Real-Time Sheds Summary */}
           <div className="w-full">
-            
+
             {/* Sheds Summary Board */}
             <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-50 pb-5">
@@ -852,7 +851,7 @@ export default function DailyFeeding() {
             <p className="text-xs text-slate-400 mb-6 font-semibold leading-relaxed">
               Use controls below to shift priority displaying farms left-to-right on feed dashboards.
             </p>
-            
+
             <div className="space-y-2 mb-8">
               {tempFarmsOrder.map((f, idx) => (
                 <div key={f._id || f.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-100 rounded-2xl">

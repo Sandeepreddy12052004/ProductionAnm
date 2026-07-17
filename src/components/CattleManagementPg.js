@@ -84,7 +84,7 @@ export default function CattleManagementPg({
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
   const [allSheds, setAllSheds] = useState([]);
-  
+
   // Dynamic Filters State
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: "tag", value: "" }]);
@@ -93,7 +93,7 @@ export default function CattleManagementPg({
   const recordsPerPage = 10;
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
-  const canEdit   = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
+  const canEdit = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
   const canDelete = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'delete');
 
   const statusStyles = {
@@ -153,7 +153,7 @@ export default function CattleManagementPg({
                   farmList = [{ _id: userFarmId, id: userFarmId, name: user.farm || "My Assigned Farm" }];
                 }
               }
-            } catch (e) {}
+            } catch (e) { }
           }
           const farmOpts = farmList.map(f => ({ label: f.name, value: f._id || f.id }));
 
@@ -182,8 +182,8 @@ export default function CattleManagementPg({
       const resolvedType = data.cattleType || data.animalType || 'COW';
 
       let resolvedFarmId = data.farmId || null;
-      const matchedShed = allSheds.find(s => 
-        String(s.code).trim() === String(resolvedShed).trim() || 
+      const matchedShed = allSheds.find(s =>
+        String(s.code).trim() === String(resolvedShed).trim() ||
         String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase()
       );
       if (matchedShed) {
@@ -193,7 +193,7 @@ export default function CattleManagementPg({
       const payload = {
         ...data,
         tag: data.tag || data.tagId,
-        code: data.code || `CTL-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        code: data.code || `CTL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         farmId: resolvedFarmId,
         shed: resolvedShed,
         shedId: resolvedShed,
@@ -232,16 +232,16 @@ export default function CattleManagementPg({
       const resolvedShed = data.shed && data.shed !== '' && data.shed !== '-' ? data.shed : (data.shedId || '-');
 
       let resolvedFarmId = data.farmId || null;
-      const matchedShed = allSheds.find(s => 
-        String(s.code).trim() === String(resolvedShed).trim() || 
+      const matchedShed = allSheds.find(s =>
+        String(s.code).trim() === String(resolvedShed).trim() ||
         String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase()
       );
       if (matchedShed) {
         resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || resolvedFarmId;
       }
 
-      const payload = { 
-        ...data, 
+      const payload = {
+        ...data,
         tagId: data.tag || data.tagId,
         farmId: resolvedFarmId,
         shed: resolvedShed,
@@ -292,8 +292,8 @@ export default function CattleManagementPg({
   };
 
   const activeFilterCount = appliedFilters.filter(
-    (f) => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) || 
-           f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays
+    (f) => (Array.isArray(f.value) ? f.value.length > 0 : (f.value && String(f.value).trim() !== "")) ||
+      f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays
   ).length;
 
   const filteredData = cattleData.filter((item) => {
@@ -543,8 +543,8 @@ export default function CattleManagementPg({
                 setShowFilters(!showFilters);
               }}
               className={`relative px-5 h-12 rounded-xl font-bold border transition-all duration-200 ease-out hover:-translate-y-[1px] hover:shadow-md flex items-center gap-2
-                ${showFilters 
-                  ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20' 
+                ${showFilters
+                  ? 'bg-[#D1867D]/10 border-[#D1867D]/20 text-[#16223F] hover:bg-[#D1867D]/20'
                   : 'bg-white border-slate-200 text-[#16223F] hover:bg-gray-50'}
               `}
             >
@@ -834,14 +834,14 @@ export default function CattleManagementPg({
 
                     if (isCheckboxSearchField) {
                       const currentSelected = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
-                      
+
                       // Get all options
-                      const rawOptions = f.field === "tag" 
+                      const rawOptions = f.field === "tag"
                         ? [...new Set(cattleData.map(item => item.tag || item.tag_id || item.code).filter(Boolean))].sort()
                         : (fieldConfig?.options || []);
-                        
+
                       const searchQuery = (filterSearchQueries[index] || "").toLowerCase();
-                      
+
                       // Filter options by search query
                       const filteredOptions = rawOptions.filter((opt) => {
                         const labelStr = typeof opt === 'object' ? (opt.label || "") : (opt || "");
@@ -1130,9 +1130,9 @@ export default function CattleManagementPg({
               {filteredData.length === 0
                 ? "0-0"
                 : `${startIndex + 1}-${Math.min(
-                    startIndex + recordsPerPage,
-                    filteredData.length
-                  )}`}
+                  startIndex + recordsPerPage,
+                  filteredData.length
+                )}`}
             </span>{" "}
             of{" "}
             <span className="font-semibold text-gray-700">
@@ -1152,10 +1152,9 @@ export default function CattleManagementPg({
                 text-[15px]
                 font-medium
                 transition-all
-                ${
-                  currentPage === 1
-                    ? "border-gray-100 text-gray-300 bg-white cursor-not-allowed"
-                    : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 transition-all duration-200"
+                ${currentPage === 1
+                  ? "border-gray-100 text-gray-300 bg-white cursor-not-allowed"
+                  : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 transition-all duration-200"
                 }
               `}
             >
@@ -1176,10 +1175,9 @@ export default function CattleManagementPg({
                 text-[15px]
                 font-medium
                 transition-all
-                ${
-                  currentPage === totalPages
-                    ? "border-gray-100 text-gray-300 bg-white cursor-not-allowed"
-                    : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 transition-all duration-200"
+                ${currentPage === totalPages
+                  ? "border-gray-100 text-gray-300 bg-white cursor-not-allowed"
+                  : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 transition-all duration-200"
                 }
               `}
             >
@@ -1195,7 +1193,7 @@ export default function CattleManagementPg({
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-[320px] transform transition-all">
             <h3 className="font-bold text-lg mb-4 text-center text-black">Manage Cattle</h3>
             <div className="space-y-2">
-              <button 
+              <button
                 onClick={() => {
                   setShowActionModal(false);
                   setShowViewModal(true);
@@ -1206,7 +1204,7 @@ export default function CattleManagementPg({
               </button>
 
               {canEdit && (
-                <button 
+                <button
                   onClick={() => {
                     setShowActionModal(false);
                     setShowEditModal(true);
@@ -1218,7 +1216,7 @@ export default function CattleManagementPg({
               )}
 
               {canDelete && (
-                <button 
+                <button
                   onClick={handleDelete}
                   disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
@@ -1227,7 +1225,7 @@ export default function CattleManagementPg({
                 </button>
               )}
 
-              <button 
+              <button
                 onClick={() => {
                   setShowActionModal(false);
                   setSelectedAnimal(null);

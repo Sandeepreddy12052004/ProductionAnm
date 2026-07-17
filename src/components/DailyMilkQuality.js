@@ -45,8 +45,8 @@ export default function DailyMilkQuality() {
 
         const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
           b => String(b.status || "").trim().toUpperCase() === "ACTIVE" &&
-               !b.isDeleted &&
-               (!activeId || String(b.farmId?._id || b.farmId?.id || b.farmId) === activeId)
+            !b.isDeleted &&
+            (!activeId || String(b.farmId?._id || b.farmId?.id || b.farmId) === activeId)
         );
         setBmcsList(activeBmcs);
       } catch (err) {
@@ -65,8 +65,8 @@ export default function DailyMilkQuality() {
     api.bmcs.getAll().then((bmcs) => {
       const activeBmcs = (Array.isArray(bmcs) ? bmcs : (bmcs?.data ?? [])).filter(
         b => String(b.status || "").trim().toUpperCase() === "ACTIVE" &&
-             !b.isDeleted &&
-             String(b.farmId?._id || b.farmId?.id || b.farmId) === selectedFarmId
+          !b.isDeleted &&
+          String(b.farmId?._id || b.farmId?.id || b.farmId) === selectedFarmId
       );
       setBmcsList(activeBmcs);
     }).catch(console.error);
@@ -104,8 +104,8 @@ export default function DailyMilkQuality() {
   const totalCollectedNet = useMemo(() => {
     const dayCollections = collectionsList.filter(
       (c) => toLocalYMD(c.date) === targetDateStr &&
-             !c.isDeleted &&
-             (!selectedFarmId || String(c.farmId?._id || c.farmId?.id || c.farmId) === selectedFarmId)
+        !c.isDeleted &&
+        (!selectedFarmId || String(c.farmId?._id || c.farmId?.id || c.farmId) === selectedFarmId)
     );
     const groups = {};
     dayCollections.forEach(c => {
@@ -126,8 +126,8 @@ export default function DailyMilkQuality() {
     // Group existing QA records on this date by bmcId
     const dayQaLogs = qaLogsList.filter(
       (q) => toLocalYMD(q.date) === targetDateStr &&
-             !q.isDeleted &&
-             (!selectedFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === selectedFarmId)
+        !q.isDeleted &&
+        (!selectedFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === selectedFarmId)
     );
 
     const bmcToQa = {};
@@ -205,8 +205,8 @@ export default function DailyMilkQuality() {
     // Filter qaLogsList for yesterday's date
     const yesterdayQa = qaLogsList.filter(
       (q) => toLocalYMD(q.date) === yesterdayDateStr &&
-             !q.isDeleted &&
-             (!selectedFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === selectedFarmId)
+        !q.isDeleted &&
+        (!selectedFarmId || String(q.farmId?._id || q.farmId?.id || q.farmId) === selectedFarmId)
     );
 
     // Sum up yesterday's net volume: liters - indentLiters
@@ -340,7 +340,7 @@ export default function DailyMilkQuality() {
 
   return (
     <div className="w-full flex flex-col bg-transparent text-slate-800 font-sans">
-      
+
       {/* Page Header */}
       <ModulePageHeader
         title="Daily Milk QA Log"
@@ -349,11 +349,11 @@ export default function DailyMilkQuality() {
 
       {/* Configuration Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-6">
-        
+
         {/* Table & Form Panel */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100/80 shadow-[0_12px_40px_rgba(0,0,0,0.03)] p-8">
-            
+
             {/* Date & Farm Picker Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center border-b border-slate-100 pb-6 mb-6">
               <div className="md:col-span-6">
@@ -427,9 +427,8 @@ export default function DailyMilkQuality() {
                       return (
                         <tr
                           key={bId}
-                          className={`border-b border-slate-50 hover:bg-slate-50/50 transition-all border-l-4 ${
-                            isFocused ? "bg-slate-50/70 border-l-[#D1867D]" : "border-l-transparent"
-                          }`}
+                          className={`border-b border-slate-50 hover:bg-slate-50/50 transition-all border-l-4 ${isFocused ? "bg-slate-50/70 border-l-[#D1867D]" : "border-l-transparent"
+                            }`}
                         >
                           <td className="py-4 px-2 align-middle">
                             <span className="text-xs font-black text-slate-800 block">❄️ {bmc.name || bmc.code}</span>
@@ -546,11 +545,10 @@ export default function DailyMilkQuality() {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving || totalEnteredQa > totalCollectedNet}
-                className={`inline-flex items-center justify-center gap-2 px-6 py-3 font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs ${
-                  (totalEnteredQa > totalCollectedNet)
+                className={`inline-flex items-center justify-center gap-2 px-6 py-3 font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs ${(totalEnteredQa > totalCollectedNet)
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                     : 'bg-[#16223F] hover:bg-[#20315a] text-white shadow-[#16223F]/10 hover:shadow-xl'
-                }`}
+                  }`}
               >
                 <Save className="w-4 h-4" />
                 {isSaving ? "Saving Daily logs..." : "Save Daily Milk QA"}
@@ -561,7 +559,7 @@ export default function DailyMilkQuality() {
 
         {/* Right Stats Sidebar */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-          
+
           {/* Yield Allocator status card */}
           <div className="bg-white/95 rounded-3xl border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
             <h3 className="text-xs font-black text-[#16223F] uppercase tracking-wider mb-4">Yield Allocation Status</h3>
@@ -572,7 +570,7 @@ export default function DailyMilkQuality() {
                   <span className="text-sm font-black text-slate-800">{totalCollectedNet.toLocaleString()} L</span>
                 </div>
               </div>
-              
+
               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center">
                 <div>
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Total QA Logged</span>

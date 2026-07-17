@@ -106,7 +106,7 @@ const FarmsPg = () => {
   const [isFetching, setIsFetching] = useState(true);
 
   const canCreate = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'create');
-  const canEdit   = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'edit');
+  const canEdit = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'edit');
   const canDelete = hasActionPermission('FARM_MANAGEMENT', 'FARMS', 'delete');
 
   const [formData, setFormData] = useState({
@@ -270,9 +270,9 @@ const FarmsPg = () => {
               const capacity = capacityMap[farmId];
 
               // Capacity values with safe defaults
-              const occupied    = capacity?.occupied    ?? 0;
+              const occupied = capacity?.occupied ?? 0;
               const maxCapacity = capacity?.maxCapacity ?? 0;
-              const usagePercent= capacity?.usagePercent?? 0;
+              const usagePercent = capacity?.usagePercent ?? 0;
               const hasCapacity = maxCapacity > 0;
 
               return (
