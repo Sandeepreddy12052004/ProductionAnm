@@ -508,7 +508,10 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 export const api = {
   // Live Stock (Cattle)
   cattle: {
-    getAll:              ()         => apiRequest('/api/cattle'),
+    getAll:              (params)   => {
+      const query = params ? '?' + new URLSearchParams(params).toString() : '';
+      return apiRequest('/api/cattle' + query);
+    },
     create:              (data)     => apiRequest('/api/cattle', 'POST', data),
     update:              (id, data) => apiRequest(`/api/cattle/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/cattle/${id}`, 'DELETE'),

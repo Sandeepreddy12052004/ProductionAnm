@@ -101,10 +101,9 @@ export default function DailyMilkCollection() {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        const [farmsData, shedsData, animalsData] = await Promise.all([
+        const [farmsData, shedsData] = await Promise.all([
           api.farms.getAll().catch(() => []),
           api.sheds.getAll().catch(() => []),
-          api.cattle.getAll().catch(() => []),
         ]);
 
         let finalFarms = Array.isArray(farmsData) ? farmsData : (farmsData?.data ?? []);
@@ -127,9 +126,6 @@ export default function DailyMilkCollection() {
         setFarms(sorted);
         setSheds(shedsData || []);
 
-        const rawAnimals = Array.isArray(animalsData) ? animalsData : (animalsData?.data ?? []);
-        setAnimals(rawAnimals);
-
         const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
         const storedActive = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
         if (storedActive && storedActive !== 'ALL') {
@@ -148,23 +144,29 @@ export default function DailyMilkCollection() {
     loadInitialData();
   }, []);
 
-  // 2. Fetch existing collections for selected date
-  const fetchCollections = async () => {
+  // 2. Fetch existing collections and rolled-back animals for selected date
+  const fetchCollectionsAndAnimals = async () => {
     const key = `${selectedDate}_${session}`;
     if (collectionsInitKey.current === key) return;
     collectionsInitKey.current = key;
 
     try {
-      const records = await api.milk.collections.getAll();
+      const [records, animalsRes] = await Promise.all([
+        api.milk.collections.getAll(),
+        api.cattle.getAll({ date: selectedDate })
+      ]);
       const rawRecords = Array.isArray(records) ? records : (records?.data ?? []);
       setCollections(rawRecords);
+
+      const rawAnimals = Array.isArray(animalsRes) ? animalsRes : (animalsRes?.data ?? []);
+      setAnimals(rawAnimals);
     } catch (err) {
-      console.error("Failed to load existing collections:", err);
+      console.error("Failed to load existing data:", err);
     }
   };
 
   useEffect(() => {
-    fetchCollections();
+    fetchCollectionsAndAnimals();
   }, [selectedDate, session]);
 
   // Filter sheds belonging to selected farm
@@ -232,6 +234,105 @@ export default function DailyMilkCollection() {
     setSelfConsumptions(newSelfConsumptions);
   }, [collections, selectedDate, session]);
 
+  // Helper to dynamically resolve shed animals for a date/session
+  const getShedAnimalsForDate = (shedObj, dateStr, sessionStr) => {
+    if (!shedObj) return [];
+    const shedKey = shedObj.name || shedObj.code || String(shedObj._id);
+
+    const targetDateStr = new Date(dateStr).toDateString();
+    const dayCollections = collections.filter(
+      (c) => new Date(c.date).toDateString() === targetDateStr && c.session === sessionStr
+    );
+    const shedCollections = dayCollections.filter(
+      (c) => String(c.shedId).trim().toUpperCase() === shedKey.trim().toUpperCase()
+    );
+
+    const historicalAnimals = shedCollections.map((col) => {
+      const tag = String(col.tag_id || col.tagId).toUpperCase();
+      const animal = animals.find((a) => String(a.tag || a.tag_id).toUpperCase() === tag);
+      if (animal) {
+        return {
+          ...animal,
+          shedId: col.shedId,
+          shed: col.shedId,
+          lineNo: col.lineNo !== undefined && col.lineNo !== null ? col.lineNo : animal.lineNo,
+          position: col.position !== undefined && col.position !== null ? col.position : animal.position,
+          status: 'ACTIVE'
+        };
+      }
+      return {
+        _id: `mock-${tag}`,
+        tag_id: tag,
+        tag: tag,
+        cattleType: 'BUFFALO',
+        animalType: 'BUFFALO',
+        breed: 'Unknown',
+        gender: 'FEMALE',
+        status: 'ACTIVE',
+        shedId: col.shedId,
+        shed: col.shedId,
+        lineNo: col.lineNo || 0,
+        position: col.position || 0,
+        isMock: true
+      };
+    });
+
+    const currentShedAnimals = animals.filter(
+      (a) =>
+        (String(a.shed || a.shedId).trim().toUpperCase() === String(shedObj.code || '').trim().toUpperCase() ||
+          String(a.shed || a.shedId).trim().toUpperCase() === String(shedObj.name || '').trim().toUpperCase() ||
+          String(a.shed || a.shedId).trim().toUpperCase() === String(shedObj._id || '').trim().toUpperCase()) &&
+        String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
+        !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
+        String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
+        String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
+    );
+
+    const remainingCurrentAnimals = currentShedAnimals.filter((currAnimal) => {
+      const tag = String(currAnimal.tag || currAnimal.tag_id).toUpperCase();
+      
+      const hasCollectionInSameShed = shedCollections.some((c) => String(c.tag_id || c.tagId).toUpperCase() === tag);
+      if (hasCollectionInSameShed) return false;
+
+      const hasCollectionInDifferentShed = dayCollections.some(
+        (c) => String(c.tag_id || c.tagId).toUpperCase() === tag &&
+               String(c.shedId).trim().toUpperCase() !== shedKey.trim().toUpperCase()
+      );
+      if (hasCollectionInDifferentShed) return false;
+
+      if (shedObj.lineManagement === "Yes") {
+        const isSlotOccupied = shedCollections.some(
+          (c) => Number(c.lineNo) === Number(currAnimal.lineNo) &&
+                 Number(c.position) === Number(currAnimal.position) &&
+                 String(c.tag_id || c.tagId).toUpperCase() !== tag
+        );
+        if (isSlotOccupied) return false;
+      }
+
+      return true;
+    });
+
+    const combined = [...historicalAnimals, ...remainingCurrentAnimals];
+
+    if (shedObj.lineManagement === "Yes") {
+      combined.sort((a, b) => {
+        const aLine = Number(a.lineNo) || 0;
+        const bLine = Number(b.lineNo) || 0;
+        if (aLine === 0 && bLine > 0) return 1;
+        if (bLine === 0 && aLine > 0) return -1;
+        if (aLine !== bLine) return aLine - bLine;
+
+        const aPos = Number(a.position) || 0;
+        const bPos = Number(b.position) || 0;
+        if (aPos === 0 && bPos > 0) return 1;
+        if (bPos === 0 && aPos > 0) return -1;
+        return aPos - bPos;
+      });
+    }
+
+    return combined;
+  };
+
   // Calculations
   const calculations = useMemo(() => {
     const targetDateStr = new Date(selectedDate).toDateString();
@@ -256,16 +357,7 @@ export default function DailyMilkCollection() {
     const shedsSummary = farmSheds.map((s) => {
       const shedKey = s.name || s.code || String(s._id);
 
-      const shedAnimals = animals.filter(
-        (a) =>
-          (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
-            String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
-            String(a.shed || a.shedId).trim().toUpperCase() === String(s._id || '').trim().toUpperCase()) &&
-          String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-          !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
-          String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
-          String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
-      );
+      const shedAnimals = getShedAnimalsForDate(s, selectedDate, session);
 
       const totalQty = shedAnimals.reduce((sum, a) => {
         const tag = String(a.tag || a.tag_id).toUpperCase();
@@ -327,19 +419,8 @@ export default function DailyMilkCollection() {
 
   // Active Animals list inside currently selected active shed
   const activeShedAnimals = useMemo(() => {
-    if (!activeShedObj) return [];
-
-    return animals.filter(
-      (a) =>
-        (String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.code || '').trim().toUpperCase() ||
-          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj.name || '').trim().toUpperCase() ||
-          String(a.shed || a.shedId).trim().toUpperCase() === String(activeShedObj._id || '').trim().toUpperCase()) &&
-        String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
-        !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
-        String(a.gender || '').trim().toUpperCase() === 'FEMALE' &&
-        String(a.cattleType || a.animalType || '').trim().toUpperCase() === 'BUFFALO'
-    );
-  }, [activeShedObj, animals, selectedFarmId]);
+    return getShedAnimalsForDate(activeShedObj, selectedDate, session);
+  }, [activeShedObj, selectedDate, session, animals, collections, selectedFarmId]);
 
   const unassignedAnimalsInShed = useMemo(() => {
     if (!activeShedObj || activeShedObj.lineManagement !== "Yes") return [];
@@ -477,7 +558,7 @@ export default function DailyMilkCollection() {
 
       await api.milk.collections.bulkCreate(payload);
       swalSuccess("Success", `Milk collection for ${activeShedId} (${session}) saved successfully.`);
-      fetchCollections();
+      fetchCollectionsAndAnimals();
     } catch (err) {
       console.error(err);
       swalError("Error", "Failed to save milk collection records.");

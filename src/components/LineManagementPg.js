@@ -889,5 +889,3 @@ const LineManagementPg = () => {
 };
 
 export default LineManagementPg;
-
-export default LineManagementPg;
