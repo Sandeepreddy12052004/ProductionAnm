@@ -177,12 +177,27 @@ export default function DailyMilkCollection() {
         s.milking === "Yes"
     );
   }, [selectedFarmId, sheds]);
+  // Filter animals that were registered on or before selectedDate
+  const filteredAnimals = useMemo(() => {
+    if (!selectedDate || !animals || animals.length === 0) return [];
+    const targetDate = new Date(selectedDate);
+    targetDate.setHours(0, 0, 0, 0);
+    const targetTime = targetDate.getTime();
+
+    return animals.filter((a) => {
+      const entryRaw = a.date || a.createdAt || a.dateOfBirth;
+      if (!entryRaw) return true; // fallback if no date is present
+      const entryDate = new Date(entryRaw);
+      entryDate.setHours(0, 0, 0, 0);
+      return targetTime >= entryDate.getTime();
+    });
+  }, [animals, selectedDate]);
 
   // Set default active shed when farmSheds list changes
   useEffect(() => {
     if (farmSheds.length > 0) {
       const firstShedWithAnimals = farmSheds.find((s) => {
-        const count = animals.filter(
+        const count = filteredAnimals.filter(
           (a) =>
             (String(a.shed || a.shedId).trim().toUpperCase() === String(s.code || '').trim().toUpperCase() ||
               String(a.shed || a.shedId).trim().toUpperCase() === String(s.name || '').trim().toUpperCase() ||
@@ -203,7 +218,7 @@ export default function DailyMilkCollection() {
     } else {
       setActiveShedId("");
     }
-  }, [farmSheds, animals, selectedFarmId]);
+  }, [farmSheds, filteredAnimals, selectedFarmId]);
 
   // Reset page when active shed or search changes
   useEffect(() => {
@@ -249,7 +264,7 @@ export default function DailyMilkCollection() {
 
     const historicalAnimals = shedCollections.map((col) => {
       const tag = String(col.tag_id || col.tagId).toUpperCase();
-      const animal = animals.find((a) => String(a.tag || a.tag_id).toUpperCase() === tag);
+      const animal = filteredAnimals.find((a) => String(a.tag || a.tag_id).toUpperCase() === tag);
       if (animal) {
         return {
           ...animal,
@@ -277,7 +292,7 @@ export default function DailyMilkCollection() {
       };
     });
 
-    const currentShedAnimals = animals.filter(
+    const currentShedAnimals = filteredAnimals.filter(
       (a) =>
         (String(a.shed || a.shedId).trim().toUpperCase() === String(shedObj.code || '').trim().toUpperCase() ||
           String(a.shed || a.shedId).trim().toUpperCase() === String(shedObj.name || '').trim().toUpperCase() ||
@@ -356,7 +371,6 @@ export default function DailyMilkCollection() {
     // Table summary of all sheds for active session
     const shedsSummary = farmSheds.map((s) => {
       const shedKey = s.name || s.code || String(s._id);
-
       const shedAnimals = getShedAnimalsForDate(s, selectedDate, session);
 
       const totalQty = shedAnimals.reduce((sum, a) => {
@@ -377,7 +391,7 @@ export default function DailyMilkCollection() {
     });
 
     // Compute pregnant animals and their total yield
-    const pregnantAnimals = animals.filter(
+    const pregnantAnimals = filteredAnimals.filter(
       (a) =>
         String(a.farmId?._id || a.farmId?.id || a.farmId) === String(selectedFarmId) &&
         !["SOLD", "DECEASED", "DEAD", "DRY"].includes(a.status) &&
@@ -408,7 +422,7 @@ export default function DailyMilkCollection() {
       pregnantAnimals,
       pregnantTotalQty
     };
-  }, [collections, selectedDate, session, quantities, selfConsumptions, farmSheds, animals, selectedFarmId]);
+  }, [collections, selectedDate, session, quantities, selfConsumptions, farmSheds, filteredAnimals, selectedFarmId]);
 
   const activeShedObj = useMemo(() => {
     if (!activeShedId) return null;
@@ -420,7 +434,7 @@ export default function DailyMilkCollection() {
   // Active Animals list inside currently selected active shed
   const activeShedAnimals = useMemo(() => {
     return getShedAnimalsForDate(activeShedObj, selectedDate, session);
-  }, [activeShedObj, selectedDate, session, animals, collections, selectedFarmId]);
+  }, [activeShedObj, selectedDate, session, filteredAnimals, collections, selectedFarmId]);
 
   const unassignedAnimalsInShed = useMemo(() => {
     if (!activeShedObj || activeShedObj.lineManagement !== "Yes") return [];
