@@ -67,7 +67,6 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
   };
 
   const isCoreRoute = [
-    "/profile",
     "/users",
     "/department",
     "/roles",

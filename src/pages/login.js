@@ -85,7 +85,7 @@ export default function LoginPage() {
         // Dynamic Post-Login Landing Page Redirection
         const handlePostLoginRedirect = (user, routerInstance) => {
           if (!user) {
-            return routerInstance.replace("/profile");
+            return routerInstance.replace("/login");
           }
 
           const userRole = user.role || '';
@@ -95,7 +95,7 @@ export default function LoginPage() {
 
           const permissions = user.permissions;
           if (!Array.isArray(permissions)) {
-            return routerInstance.replace("/profile");
+            return routerInstance.replace("/login");
           }
 
           const hasAllAccess = permissions.some(p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL');
@@ -150,7 +150,7 @@ export default function LoginPage() {
             return routerInstance.replace(firstAllowed.path);
           }
 
-          return routerInstance.replace("/profile");
+          return routerInstance.replace("/login");
         };
 
         handlePostLoginRedirect(userObj, router);

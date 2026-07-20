@@ -46,11 +46,8 @@ export function middleware(request) {
 
   const permissions = userObj.permissions;
   if (!Array.isArray(permissions)) {
-    // If no permission array exists, redirect to profile
-    if (pathname !== '/profile') {
-      return NextResponse.redirect(new URL('/profile', request.url));
-    }
-    return NextResponse.next();
+    // If no permission array exists, redirect to login
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   const hasAllAccess = permissions.some(p => typeof p === 'string' && p.trim().toUpperCase() === 'ALL');
@@ -154,8 +151,7 @@ export function middleware(request) {
       { key: 'BMC_MANAGEMENT', path: '/bmc-management' }
     ];
 
-    const firstAllowed = routeMappings.find(r => hasAccess(r.key));
-    const targetPath = firstAllowed ? firstAllowed.path : '/profile';
+    const targetPath = firstAllowed ? firstAllowed.path : '/login';
 
     return NextResponse.redirect(new URL(targetPath, request.url));
   }
