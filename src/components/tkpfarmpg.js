@@ -39,7 +39,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
     }
   }, []);
 
-  const hasAccess = (moduleKey) => {
+  const hasAccess = (moduleKey, exact = false) => {
     if (!userObj) return false;
     const role = userObj.role || '';
     if (role.trim().toUpperCase() === 'SUPER_ADMIN') return true;
@@ -56,6 +56,9 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       if (typeof p === 'string') {
         const lowerP = p.trim().toLowerCase();
         const lowerModKey = moduleKey.trim().toLowerCase();
+        if (exact) {
+          return lowerP === lowerModKey;
+        }
         return lowerP === lowerModKey || lowerP.startsWith(lowerModKey + '_') || lowerP.includes(lowerModKey);
       }
       return false;
@@ -286,21 +289,33 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
   // Tab-to-permission mapping — each tab key maps to the module key guarding it
   const tabPermissionMap = {
-    health: 'HEALTH',
+    vaccine: 'VACCINATION_LOG',
+    med_inv: 'MEDICINE_INVENTORY',
+    feed_inv: 'FEED_INVENTORY',
+    feeding: 'FEEDING',
+    milk_prod: 'MILK_COLLECTION',
+    components: 'MILK_QA',
+    pashudhan: 'CATTLE_MANAGEMENT',
+  };
+
+  const tabBaseTokenMap = {
     vaccine: 'HEALTH',
     med_inv: 'INVENTORY',
     feed_inv: 'INVENTORY',
     feeding: 'FEEDING',
     milk_prod: 'MILK',
     components: 'MILK',
-    pashudhan: 'CATTLE_MANAGEMENT',
+    pashudhan: 'CATTLE',
   };
 
   const fetchLogs = async () => {
     // Client-Side API Firewall — skip fetch if user lacks permission for this tab
     const requiredPermission = tabPermissionMap[activeTab];
-    if (requiredPermission && !hasAccess(requiredPermission)) {
-      console.warn(`[FarmTKP] Access denied for tab '${activeTab}' (requires ${requiredPermission}). Fetch blocked.`);
+    const basePermission = tabBaseTokenMap[activeTab];
+    const hasPermission = requiredPermission && (hasAccess(requiredPermission) || (basePermission && hasAccess(basePermission, true)));
+
+    if (requiredPermission && !hasPermission) {
+      console.warn(`[FarmTKP] Access denied for tab '${activeTab}' (requires ${requiredPermission} or legacy ${basePermission}). Fetch blocked.`);
       setLogs([]);
       setIsLoading(false);
       return;

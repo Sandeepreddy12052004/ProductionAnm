@@ -28,6 +28,7 @@ const DEFAULT_MODULE_GROUPS = {
       { name: 'Land Management', baseToken: 'LAND_MANAGEMENT', prefix: 'LAND_MANAGEMENT', icon: '🗺️' },
       { name: 'BMC Management', baseToken: 'BMC_MANAGEMENT', prefix: 'BMC_MANAGEMENT', icon: '❄️' },
       { name: 'Shed Management', baseToken: 'SHEDS', prefix: 'SHED_MANAGEMENT', icon: '⚙️' },
+      { name: 'Line Management', baseToken: 'SHEDS', prefix: 'LINE_MANAGEMENT', icon: '📏' },
       { name: 'Cattle Management', baseToken: 'CATTLE', prefix: 'CATTLE_MANAGEMENT', icon: '🐄' },
       { name: 'Health Management', baseToken: 'HEALTH', prefix: 'HEALTH_MANAGEMENT', icon: '🩺' },
       { name: 'Feed Items', baseToken: 'INVENTORY', prefix: 'FEED_ITEMS', icon: '🌾' },
@@ -46,15 +47,15 @@ const DEFAULT_MODULE_GROUPS = {
       { name: 'Insemination Management', baseToken: 'CROSSING_LOG', prefix: 'INSEMINATION_MANAGEMENT', icon: '🧬' },
       { name: 'Purchase Log', baseToken: 'PURCHASE_LOG', prefix: 'PURCHASE_LOG', icon: '📥' },
       { name: 'Sale Log', baseToken: 'SALE_LOG', prefix: 'SALE_LOG', icon: '📤' },
-      { name: 'Treatment Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '🩺' },
-      { name: 'Vaccination Log', baseToken: 'HEALTH', prefix: 'HEALTH', icon: '💉' },
-      { name: 'Feed Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY', icon: '🌾' },
-      { name: 'Medicine Inventory', baseToken: 'INVENTORY', prefix: 'INVENTORY', icon: '💊' },
+      { name: 'Treatment Log', baseToken: 'HEALTH', prefix: 'TREATMENT_LOG', icon: '🩺' },
+      { name: 'Vaccination Log', baseToken: 'HEALTH', prefix: 'VACCINATION_LOG', icon: '💉' },
+      { name: 'Feed Inventory', baseToken: 'INVENTORY', prefix: 'FEED_INVENTORY', icon: '🌾' },
+      { name: 'Medicine Inventory', baseToken: 'INVENTORY', prefix: 'MEDICINE_INVENTORY', icon: '💊' },
       { name: 'Grass Collection', baseToken: 'GRASS', prefix: 'GRASS', icon: '🌿' },
       { name: 'Daily Feeding', baseToken: 'FEEDING', prefix: 'FEEDING', icon: '🍽️' },
-      { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK', icon: '🥛' },
-      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK', icon: '🧪' },
-      { name: 'Milk Performance', baseToken: 'MILK', prefix: 'MILK_PERFORMANCE', icon: '📈' }
+      { name: 'Daily Milk Collection', baseToken: 'MILK', prefix: 'MILK_COLLECTION', icon: '🥛' },
+      { name: 'Milk QA', baseToken: 'MILK', prefix: 'MILK_QA', icon: '🧪' },
+      { name: 'Milk Performance', baseToken: 'MILK_PERFORMANCE', prefix: 'MILK_PERFORMANCE', icon: '📈' }
     ]
   }
 };

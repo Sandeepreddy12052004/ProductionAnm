@@ -1904,13 +1904,20 @@
                                 'DEPARTMENT': '🏢 Department',
                                 'FARM_MANAGEMENT': '🏠 Farm Management',
                                 'SHED_MANAGEMENT': '⚙️ Shed Management',
+                                'LINE_MANAGEMENT': '📏 Line Management',
                                 'CATTLE_MANAGEMENT': '🐄 Cattle Management',
                                 'LIVESTOCK': '🐄 Live Stock',
                                 'SHED_LOG': '📝 Shed Log',
                                 'CROSSING_LOG': '🧬 Crossing Log',
                                 'PURCHASE_LOG': '📥 Purchase Log',
                                 'SALE_LOG': '📤 Sale Log',
-                                'HEALTH': '🩺 Health Log'
+                                'TREATMENT_LOG': '🩺 Treatment Log',
+                                'VACCINATION_LOG': '💉 Vaccination Log',
+                                'FEED_INVENTORY': '📦 Feed Inventory',
+                                'MEDICINE_INVENTORY': '💊 Medicine Inventory',
+                                'MILK_COLLECTION': '🥛 Daily Milk Collection',
+                                'MILK_QA': '🧪 Milk QA',
+                                'MILK_PROCUREMENT': '🥛 Milk Procurement'
                               };
 
                               Object.entries(mappings).forEach(([prefix, label]) => {
