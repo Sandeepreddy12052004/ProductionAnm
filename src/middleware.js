@@ -156,7 +156,7 @@ export function middleware(request) {
       { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', path: '/feed-inventory' },
       { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/medicine-inventory' },
       { key: 'GRASS', path: '/grass' },
-      { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
+      { key: 'FEEDING', path: '/feeding' },
       { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/farm/tkp?tab=milk_prod' },
       { key: 'MILK_QA', baseKey: 'MILK', path: '/farm/tkp?tab=components' },
       { key: 'MILK_PROCUREMENT', baseKey: 'MILK', path: '/milk-procurement' },

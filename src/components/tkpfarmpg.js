@@ -166,42 +166,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       fields: []
     },
 
-    {
-      id: 'feeding',
-      name: 'Daily Feeding',
-      icon: '🌾',
-      fields: [
-        { name: 'date', label: 'Date', type: 'date' },
-        { name: 'shedId', label: 'Shed Number', type: 'select', options: sheds },
-        { name: 'animalId', label: 'Cattle/Animal', type: 'select', options: animals },
-        ...(feeds.length > 0
-          ? feeds.map(feedName => {
-            const camelName = toCamelCase(feedName);
-            let unit = 'KG';
-            const lowerName = feedName.toLowerCase();
-            if (lowerName.includes('salt') || lowerName.includes('mineral')) unit = 'G';
-            else if (lowerName.includes('calcium')) unit = 'ML';
-            return {
-              name: camelName,
-              label: `${feedName} (${unit})`,
-              type: 'number',
-              optional: true
-            };
-          })
-          : [
-            { name: 'greenGrass', label: 'Green Grass (KG)', type: 'number' },
-            { name: 'dryGrass', label: 'Dry Grass (KG)', type: 'number' },
-            { name: 'cottonCake', label: 'C.Cake (KG)', type: 'number' },
-            { name: 'chunni', label: 'Chunni (KG)', type: 'number' },
-            { name: 'maize', label: 'Maize (KG)', type: 'number' },
-            { name: 'wheatBran', label: 'Wheat Bran (KG)', type: 'number' },
-            { name: 'salt', label: 'Salt (G)', type: 'number' },
-            { name: 'oralCalcium', label: 'Oral Calcium (ML)', type: 'number' },
-            { name: 'mineralMixture', label: 'Mineral mixture (G)', type: 'number' }
-          ]
-        )
-      ]
-    },
+
 
 
 
@@ -264,7 +229,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   // Tab-to-permission mapping — each tab key maps to the module key guarding it
   const tabPermissionMap = {
     vaccine: 'VACCINATION_LOG',
-    feeding: 'FEEDING',
     milk_prod: 'MILK_COLLECTION',
     components: 'MILK_QA',
     pashudhan: 'CATTLE_MANAGEMENT',
@@ -272,7 +236,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
   const tabBaseTokenMap = {
     vaccine: 'HEALTH',
-    feeding: 'FEEDING',
     milk_prod: 'MILK',
     components: 'MILK',
     pashudhan: 'CATTLE',
@@ -298,8 +261,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         data = await api.health.treatments.getAll();
       } else if (activeTab === 'vaccine') {
         data = await api.health.vaccinations.getAll();
-      } else if (activeTab === 'feeding') {
-        data = await api.operations.dailyFeeding.getAll();
       } else if (activeTab === 'milk_prod') {
         data = await api.milk.collections.getAll();
       } else if (activeTab === 'components') {
@@ -600,7 +561,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       if (isEditing) {
         if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.update(entryId, payload);
-        else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
         else if (activeTab === 'milk_prod') await api.milk.collections.update(entryId, payload);
         else if (activeTab === 'components') await api.milk.quality.update(entryId, payload);
         else {
@@ -618,7 +578,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);
-        else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
         else if (activeTab === 'milk_prod') await api.milk.collections.create(payload);
         else if (activeTab === 'components') await api.milk.quality.create(payload);
         else {
@@ -644,13 +603,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         const entryId = selectedEntry.id || selectedEntry._id;
         if (activeTab === 'health') await api.health.treatments.delete(entryId);
         else if (activeTab === 'vaccine') await api.health.vaccinations.delete(entryId);
-        else if (activeTab === 'feeding') {
-          if (selectedEntry._ids && selectedEntry._ids.length > 0) {
-            await Promise.all(selectedEntry._ids.map(id => api.operations.dailyFeeding.delete(id)));
-          } else {
-            await api.operations.dailyFeeding.delete(entryId);
-          }
-        }
         else if (activeTab === 'milk_prod') await api.milk.collections.delete(entryId);
         else if (activeTab === 'components') await api.milk.quality.delete(entryId);
         else {
