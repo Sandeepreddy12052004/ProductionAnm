@@ -218,19 +218,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         { name: 'expiryDate', label: 'Expiry Date', type: 'date' }
       ]
     },
-    {
-      id: 'feed_inv',
-      name: 'Feed Inventory',
-      icon: '📦',
-      fields: [
-        { name: 'feedType', label: 'Feed Item', type: 'select', options: feeds },
-        { name: 'oldStock', label: 'Old Stock', type: 'number' },
-        { name: 'bought', label: 'Bought', type: 'number' },
-        { name: 'usage', label: 'Bags/Usage', type: 'number' },
-        { name: 'remainingStock', label: 'Remaining Stock', type: 'number' },
-        { name: 'purchaseDate', label: 'Purchase Date', type: 'date' }
-      ]
-    },
+
     {
       id: 'milk_prod',
       name: 'Milk Production',
@@ -291,7 +279,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const tabPermissionMap = {
     vaccine: 'VACCINATION_LOG',
     med_inv: 'MEDICINE_INVENTORY',
-    feed_inv: 'FEED_INVENTORY',
     feeding: 'FEEDING',
     milk_prod: 'MILK_COLLECTION',
     components: 'MILK_QA',
@@ -301,7 +288,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   const tabBaseTokenMap = {
     vaccine: 'HEALTH',
     med_inv: 'INVENTORY',
-    feed_inv: 'INVENTORY',
     feeding: 'FEEDING',
     milk_prod: 'MILK',
     components: 'MILK',
@@ -330,8 +316,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         data = await api.health.vaccinations.getAll();
       } else if (activeTab === 'med_inv') {
         data = await api.inventory.medicines.getAll();
-      } else if (activeTab === 'feed_inv') {
-        data = await api.inventory.feed.getAll();
       } else if (activeTab === 'feeding') {
         data = await api.operations.dailyFeeding.getAll();
       } else if (activeTab === 'milk_prod') {
@@ -635,7 +619,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.update(entryId, payload);
         else if (activeTab === 'med_inv') await api.inventory.medicines.update(entryId, payload);
-        else if (activeTab === 'feed_inv') await api.inventory.feed.update(entryId, payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
         else if (activeTab === 'milk_prod') await api.milk.collections.update(entryId, payload);
         else if (activeTab === 'components') await api.milk.quality.update(entryId, payload);
@@ -655,7 +638,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);
         else if (activeTab === 'med_inv') await api.inventory.medicines.create(payload);
-        else if (activeTab === 'feed_inv') await api.inventory.feed.create(payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
         else if (activeTab === 'milk_prod') await api.milk.collections.create(payload);
         else if (activeTab === 'components') await api.milk.quality.create(payload);
@@ -683,7 +665,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         if (activeTab === 'health') await api.health.treatments.delete(entryId);
         else if (activeTab === 'vaccine') await api.health.vaccinations.delete(entryId);
         else if (activeTab === 'med_inv') await api.inventory.medicines.delete(entryId);
-        else if (activeTab === 'feed_inv') await api.inventory.feed.delete(entryId);
         else if (activeTab === 'feeding') {
           if (selectedEntry._ids && selectedEntry._ids.length > 0) {
             await Promise.all(selectedEntry._ids.map(id => api.operations.dailyFeeding.delete(id)));

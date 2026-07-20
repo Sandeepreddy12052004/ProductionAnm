@@ -89,7 +89,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     (isFarmRoute && router.query.tab);
 
   const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["vaccine"].includes(router.query.tab));
-  const isInventoryActive = ["/feed-inventory", "/medicine-inventory"].includes(router.pathname) || (isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab));
+  const isInventoryActive = ["/feed-inventory", "/medicine-inventory"].includes(router.pathname) || (isFarmRoute && ["med_inv", "medicine"].includes(router.query.tab));
   const isMilkActive = ["/milk", "/milk-quality", "/milking-performance", "/milk-procurement"].includes(router.pathname) || (isFarmRoute && ["milk_prod", "components"].includes(router.query.tab));
 
   // Dynamic Farms State

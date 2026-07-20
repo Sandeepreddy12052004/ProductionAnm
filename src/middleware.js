@@ -153,7 +153,7 @@ export function middleware(request) {
       { key: 'SALE_LOG', path: '/sale' },
       { key: 'TREATMENT_LOG', baseKey: 'HEALTH', path: '/treatment' },
       { key: 'VACCINATION_LOG', baseKey: 'HEALTH', path: '/vaccination' },
-      { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
+      { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', path: '/feed-inventory' },
       { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=med_inv' },
       { key: 'GRASS', path: '/grass' },
       { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
