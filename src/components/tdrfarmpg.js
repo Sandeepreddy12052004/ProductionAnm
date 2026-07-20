@@ -144,21 +144,7 @@ const FarmTDR = () => {
         )
       ]
     },
-    {
-      id: 'medicine',
-      name: 'Medicine Inventory',
-      icon: '💊',
-      fields: [
-        { name: 'medicineName', label: 'Medicine Name', type: 'select', options: medicines.length > 0 ? medicines : ['-'] },
-        { name: 'type', label: 'Type', type: 'select', options: ['Injection', 'Tablet', 'Liquid', 'Powder'] },
-        { name: 'oldStock', label: 'Old Stock', type: 'number' },
-        { name: 'bought', label: 'Bought', type: 'number' },
-        { name: 'used', label: 'Used', type: 'number' },
-        { name: 'presentStock', label: 'Stock Count', type: 'number' },
-        { name: 'purchaseDate', label: 'Purchase Date', type: 'date' },
-        { name: 'expiryDate', label: 'Expiry Date', type: 'date' }
-      ]
-    }
+
   ];
 
   const current = modules.find(m => m.id === activeTab);
@@ -171,8 +157,6 @@ const FarmTDR = () => {
         data = await api.health.treatments.getAll();
       } else if (activeTab === 'feeding') {
         data = await api.operations.dailyFeeding.getAll();
-      } else if (activeTab === 'medicine') {
-        data = await api.inventory.medicines.getAll();
       } else {
         const savedData = localStorage.getItem(`tdr_${activeTab}_logs`);
         data = savedData ? JSON.parse(savedData) : [];
@@ -259,9 +243,6 @@ const FarmTDR = () => {
   useEffect(() => {
     if (router.query.tab) {
       let tab = router.query.tab;
-      if (tab === 'med_inv') {
-        tab = 'medicine';
-      }
       if (modules.some(m => m.id === tab)) {
         setActiveTab(tab);
       }
@@ -418,7 +399,6 @@ const FarmTDR = () => {
       if (isEditing) {
         if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.update(entryId, payload);
-        else if (activeTab === 'medicine') await api.inventory.medicines.update(entryId, payload);
         else {
           const updated = logs.map(log => (log._id || log.id) === (selectedEntry._id || selectedEntry.id) ? { ...log, ...data } : log);
           saveToStorage(updated);
@@ -432,7 +412,6 @@ const FarmTDR = () => {
 
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'feeding') await api.operations.dailyFeeding.create(payload);
-        else if (activeTab === 'medicine') await api.inventory.medicines.create(payload);
         else {
           const newLogs = [{ ...data, id: Date.now(), date: formattedDate }, ...logs];
           saveToStorage(newLogs);
@@ -663,7 +642,6 @@ const FarmTDR = () => {
             await api.operations.dailyFeeding.delete(entryId);
           }
         }
-        else if (activeTab === 'medicine') await api.inventory.medicines.delete(entryId);
         else {
           const filtered = logs.filter(log => (log._id || log.id) !== (selectedEntry._id || selectedEntry.id));
           saveToStorage(filtered);
@@ -805,7 +783,7 @@ const FarmTDR = () => {
                 onClick={() => {
                   setActiveTab(m.id);
                   setShowTabDropdown(false);
-                  const urlTab = m.id === 'medicine' ? 'med_inv' : m.id;
+                  const urlTab = m.id;
                   router.push({ query: { ...router.query, tab: urlTab } }, undefined, { shallow: true });
                 }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${activeTab === m.id ? "bg-[#D1867D]/10 text-[#16223F] font-bold" : ""

@@ -152,7 +152,7 @@ export default function LoginPage() {
             { key: 'TREATMENT_LOG', baseKey: 'HEALTH', path: '/treatment' },
             { key: 'VACCINATION_LOG', baseKey: 'HEALTH', path: '/vaccination' },
             { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', path: '/feed-inventory' },
-            { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=med_inv' },
+            { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/medicine-inventory' },
             { key: 'GRASS', path: '/grass' },
             { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
             { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/farm/tkp?tab=milk_prod' },
