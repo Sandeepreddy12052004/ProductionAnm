@@ -155,7 +155,7 @@ export default function LoginPage() {
             { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/medicine-inventory' },
             { key: 'GRASS', path: '/grass' },
             { key: 'FEEDING', path: '/feeding' },
-            { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/farm/tkp?tab=milk_prod' },
+            { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/milk' },
             { key: 'MILK_QA', baseKey: 'MILK', path: '/farm/tkp?tab=components' },
             { key: 'MILK_PROCUREMENT', baseKey: 'MILK', path: '/milk-procurement' },
             { key: 'MILK_PERFORMANCE', baseKey: 'MILK_PRODUCTION', path: '/milking-performance' },
