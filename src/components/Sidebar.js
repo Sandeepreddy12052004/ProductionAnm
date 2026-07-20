@@ -27,7 +27,7 @@ const DEFAULT_MODULE_GROUPS = {
     ]
   },
   MODULES: {
-    title: 'Modules',
+    title: 'modules',
     modules: [
       { name: 'Live Stock', baseToken: 'CATTLE', prefix: 'LIVESTOCK', icon: '🐄', path: '/animals' },
       { name: 'Shed Log', baseToken: 'SHED_LOG', prefix: 'SHED_LOG', icon: '📝', path: '/shed' },
@@ -89,7 +89,7 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
     ["/animals", "/shed", "/crossing", "/purchase", "/sale", "/treatment", "/vaccination"].includes(router.pathname) ||
     (isFarmRoute && router.query.tab);
 
-  const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["health", "vaccine"].includes(router.query.tab));
+  const isHealthActive = ["/treatment", "/vaccination"].includes(router.pathname) || (isFarmRoute && ["vaccine"].includes(router.query.tab));
   const isInventoryActive = ["/feed-inventory", "/medicine-inventory"].includes(router.pathname) || (isFarmRoute && ["feed_inv", "med_inv", "medicine"].includes(router.query.tab));
   const isMilkActive = ["/milk", "/milk-quality", "/milking-performance", "/milk-procurement"].includes(router.pathname) || (isFarmRoute && ["milk_prod", "components"].includes(router.query.tab));
 

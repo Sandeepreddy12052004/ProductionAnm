@@ -162,20 +162,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       icon: '📊',
       fields: []
     },
-    {
-      id: 'health',
-      name: 'Health Log',
-      icon: '🩺',
-      fields: [
-        { name: 'tagId', label: 'Tag ID' },
-        { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
-        { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
-        { name: 'symptoms', label: 'Symptoms', type: 'select', options: symptomOptions.length > 0 ? symptomOptions : ['-'] },
-        { name: 'diagnosis', label: 'Diagnosis', type: 'select', options: diagnosisOptions.length > 0 ? diagnosisOptions : ['-'], optional: true },
-        { name: 'treatment', label: 'Treatment', type: 'select', options: medicines.length > 0 ? medicines : ['-'] },
-        { name: 'healthStatus', label: 'Health Status', type: 'select', options: ['Completed', 'Pending', 'Critical'] }
-      ]
-    },
+
     {
       id: 'feeding',
       name: 'Daily Feeding',

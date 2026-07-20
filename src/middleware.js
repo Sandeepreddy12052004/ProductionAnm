@@ -144,7 +144,7 @@ export function middleware(request) {
       { key: 'CROSSING_LOG', path: '/crossing' },
       { key: 'PURCHASE_LOG', path: '/purchase' },
       { key: 'SALE_LOG', path: '/sale' },
-      { key: 'HEALTH', path: '/farm/tkp?tab=health' },
+      { key: 'HEALTH', path: '/treatment' },
       { key: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
       { key: 'GRASS', path: '/grass' },
       { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },

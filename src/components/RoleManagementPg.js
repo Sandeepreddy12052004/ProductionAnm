@@ -20,7 +20,7 @@ import {
 
 const DEFAULT_MODULE_GROUPS = {
   CORE: {
-    title: 'CORE SETUP MODULES',
+    title: 'Core Modules',
     modules: [
       { name: 'User Management', baseToken: 'USERS', prefix: 'USER_MANAGEMENT', icon: '👥' },
       { name: 'Department', baseToken: 'DEPARTMENTS', prefix: 'DEPARTMENT', icon: '🏢' },
@@ -38,7 +38,7 @@ const DEFAULT_MODULE_GROUPS = {
     ]
   },
   MODULES: {
-    title: 'OPERATIONAL LOGS & INVENTORY',
+    title: 'modules',
     modules: [
       { name: 'Live Stock', baseToken: 'CATTLE', prefix: 'LIVESTOCK', icon: '🐄' },
       { name: 'Shed Log', baseToken: 'SHED_LOG', prefix: 'SHED_LOG', icon: '📝' },
