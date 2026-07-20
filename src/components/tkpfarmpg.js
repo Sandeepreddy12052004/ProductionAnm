@@ -171,21 +171,23 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
 
 
-    {
-      id: 'vaccine',
-      name: 'Vaccination Log',
-      icon: '💉',
-      fields: [
-        { name: 'tagId', label: 'Tag ID' },
-        { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
-        { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
-        { name: 'vaccinationName', label: 'Vaccine Name' },
-        { name: 'batchNo', label: 'Vaccine Batch No' },
-        { name: 'manufactureDate', label: 'Manufacture Date', type: 'date' },
-        { name: 'expiryDate', label: 'Expiry Date', type: 'date' },
-        { name: 'treatmentOrStatus', label: 'Treatment/Status', type: 'select', options: ['Completed', 'Pending'] }
-      ]
-    },
+    ...(farmCode.toUpperCase() !== 'TDR' ? [
+      {
+        id: 'vaccine',
+        name: 'Vaccination Log',
+        icon: '💉',
+        fields: [
+          { name: 'tagId', label: 'Tag ID' },
+          { name: 'animalType', label: 'Animal Type', disabled: true, optional: true },
+          { name: 'shedId', label: 'Shed', type: 'select', options: sheds },
+          { name: 'vaccinationName', label: 'Vaccine Name' },
+          { name: 'batchNo', label: 'Vaccine Batch No' },
+          { name: 'manufactureDate', label: 'Manufacture Date', type: 'date' },
+          { name: 'expiryDate', label: 'Expiry Date', type: 'date' },
+          { name: 'treatmentOrStatus', label: 'Treatment/Status', type: 'select', options: ['Completed', 'Pending'] }
+        ]
+      }
+    ] : []),
     {
       id: 'components',
       name: 'Milk Components',
