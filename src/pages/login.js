@@ -103,7 +103,7 @@ export default function LoginPage() {
             return routerInstance.replace("/dashboard");
           }
 
-          const hasAccess = (moduleKey) => {
+          const hasAccess = (moduleKey, exact = false) => {
             const permission = permissions.find((p) => {
               if (!p) return false;
               if (typeof p === 'object') {
@@ -112,6 +112,9 @@ export default function LoginPage() {
               if (typeof p === 'string') {
                 const lowerP = p.trim().toLowerCase();
                 const lowerModKey = moduleKey.trim().toLowerCase();
+                if (exact) {
+                  return lowerP === lowerModKey;
+                }
                 return lowerP === lowerModKey || lowerP.startsWith(lowerModKey + '_') || lowerP.includes(lowerModKey);
               }
               return false;
@@ -126,26 +129,42 @@ export default function LoginPage() {
             return routerInstance.replace("/dashboard");
           }
 
+          const checkAccess = (r) => hasAccess(r.key) || (r.baseKey && hasAccess(r.baseKey, true));
+
           const routeMappings = [
             { key: 'USER_MANAGEMENT', path: '/users' },
             { key: 'DEPARTMENT', path: '/department' },
             { key: 'ROLES', path: '/roles' },
             { key: 'FARM_MANAGEMENT', path: '/farms' },
-            { key: 'SHED_MANAGEMENT', path: '/shed-management' },
-            { key: 'CATTLE_MANAGEMENT', path: '/animals' },
-            { key: 'LIVESTOCK', path: '/animals' },
+            { key: 'SHED_MANAGEMENT', baseKey: 'SHEDS', path: '/shed-management' },
+            { key: 'LINE_MANAGEMENT', baseKey: 'SHEDS', path: '/line-management' },
+            { key: 'CATTLE_MANAGEMENT', baseKey: 'CATTLE', path: '/cattle-management' },
+            { key: 'HEALTH_MANAGEMENT', baseKey: 'HEALTH', path: '/health-management' },
+            { key: 'FEED_ITEMS', baseKey: 'INVENTORY', path: '/feed-items' },
+            { key: 'TAG_MANAGEMENT', baseKey: 'CATTLE', path: '/tag-management' },
+            { key: 'BREED_MANAGEMENT', baseKey: 'CATTLE', path: '/breed-management' },
+            { key: 'ANIMAL_MANAGEMENT', baseKey: 'CATTLE', path: '/animal-management' },
+            { key: 'LIVESTOCK', baseKey: 'CATTLE', path: '/animals' },
             { key: 'SHED_LOG', path: '/shed' },
             { key: 'CROSSING_LOG', path: '/crossing' },
             { key: 'PURCHASE_LOG', path: '/purchase' },
             { key: 'SALE_LOG', path: '/sale' },
-            { key: 'HEALTH', path: '/treatment' },
-            { key: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
+            { key: 'TREATMENT_LOG', baseKey: 'HEALTH', path: '/treatment' },
+            { key: 'VACCINATION_LOG', baseKey: 'HEALTH', path: '/vaccination' },
+            { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
+            { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=med_inv' },
             { key: 'GRASS', path: '/grass' },
             { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
-            { key: 'MILK', path: '/farm/tkp?tab=milk_prod' }
+            { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/farm/tkp?tab=milk_prod' },
+            { key: 'MILK_QA', baseKey: 'MILK', path: '/farm/tkp?tab=components' },
+            { key: 'MILK_PROCUREMENT', baseKey: 'MILK', path: '/milk-procurement' },
+            { key: 'MILK_PERFORMANCE', baseKey: 'MILK_PRODUCTION', path: '/milking-performance' },
+            { key: 'CROSSING_LOG', path: '/insemination' },
+            { key: 'LAND_MANAGEMENT', path: '/land-management' },
+            { key: 'BMC_MANAGEMENT', path: '/bmc-management' }
           ];
 
-          const firstAllowed = routeMappings.find(r => hasAccess(r.key));
+          const firstAllowed = routeMappings.find(r => checkAccess(r));
           if (firstAllowed) {
             return routerInstance.replace(firstAllowed.path);
           }

@@ -56,7 +56,7 @@ export function middleware(request) {
   }
 
   // Helper function to check granular access
-  const hasAccess = (moduleKey) => {
+  const hasAccess = (moduleKey, exact = false) => {
     const permission = permissions.find((p) => {
       if (!p) return false;
       if (typeof p === 'object') {
@@ -66,6 +66,10 @@ export function middleware(request) {
         const upperP = p.trim().toUpperCase();
         const upperModKey = moduleKey.trim().toUpperCase();
         
+        if (exact) {
+          return upperP === upperModKey;
+        }
+
         const getBaseModule = (perm) => {
           const upper = perm.toUpperCase();
           const suffixes = ['_VIEW', '_CREATE', '_EDIT', '_DELETE'];
@@ -95,62 +99,74 @@ export function middleware(request) {
     { key: 'DEPARTMENT', match: pathname === '/department' },
     { key: 'ROLES', match: pathname === '/roles' },
     { key: 'FARM_MANAGEMENT', match: pathname === '/farms' || pathname.startsWith('/farm-management') },
-    { key: 'SHED_MANAGEMENT', match: pathname === '/shed-management' || pathname === '/line-management' },
-    { key: 'CATTLE_MANAGEMENT', match: pathname === '/cattle-management' },
-    { key: 'HEALTH_MANAGEMENT', match: pathname === '/health-management' },
-    { key: 'FEED_ITEMS', match: pathname === '/feed-items' },
-    { key: 'TAG_MANAGEMENT', match: pathname === '/tag-management' },
-    { key: 'BREED_MANAGEMENT', match: pathname === '/breed-management' },
-    { key: 'ANIMAL_MANAGEMENT', match: pathname === '/animal-management' },
-    { key: 'LIVESTOCK', match: pathname === '/animals' },
+    { key: 'SHED_MANAGEMENT', baseKey: 'SHEDS', match: pathname === '/shed-management' },
+    { key: 'LINE_MANAGEMENT', baseKey: 'SHEDS', match: pathname === '/line-management' },
+    { key: 'CATTLE_MANAGEMENT', baseKey: 'CATTLE', match: pathname === '/cattle-management' },
+    { key: 'HEALTH_MANAGEMENT', baseKey: 'HEALTH', match: pathname === '/health-management' },
+    { key: 'FEED_ITEMS', baseKey: 'INVENTORY', match: pathname === '/feed-items' },
+    { key: 'TAG_MANAGEMENT', baseKey: 'CATTLE', match: pathname === '/tag-management' },
+    { key: 'BREED_MANAGEMENT', baseKey: 'CATTLE', match: pathname === '/breed-management' },
+    { key: 'ANIMAL_MANAGEMENT', baseKey: 'CATTLE', match: pathname === '/animal-management' },
+    { key: 'LIVESTOCK', baseKey: 'CATTLE', match: pathname === '/animals' },
     { key: 'SHED_LOG', match: pathname === '/shed' || pathname === '/shedlog' },
     { key: 'CROSSING_LOG', match: pathname === '/crossing' },
     { key: 'PURCHASE_LOG', match: pathname === '/purchase' },
     { key: 'SALE_LOG', match: pathname === '/sale' },
-    { key: 'HEALTH', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'health' },
-    { key: 'HEALTH', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'vaccine' },
-    { key: 'INVENTORY', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'feed_inv' },
-    { key: 'INVENTORY', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'med_inv' },
+    { key: 'TREATMENT_LOG', baseKey: 'HEALTH', match: pathname === '/treatment' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'health') },
+    { key: 'VACCINATION_LOG', baseKey: 'HEALTH', match: pathname === '/vaccination' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'vaccine') },
+    { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', match: pathname === '/feed-inventory' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'feed_inv') },
+    { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', match: pathname === '/medicine-inventory' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'med_inv') },
     { key: 'GRASS', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'grass' },
     { key: 'FEEDING', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'feeding' },
-    { key: 'MILK', match: pathname === '/milk' || pathname === '/milk-quality' || pathname === '/milking-performance' || pathname === '/milk-procurement' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod') },
-    { key: 'MILK', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components' },
+    { key: 'MILK_COLLECTION', baseKey: 'MILK', match: pathname === '/milk' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod') },
+    { key: 'MILK_QA', baseKey: 'MILK', match: pathname === '/milk-quality' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components') },
+    { key: 'MILK_PROCUREMENT', baseKey: 'MILK', match: pathname === '/milk-procurement' },
+    { key: 'MILK_PERFORMANCE', baseKey: 'MILK_PRODUCTION', match: pathname === '/milking-performance' },
     { key: 'CROSSING_LOG', match: pathname === '/insemination' },
     { key: 'LAND_MANAGEMENT', match: pathname === '/land-management' || pathname.startsWith('/land-management') },
     { key: 'BMC_MANAGEMENT', match: pathname === '/bmc-management' || pathname.startsWith('/bmc-management') }
   ];
 
+  const checkAccess = (r) => hasAccess(r.key) || (r.baseKey && hasAccess(r.baseKey, true));
+
   // Check if current route is matched and if user does not have access
   const matchedRoute = routesConfig.find(r => r.match);
-  if (matchedRoute && !hasAccess(matchedRoute.key)) {
+  if (matchedRoute && !checkAccess(matchedRoute)) {
     // Intercept and dynamically redirect to their first accessible page
     const routeMappings = [
       { key: 'USER_MANAGEMENT', path: '/users' },
       { key: 'DEPARTMENT', path: '/department' },
       { key: 'ROLES', path: '/roles' },
       { key: 'FARM_MANAGEMENT', path: '/farms' },
-      { key: 'SHED_MANAGEMENT', path: '/shed-management' },
-      { key: 'CATTLE_MANAGEMENT', path: '/cattle-management' },
-      { key: 'HEALTH_MANAGEMENT', path: '/health-management' },
-      { key: 'FEED_ITEMS', path: '/feed-items' },
-      { key: 'TAG_MANAGEMENT', path: '/tag-management' },
-      { key: 'BREED_MANAGEMENT', path: '/breed-management' },
-      { key: 'ANIMAL_MANAGEMENT', path: '/animal-management' },
-      { key: 'LIVESTOCK', path: '/animals' },
+      { key: 'SHED_MANAGEMENT', baseKey: 'SHEDS', path: '/shed-management' },
+      { key: 'LINE_MANAGEMENT', baseKey: 'SHEDS', path: '/line-management' },
+      { key: 'CATTLE_MANAGEMENT', baseKey: 'CATTLE', path: '/cattle-management' },
+      { key: 'HEALTH_MANAGEMENT', baseKey: 'HEALTH', path: '/health-management' },
+      { key: 'FEED_ITEMS', baseKey: 'INVENTORY', path: '/feed-items' },
+      { key: 'TAG_MANAGEMENT', baseKey: 'CATTLE', path: '/tag-management' },
+      { key: 'BREED_MANAGEMENT', baseKey: 'CATTLE', path: '/breed-management' },
+      { key: 'ANIMAL_MANAGEMENT', baseKey: 'CATTLE', path: '/animal-management' },
+      { key: 'LIVESTOCK', baseKey: 'CATTLE', path: '/animals' },
       { key: 'SHED_LOG', path: '/shed' },
       { key: 'CROSSING_LOG', path: '/crossing' },
       { key: 'PURCHASE_LOG', path: '/purchase' },
       { key: 'SALE_LOG', path: '/sale' },
-      { key: 'HEALTH', path: '/treatment' },
-      { key: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
+      { key: 'TREATMENT_LOG', baseKey: 'HEALTH', path: '/treatment' },
+      { key: 'VACCINATION_LOG', baseKey: 'HEALTH', path: '/vaccination' },
+      { key: 'FEED_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=feed_inv' },
+      { key: 'MEDICINE_INVENTORY', baseKey: 'INVENTORY', path: '/farm/tkp?tab=med_inv' },
       { key: 'GRASS', path: '/grass' },
       { key: 'FEEDING', path: '/farm/tkp?tab=feeding' },
-      { key: 'MILK', path: '/farm/tkp?tab=milk_prod' },
+      { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/farm/tkp?tab=milk_prod' },
+      { key: 'MILK_QA', baseKey: 'MILK', path: '/farm/tkp?tab=components' },
+      { key: 'MILK_PROCUREMENT', baseKey: 'MILK', path: '/milk-procurement' },
+      { key: 'MILK_PERFORMANCE', baseKey: 'MILK_PRODUCTION', path: '/milking-performance' },
       { key: 'CROSSING_LOG', path: '/insemination' },
       { key: 'LAND_MANAGEMENT', path: '/land-management' },
       { key: 'BMC_MANAGEMENT', path: '/bmc-management' }
     ];
 
+    const firstAllowed = routeMappings.find(r => checkAccess(r));
     const targetPath = firstAllowed ? firstAllowed.path : '/login';
 
     return NextResponse.redirect(new URL(targetPath, request.url));
