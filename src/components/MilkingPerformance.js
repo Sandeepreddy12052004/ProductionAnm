@@ -23,7 +23,7 @@ export default function MilkingPerformance() {
   const [selectedAnimalType, setSelectedAnimalType] = useState('ALL');
   const [selectedAnimal, setSelectedAnimal] = useState('ALL');
   const [metricType, setMetricType] = useState('SUM'); // 'SUM' or 'AVG'
-  const [lowYieldThreshold, setLowYieldThreshold] = useState(15);
+  const [lowYieldThreshold, setLowYieldThreshold] = useState(10);
   const [datePreset, setDatePreset] = useState('10_DAYS');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -603,7 +603,7 @@ export default function MilkingPerformance() {
               min="0"
               value={lowYieldThreshold}
               onChange={(e) => { setLowYieldThreshold(e.target.value === '' ? '' : Number(e.target.value)); setCurrentPage(1); }}
-              placeholder="e.g. 15"
+              placeholder="e.g. 10"
               className="h-10 w-28 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-[#16223F] bg-white outline-none focus:border-[#D1867D]"
             />
           </div>
@@ -646,7 +646,7 @@ export default function MilkingPerformance() {
             setSelectedAnimalType('ALL');
             setSelectedAnimal('ALL');
             setMetricType('SUM');
-            setLowYieldThreshold(15);
+            setLowYieldThreshold(10);
             setDatePreset('10_DAYS');
             setStartDate('');
             setEndDate('');
