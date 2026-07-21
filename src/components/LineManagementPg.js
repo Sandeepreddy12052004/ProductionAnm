@@ -3,6 +3,15 @@ import { api } from "../utils/api";
 import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import SkeletonLoader from './SkeletonLoader';
 
+const isEligibleBuffalo = (animal) => {
+  if (!animal) return false;
+  if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
+  const type = String(animal.cattleType || animal.animalType || '').trim().toUpperCase();
+  if (type === 'BUFFALO') return true;
+  if (type === 'BUFFALO CALF' && Number(animal.calvings || 0) > 0) return true;
+  return false;
+};
+
 const LineManagementPg = () => {
   const [sheds, setSheds] = useState([]);
   const [farms, setFarms] = useState([]);
@@ -234,8 +243,7 @@ const LineManagementPg = () => {
       String(animal.shed || animal.shedId || '').trim() === String(selectedShed.code || '').trim() &&
       (!animal.lineNo || Number(animal.lineNo) === 0) &&
       !animal.isDeleted &&
-      String(animal.gender || '').trim().toLowerCase() === 'female' &&
-      String(animal.cattleType || animal.animalType || '').trim().toUpperCase() === 'BUFFALO'
+      isEligibleBuffalo(animal)
     );
   };
 
@@ -246,8 +254,7 @@ const LineManagementPg = () => {
       Number(c.lineNo || 0) === Number(rowNum) &&
       Number(c.position || 0) > 0 &&
       Number(c.position || 0) <= 10 &&
-      String(c.gender || '').trim().toLowerCase() === 'female' &&
-      String(c.cattleType || c.animalType || '').trim().toUpperCase() === 'BUFFALO'
+      isEligibleBuffalo(c)
     );
     const occupiedPositions = new Set(rowAnimals.map(a => Number(a.position)));
     const emptySlots = [];
@@ -310,8 +317,7 @@ const LineManagementPg = () => {
     const selectedShedFarmId = selectedShed.farmId?._id || selectedShed.farmId?.id || selectedShed.farmId || "";
 
     return cattleData.filter(animal => {
-      if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
-      if (String(animal.cattleType || animal.animalType || '').trim().toUpperCase() !== 'BUFFALO') return false;
+      if (!isEligibleBuffalo(animal)) return false;
 
       const animalFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || "";
       if (String(animalFarmId) !== String(selectedShedFarmId)) return false;
@@ -340,9 +346,7 @@ const LineManagementPg = () => {
 
     return cattleData.filter(animal => {
       if ((animal._id || animal.id) === (oldAnimal._id || oldAnimal.id)) return false;
-
-      if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
-      if (String(animal.cattleType || animal.animalType || '').trim().toUpperCase() !== 'BUFFALO') return false;
+      if (!isEligibleBuffalo(animal)) return false;
 
       const animalFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || "";
       if (String(animalFarmId) !== String(selectedShedFarmId)) return false;
@@ -376,8 +380,7 @@ const LineManagementPg = () => {
     const rowAnimals = cattleData.filter(c =>
       String(c.shed || c.shedId || '').trim() === String(selectedShed.code || '').trim() &&
       Number(c.lineNo || 0) === selectedRowNum &&
-      String(c.gender || '').trim().toLowerCase() === 'female' &&
-      String(c.cattleType || c.animalType || '').trim().toUpperCase() === 'BUFFALO'
+      isEligibleBuffalo(c)
     );
 
     // Filter out unpositioned animals (position === 0 or position > 10)
@@ -501,11 +504,8 @@ const LineManagementPg = () => {
                   {getUnassignedAnimals().map(animal => {
                     const animalId = animal._id || animal.id;
                     const selection = unassignedSelections[animalId] || { row: "", slot: "" };
-                    const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO'
-                      ? '🐃'
-                      : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF'
-                        ? '🍼'
-                        : '🐄';
+                    const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase().includes('BUFFALO')
+                      ? "🐃" : "🐄";
 
                     const availableSlots = selection.row ? getEmptySlotsInRow(selection.row) : [];
 
@@ -632,11 +632,8 @@ const LineManagementPg = () => {
                 const suggestions = getSuggestions(selectedRowNum, slotNum);
 
                 if (animal) {
-                  const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase() === 'BUFFALO'
-                    ? '🐃'
-                    : String(animal.cattleType || animal.animalType).toUpperCase() === 'CALF'
-                      ? '🍼'
-                      : '🐄';
+                  const animalEmoji = String(animal.cattleType || animal.animalType).toUpperCase().includes('BUFFALO')
+                    ? "🐃" : "🐄";
 
                   return (
                     <div
