@@ -2058,6 +2058,7 @@ const handleSave = async (data) => {
                   farmId: updatedFarmId,
                   lineNo: 0,
                   position: 0,
+                  skipShedLog: true,
                 };
                 await api.cattle.update(animalId, updatedAnimal);
               }
@@ -2182,6 +2183,7 @@ const handleSave = async (data) => {
                   farmId: updatedFarmId,
                   lineNo: 0,
                   position: 0,
+                  skipShedLog: true,
                 };
                 await api.cattle.update(animalId, updatedAnimal);
               }
