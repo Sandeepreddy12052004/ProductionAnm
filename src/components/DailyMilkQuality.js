@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/router";
 import { api } from "../utils/api";
 import { swalSuccess, swalError } from "../utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
@@ -6,6 +7,7 @@ import ModulePageHeader from "./ModulePageHeader";
 import { Calendar as CalendarIcon, Save, ChevronDown } from "lucide-react";
 
 export default function DailyMilkQuality() {
+  const router = useRouter();
   const [bmcsList, setBmcsList] = useState([]);
   const [collectionsList, setCollectionsList] = useState([]);
   const [qaLogsList, setQaLogsList] = useState([]);
@@ -14,6 +16,12 @@ export default function DailyMilkQuality() {
   const [focusedBmcId, setFocusedBmcId] = useState(null);
 
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    if (router.query.date) {
+      setSelectedDate(String(router.query.date));
+    }
+  }, [router.query.date]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 

@@ -51,6 +51,7 @@ const DashboardContent = () => {
     totalBmcCapacity: 0,
     activeCoolersCount: 0,
     bmcAlerts: 0,
+    yesterdayAvgFat: 0,
     shedYields: [],
     crossingAlertsPdCount: 0,
     crossingAlertsCalvingCount: 0,
@@ -293,6 +294,27 @@ const DashboardContent = () => {
         return sum + bmcVolume;
       }, 0);
 
+      let fatSum = 0;
+      let fatCount = 0;
+      for (const log of yesterdayQa) {
+        if (Array.isArray(log.bmcs)) {
+          for (const b of log.bmcs) {
+            const f = Number(b.fat);
+            if (!isNaN(f) && f > 0) {
+              fatSum += f;
+              fatCount++;
+            }
+          }
+        } else if (log.fat) {
+          const f = Number(log.fat);
+          if (!isNaN(f) && f > 0) {
+            fatSum += f;
+            fatCount++;
+          }
+        }
+      }
+      const yesterdayAvgFat = fatCount > 0 ? Number((fatSum / fatCount).toFixed(2)) : 0;
+
       const totalBmcCapacity = bmcs
         .filter(b => String(b.status || "").trim().toUpperCase() === "ACTIVE")
         .reduce((sum, b) => sum + (b.capacity || 0), 0);
@@ -363,6 +385,7 @@ const DashboardContent = () => {
         totalBmcCapacity,
         activeCoolersCount,
         bmcAlerts,
+        yesterdayAvgFat,
         shedYields,
         crossingAlertsPdCount,
         crossingAlertsCalvingCount,
@@ -856,6 +879,26 @@ const DashboardContent = () => {
                   className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
                 >
                   View Coolers
+                </button>
+              </div>
+
+              {/* Yesterday's Avg. Fat % in BMCs */}
+              <div className="bg-slate-50/50 hover:bg-slate-50 border border-slate-100/70 p-4.5 rounded-2xl flex items-center justify-between transition-colors">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Yesterday&apos;s Avg. Fat % in BMCs</span>
+                  <span className="text-xl font-black text-slate-800">{stats.yesterdayAvgFat || 0} <span className="text-xs font-bold text-slate-500">%</span></span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMilkModal(false);
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    router.push(`/milk-quality?date=${ymd}`);
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-700 hover:text-white font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+                >
+                  View Details
                 </button>
               </div>
 
