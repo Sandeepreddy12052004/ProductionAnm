@@ -331,7 +331,7 @@ export default function MilkingPerformance() {
         };
       })
       .sort((a, b) => b.yieldL - a.yieldL)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [animalYieldMap, cattleMap]);
 
   const lowAnimals = useMemo(() => {
@@ -354,7 +354,7 @@ export default function MilkingPerformance() {
         return !isCalf && !isMale && passesThreshold;
       })
       .sort((a, b) => a.yieldL - b.yieldL)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [animalYieldMap, cattleMap, lowYieldThreshold]);
 
   // Table Logs Search & Pagination
