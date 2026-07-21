@@ -7,9 +7,7 @@ const isEligibleBuffalo = (animal) => {
   if (!animal) return false;
   if (String(animal.gender || '').trim().toLowerCase() !== 'female') return false;
   const type = String(animal.cattleType || animal.animalType || '').trim().toUpperCase();
-  if (type === 'BUFFALO') return true;
-  if (type === 'BUFFALO CALF' && Number(animal.calvings || 0) > 0) return true;
-  return false;
+  return type.includes('BUFFALO') || type.includes('B.CALF') || type.includes('BCALF');
 };
 
 const LineManagementPg = () => {

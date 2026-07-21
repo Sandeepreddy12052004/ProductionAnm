@@ -2056,6 +2056,8 @@ const handleSave = async (data) => {
                   shed: resolvedShed,
                   shedId: resolvedShed,
                   farmId: updatedFarmId,
+                  lineNo: 0,
+                  position: 0,
                 };
                 await api.cattle.update(animalId, updatedAnimal);
               }
@@ -2178,6 +2180,8 @@ const handleSave = async (data) => {
                   shed: resolvedShed,
                   shedId: resolvedShed,
                   farmId: updatedFarmId,
+                  lineNo: 0,
+                  position: 0,
                 };
                 await api.cattle.update(animalId, updatedAnimal);
               }
