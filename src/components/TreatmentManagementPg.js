@@ -84,7 +84,8 @@ const TreatmentManagementPg = () => {
       } catch (err) {}
 
       if (!resolvedFarmId) {
-        const activeFarm = localStorage.getItem("__active_farm_id__");
+        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+        const activeFarm = localStorage.getItem(pageKey) || localStorage.getItem("__active_farm_id__");
         if (activeFarm && activeFarm !== 'ALL') {
           resolvedFarmId = activeFarm;
         }

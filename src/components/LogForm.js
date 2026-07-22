@@ -558,7 +558,8 @@
       }
       let fallbackFarmId = '';
       try {
-        const activeFarm = localStorage.getItem('__active_farm_id__');
+        const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+        const activeFarm = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
         if (activeFarm && activeFarm !== 'ALL') {
           fallbackFarmId = activeFarm;
         } else {
@@ -751,7 +752,8 @@
                     String(user.role).toUpperCase() === 'SUPER_ADMIN';
                   if (!isGlobal) return String(rawFarmId);
                 }
-                const activeFarm = localStorage.getItem("__active_farm_id__");
+                const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+                const activeFarm = localStorage.getItem(pageKey) || localStorage.getItem("__active_farm_id__");
                 if (activeFarm && activeFarm !== 'ALL') return String(activeFarm);
               } catch (e) {}
               return null;
@@ -889,7 +891,8 @@
       if (hasFarmField && (!formData?.farmId && !formData?.farm)) {
         try {
           let fallbackFarmId = '';
-          const activeFarm = localStorage.getItem('__active_farm_id__');
+          const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+          const activeFarm = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
           if (activeFarm && activeFarm !== 'ALL') {
             fallbackFarmId = activeFarm;
           } else {
