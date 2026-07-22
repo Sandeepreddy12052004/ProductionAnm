@@ -13,6 +13,32 @@ import {
   RefreshCw
 } from "lucide-react";
 
+const getActiveFarmId = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      const rawFarmId = user.farmId && typeof user.farmId === 'object'
+        ? (user.farmId._id || user.farmId.id)
+        : user.farmId;
+      const isGlobal =
+        !rawFarmId ||
+        rawFarmId === 'ALL' ||
+        String(user.role).toUpperCase() === 'SUPER_ADMIN';
+      if (!isGlobal) {
+        return rawFarmId;
+      }
+    }
+    const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+    const activeFarm = localStorage.getItem(pageKey) || localStorage.getItem("__active_farm_id__");
+    if (activeFarm && activeFarm !== 'ALL') {
+      return activeFarm;
+    }
+  } catch (e) {}
+  return null;
+};
+
 export default function MedicineInventoryPg() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
@@ -29,6 +55,30 @@ export default function MedicineInventoryPg() {
   const [medicineItems, setMedicineItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const activeFarmId = getActiveFarmId();
+
+  // Filter medicineItems based on the active farm
+  const farmMedicineItems = useMemo(() => {
+    if (!activeFarmId) return medicineItems;
+    return medicineItems.filter(item => {
+      const itemFarmId = item.farmId && typeof item.farmId === 'object'
+        ? (item.farmId._id || item.farmId.id)
+        : item.farmId;
+      return !itemFarmId || String(itemFarmId) === String(activeFarmId);
+    });
+  }, [medicineItems, activeFarmId]);
+
+  // Filter logs based on the active farm
+  const farmLogs = useMemo(() => {
+    if (!activeFarmId) return logs;
+    return logs.filter(log => {
+      const logFarmId = log.farmId && typeof log.farmId === 'object'
+        ? (log.farmId._id || log.farmId.id)
+        : log.farmId;
+      return String(logFarmId) === String(activeFarmId);
+    });
+  }, [logs, activeFarmId]);
 
   const config = {
     id: 'med_inv',
@@ -74,12 +124,12 @@ export default function MedicineInventoryPg() {
   const currentStockItems = useMemo(() => {
     const stockItems = [];
     
-    for (const item of medicineItems) {
+    for (const item of farmMedicineItems) {
       const itemName = String(item.name || "").trim();
       if (!itemName) continue;
       
       // Find logs for this medicineName
-      const itemLogs = logs.filter(log => String(log.medicineName || "").trim().toUpperCase() === itemName.toUpperCase());
+      const itemLogs = farmLogs.filter(log => String(log.medicineName || "").trim().toUpperCase() === itemName.toUpperCase());
       
       // Since logs are sorted by date descending, the first record is the latest transaction
       const latestLog = itemLogs[0];
@@ -101,7 +151,7 @@ export default function MedicineInventoryPg() {
     }
     
     return stockItems;
-  }, [medicineItems, logs]);
+  }, [farmMedicineItems, farmLogs]);
 
   // Filter items based on search query
   const filteredStockItems = useMemo(() => {
@@ -118,14 +168,14 @@ export default function MedicineInventoryPg() {
 
   // Last refilled item calculation
   const lastRefilledItem = useMemo(() => {
-    const refilledLog = logs.find(log => Number(log.bought) > 0);
+    const refilledLog = farmLogs.find(log => Number(log.bought) > 0);
     if (!refilledLog) return null;
     return {
       name: refilledLog.medicineName,
       amount: Number(refilledLog.bought),
       date: refilledLog.purchaseDate || refilledLog.createdAt || refilledLog.date
     };
-  }, [logs]);
+  }, [farmLogs]);
 
   return (
     <div className="w-full flex flex-col bg-transparent text-slate-800">

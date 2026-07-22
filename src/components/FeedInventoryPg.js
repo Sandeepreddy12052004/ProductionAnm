@@ -13,6 +13,32 @@ import {
   RefreshCw
 } from "lucide-react";
 
+const getActiveFarmId = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      const rawFarmId = user.farmId && typeof user.farmId === 'object'
+        ? (user.farmId._id || user.farmId.id)
+        : user.farmId;
+      const isGlobal =
+        !rawFarmId ||
+        rawFarmId === 'ALL' ||
+        String(user.role).toUpperCase() === 'SUPER_ADMIN';
+      if (!isGlobal) {
+        return rawFarmId;
+      }
+    }
+    const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+    const activeFarm = localStorage.getItem(pageKey) || localStorage.getItem("__active_farm_id__");
+    if (activeFarm && activeFarm !== 'ALL') {
+      return activeFarm;
+    }
+  } catch (e) {}
+  return null;
+};
+
 export default function FeedInventoryPg() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
@@ -29,6 +55,30 @@ export default function FeedInventoryPg() {
   const [feedItems, setFeedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const activeFarmId = getActiveFarmId();
+
+  // Filter feedItems based on the active farm
+  const farmFeedItems = useMemo(() => {
+    if (!activeFarmId) return feedItems;
+    return feedItems.filter(item => {
+      const itemFarmId = item.farmId && typeof item.farmId === 'object'
+        ? (item.farmId._id || item.farmId.id)
+        : item.farmId;
+      return !itemFarmId || String(itemFarmId) === String(activeFarmId);
+    });
+  }, [feedItems, activeFarmId]);
+
+  // Filter logs based on the active farm
+  const farmLogs = useMemo(() => {
+    if (!activeFarmId) return logs;
+    return logs.filter(log => {
+      const logFarmId = log.farmId && typeof log.farmId === 'object'
+        ? (log.farmId._id || log.farmId.id)
+        : log.farmId;
+      return String(logFarmId) === String(activeFarmId);
+    });
+  }, [logs, activeFarmId]);
 
   const config = {
     id: 'feed_inv',
@@ -73,12 +123,12 @@ export default function FeedInventoryPg() {
   const currentStockItems = useMemo(() => {
     const stockItems = [];
     
-    for (const item of feedItems) {
+    for (const item of farmFeedItems) {
       const itemName = String(item.name || "").trim();
       if (!itemName) continue;
       
       // Find logs for this feedType
-      const itemLogs = logs.filter(log => String(log.feedType || "").trim().toUpperCase() === itemName.toUpperCase());
+      const itemLogs = farmLogs.filter(log => String(log.feedType || "").trim().toUpperCase() === itemName.toUpperCase());
       
       // Since logs are sorted by date descending, the first record in the filter is the latest transaction
       const latestLog = itemLogs[0];
@@ -100,7 +150,7 @@ export default function FeedInventoryPg() {
     }
     
     return stockItems;
-  }, [feedItems, logs]);
+  }, [farmFeedItems, farmLogs]);
 
   // Filter items based on search query
   const filteredStockItems = useMemo(() => {
@@ -113,16 +163,16 @@ export default function FeedInventoryPg() {
 
   // Last refilled item calculation
   const lastRefilledItem = useMemo(() => {
-    const refilledLog = logs.find(log => Number(log.bought) > 0);
+    const refilledLog = farmLogs.find(log => Number(log.bought) > 0);
     if (!refilledLog) return null;
-    const feedItemObj = feedItems.find(item => String(item.name || "").trim().toUpperCase() === String(refilledLog.feedType || "").trim().toUpperCase());
+    const feedItemObj = farmFeedItems.find(item => String(item.name || "").trim().toUpperCase() === String(refilledLog.feedType || "").trim().toUpperCase());
     return {
       name: refilledLog.feedType,
       amount: Number(refilledLog.bought),
       date: refilledLog.purchaseDate || refilledLog.createdAt || refilledLog.date,
       unit: feedItemObj?.type || "KG"
     };
-  }, [logs, feedItems]);
+  }, [farmLogs, farmFeedItems]);
 
   const lowStockItemsCount = useMemo(() => {
     return currentStockItems.filter(item => item.remainingStock < 100).length;
