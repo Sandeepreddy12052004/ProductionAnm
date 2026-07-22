@@ -122,19 +122,28 @@ export default function FeedInventoryPg() {
   // Compute latest remaining stock for each feed item
   const currentStockItems = useMemo(() => {
     const stockItems = [];
+    const logFeedTypes = Array.from(new Set(farmLogs.map(log => String(log.feedType || "").trim())));
+    const itemNames = farmFeedItems.map(item => String(item.name || "").trim());
+    const allFeedNames = Array.from(new Set([...itemNames, ...logFeedTypes].filter(Boolean)));
     
-    for (const item of farmFeedItems) {
-      const itemName = String(item.name || "").trim();
-      if (!itemName) continue;
-      
-      // Find logs for this feedType
+    const seen = new Set();
+    const uniqueFeedNames = [];
+    for (const name of allFeedNames) {
+      const upper = name.toUpperCase();
+      if (!seen.has(upper)) {
+        seen.add(upper);
+        uniqueFeedNames.push(name);
+      }
+    }
+
+    for (const feedName of uniqueFeedNames) {
+      const itemName = feedName.trim();
       const itemLogs = farmLogs.filter(log => String(log.feedType || "").trim().toUpperCase() === itemName.toUpperCase());
+      const matchingItem = farmFeedItems.find(item => String(item.name || "").trim().toUpperCase() === itemName.toUpperCase());
       
-      // Since logs are sorted by date descending, the first record in the filter is the latest transaction
       const latestLog = itemLogs[0];
       const remainingStock = latestLog ? (Number(latestLog.remainingStock) || 0) : 0;
       
-      // Calculate latest bought / usage values from latest log that has them
       const lastBoughtLog = itemLogs.find(log => Number(log.bought) > 0);
       const lastUsageLog = itemLogs.find(log => Number(log.usage) > 0);
       const lastPurchaseDate = lastBoughtLog ? (lastBoughtLog.purchaseDate || lastBoughtLog.createdAt || lastBoughtLog.date) : null;
@@ -145,7 +154,7 @@ export default function FeedInventoryPg() {
         lastPurchaseDate: lastPurchaseDate,
         lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
         lastUsage: lastUsageLog ? (Number(lastUsageLog.usage) || 0) : 0,
-        unit: item.type || "KG"
+        unit: matchingItem?.type || "KG"
       });
     }
     

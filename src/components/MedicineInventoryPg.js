@@ -123,15 +123,25 @@ export default function MedicineInventoryPg() {
   // Compute latest remaining stock for each medicine item registered in Medicine Management
   const currentStockItems = useMemo(() => {
     const stockItems = [];
+    const logMedicineNames = Array.from(new Set(farmLogs.map(log => String(log.medicineName || "").trim())));
+    const itemNames = farmMedicineItems.map(item => String(item.name || "").trim());
+    const allMedicineNames = Array.from(new Set([...itemNames, ...logMedicineNames].filter(Boolean)));
     
-    for (const item of farmMedicineItems) {
-      const itemName = String(item.name || "").trim();
-      if (!itemName) continue;
-      
-      // Find logs for this medicineName
+    const seen = new Set();
+    const uniqueMedicineNames = [];
+    for (const name of allMedicineNames) {
+      const upper = name.toUpperCase();
+      if (!seen.has(upper)) {
+        seen.add(upper);
+        uniqueMedicineNames.push(name);
+      }
+    }
+
+    for (const medName of uniqueMedicineNames) {
+      const itemName = medName.trim();
       const itemLogs = farmLogs.filter(log => String(log.medicineName || "").trim().toUpperCase() === itemName.toUpperCase());
+      const matchingItem = farmMedicineItems.find(item => String(item.name || "").trim().toUpperCase() === itemName.toUpperCase());
       
-      // Since logs are sorted by date descending, the first record is the latest transaction
       const latestLog = itemLogs[0];
       const remainingStock = latestLog ? (Number(latestLog.presentStock) || 0) : 0;
       
@@ -141,7 +151,7 @@ export default function MedicineInventoryPg() {
       
       stockItems.push({
         name: itemName,
-        type: item.type || (latestLog ? latestLog.type : "-"),
+        type: matchingItem?.type || (latestLog ? latestLog.type : "-"),
         remainingStock: remainingStock,
         lastPurchased: lastPurchased,
         lastBought: lastBoughtLog ? (Number(lastBoughtLog.bought) || 0) : 0,
