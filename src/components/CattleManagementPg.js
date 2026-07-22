@@ -61,6 +61,39 @@ const getRecordAgeInDays = (log, fieldName) => {
   return parseAgeStringToDays(storedAge);
 };
 
+const getLiveAge = (dob, storedAge, endDate, type) => {
+  if (!dob) return storedAge || "-";
+
+  const birth = parseDateString(dob);
+  if (!birth || isNaN(birth.getTime())) return storedAge || "-";
+  const today = endDate ? parseDateString(endDate) : new Date();
+
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  let days = today.getDate() - birth.getDate();
+
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  const age = `${years} Y ${months} M ${days} D`;
+
+  if (endDate) {
+    if (type === "sold") return `${age} (Sold)`;
+    if (type === "dead") return `${age} (Dead)`;
+    if (type === "calved") return `${age} (Calved)`;
+  }
+
+  return age;
+};
+
 const getFilterAgeInDays = (y, m, d) => {
   const years = parseFloat(y) || 0;
   const months = parseFloat(m) || 0;
@@ -1079,6 +1112,17 @@ export default function CattleManagementPg({
                             >
                               {item.status}
                             </span>
+                          ) : field.name === "age" ? (
+                            getLiveAge(
+                              item.dob || item.dateOfBirth,
+                              item.age,
+                              ["SOLD", "DECEASED", "DEAD"].includes(String(item.status).toUpperCase()) ? item.soldDate || item.deadDate || item.updatedAt : null,
+                              String(item.status).toUpperCase() === "SOLD"
+                                ? "sold"
+                                : ["DEAD", "DECEASED"].includes(String(item.status).toUpperCase())
+                                ? "dead"
+                                : null
+                            )
                           ) : (
                             cellVal || "-"
                           )}
@@ -1271,6 +1315,17 @@ export default function CattleManagementPg({
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusStyles[selectedAnimal[field.name]] || ''}`}>
                           {selectedAnimal[field.name]}
                         </span>
+                      ) : field.name === "age" ? (
+                        getLiveAge(
+                          selectedAnimal.dob || selectedAnimal.dateOfBirth,
+                          selectedAnimal.age,
+                          ["SOLD", "DECEASED", "DEAD"].includes(String(selectedAnimal.status).toUpperCase()) ? selectedAnimal.soldDate || selectedAnimal.deadDate || selectedAnimal.updatedAt : null,
+                          String(selectedAnimal.status).toUpperCase() === "SOLD"
+                            ? "sold"
+                            : ["DEAD", "DECEASED"].includes(String(selectedAnimal.status).toUpperCase())
+                            ? "dead"
+                            : null
+                        )
                       ) : (
                         cellVal || '-'
                       )}
