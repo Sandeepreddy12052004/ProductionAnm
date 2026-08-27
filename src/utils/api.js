@@ -1,9 +1,48 @@
 import { swalError } from './swal';
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://farm.agasthyanutromilk.com/';
+const RAW_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://farm.agasthyanutromilk.com/api';
 
-const cleanBaseUrl = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+/**
+ * Normalizes base API URL and appends the endpoint cleanly,
+ * preventing duplicated `/api/api` paths when base URL ends with `/api`
+ * and endpoint starts with `/api`.
+ * @param {string} endpoint
+ * @returns {string}
+ */
+export function formatApiUrl(endpoint = '') {
+  const base = RAW_BASE_URL.replace(/\/+$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  if (base.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    return `${base}${cleanEndpoint.slice(4)}`;
+  }
+  return `${base}${cleanEndpoint}`;
+}
+
+/**
+ * Safely clears user tokens and session cookies, then redirects to /login.
+ * @param {boolean} [redirectToLogin=true]
+ */
+export function clearAuthSession(redirectToLogin = true) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('__active_farm_id__');
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  } catch (e) {
+    console.error('Failed to clear auth session:', e);
+  }
+  if (redirectToLogin && window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
 
 
 // ---------------------------------------------------------------------------
@@ -209,7 +248,7 @@ function evaluateFirewall(endpoint) {
 async function verifyTokenSession(token) {
   if (!token) return false;
   try {
-    const response = await fetch(`${cleanBaseUrl}/api/auth/verify`, {
+    const response = await fetch(formatApiUrl('/api/auth/verify'), {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -282,17 +321,20 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
   // ── 3. NETWORK CALL ───────────────────────────────────────────────────────
   const promise = (async () => {
     try {
-      const response = await fetch(`${cleanBaseUrl}${finalEndpoint}`, config);
+      const response = await fetch(formatApiUrl(finalEndpoint), config);
 
       // ── 401 Unauthorized: token dead/missing → force re-login ──────────────
       if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        swalError('Session Expired', 'Please login again.');
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+        const cleanPath = endpoint.split('?')[0];
+        const isAuthEndpoint = cleanPath.startsWith('/api/auth') || cleanPath.startsWith('/auth');
+        if (!isAuthEndpoint) {
+          clearAuthSession(false);
+          swalError('Session Expired', 'Your session has expired. Please login again.');
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+          return { success: false, error: 'Session expired.' };
         }
-        return { success: false, error: 'Session expired.' };
       }
 
       // ── 403 Forbidden: silently absorb — the firewall should have caught it,
@@ -773,5 +815,12 @@ export const api = {
     create:              (data)     => apiRequest('/api/procurement-sources', 'POST', data),
     update:              (id, data) => apiRequest(`/api/procurement-sources/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/procurement-sources/${id}`, 'DELETE'),
+  },
+
+  // Authentication & Session
+  auth: {
+    login:               (data)     => apiRequest('/api/auth/login', 'POST', data),
+    verify:              (token)    => verifyTokenSession(token),
+    logout:              ()         => clearAuthSession(true),
   },
 };
