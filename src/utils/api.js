@@ -3,7 +3,8 @@ import { swalError } from './swal';
 const RAW_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  'https://farm.agasthyanutromilk.com/api';
+  '/api';
+
 
 /**
  * Normalizes base API URL and appends the endpoint cleanly,
