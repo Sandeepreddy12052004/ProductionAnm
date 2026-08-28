@@ -253,6 +253,7 @@ const getStandardHeaderKey = (headerValue) => {
   
   const aliases = {
     tag: ['tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number', 'animal tag'],
+    farm: ['farm', 'farmid', 'farmcode', 'farmname', 'farm_id', 'farm_code', 'farm_name', 'farm id', 'farm code', 'farm name'],
     shed: ['shed', 'shedno', 'shednumber', 'shedid', 'shed number', 'shed no', 'shed id'],
     cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type'],
     breed: ['breed', 'breedtype', 'breed type'],
@@ -966,13 +967,25 @@ const currentFields = current.fields.map(f => {
               }
 
               // AI Smart Matcher checks & auto-corrections
-              const activeFarmCode = moduleConfig?.farmCode || router.query.code || '';
+              const rawFarm = String(row['farm'] || '').trim();
+              let rowFarmObj = null;
+              if (rawFarm) {
+                rowFarmObj = farmsList.find(f =>
+                  String(f.code || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
+                  String(f.name || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
+                  String(f._id || f.id) === rawFarm
+                );
+              }
+
+              const activeFarmCode = rowFarmObj
+                ? (rowFarmObj.code || rowFarmObj.name || String(rowFarmObj._id || rowFarmObj.id))
+                : (moduleConfig?.farmCode || router.query.code || '');
               
               // Find matching shed object from rawShedsList
               let matchedShedObj = null;
               const matchedShed = resolveShedNumber(rawShed, rawShedsList, activeFarmCode, farmsList);
               if (matchedShed) {
-                const activeFarmObj = farmsList.find(f => 
+                const activeFarmObj = rowFarmObj || farmsList.find(f => 
                   String(f.code || '').toUpperCase() === String(activeFarmCode).toUpperCase() ||
                   String(f.name || '').toUpperCase() === String(activeFarmCode).toUpperCase() ||
                   String(f._id || f.id) === String(activeFarmCode)
@@ -1025,7 +1038,7 @@ const currentFields = current.fields.map(f => {
 
               const finalFarmId = matchedShedObj 
                 ? (matchedShedObj.farmId?._id || matchedShedObj.farmId?.id || matchedShedObj.farmId)
-                : (moduleConfig?.farmCode || router.query.code || null);
+                : (rowFarmObj ? (rowFarmObj._id || rowFarmObj.id) : (moduleConfig?.farmCode || router.query.code || null));
 
               const payload = {
                 tag: rawTag,
