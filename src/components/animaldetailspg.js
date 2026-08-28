@@ -577,7 +577,7 @@ const currentFields = current.fields.map(f => {
         const seenTags = new Set();
         for (const row of rows) {
           const tag = String(row['tag'] || '').trim();
-          if (current.id === 'shed') {
+          if (['shed', 'crossing', 'purchase', 'sale'].includes(current.id)) {
             if (tag) {
               uniqueParsed.push(row);
             }
