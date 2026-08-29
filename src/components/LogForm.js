@@ -2,6 +2,7 @@
   import LivestockTagInput from './LivestockTagInput';
   import { swalError } from '../utils/swal';
   import Swal from 'sweetalert2';
+  import { api } from '../utils/api';
 
   const parseDateString = (dateVal) => {
     if (!dateVal) return null;
@@ -1684,22 +1685,39 @@
                         });
 
                         if (newPassword) {
-                          setFormData(prev => ({ ...prev, password: newPassword }));
                           Swal.fire({
-                            icon: 'success',
-                            title: 'Password Set',
-                            text: 'The password has been set in the form. Please click "Save" to submit the changes.',
-                            confirmButtonColor: '#16223F'
+                            title: 'Updating password...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                              Swal.showLoading();
+                            }
                           });
+
+                          try {
+                            const userId = initialData.id || initialData._id;
+                            await api.users.update(userId, { password: newPassword });
+                            
+                            Swal.fire({
+                              icon: 'success',
+                              title: 'Success',
+                              text: 'Password updated successfully!',
+                              confirmButtonColor: '#16223F'
+                            });
+                          } catch (err) {
+                            console.error("Failed to update password:", err);
+                            Swal.fire({
+                              icon: 'error',
+                              title: 'Error',
+                              text: err?.message || err || 'Failed to update password.',
+                              confirmButtonColor: '#16223F'
+                            });
+                          }
                         }
                       }}
                       className="bg-slate-100 hover:bg-slate-200 text-[#16223F] font-bold py-2.5 px-4 rounded-xl border border-slate-200 text-xs transition-all w-full flex items-center justify-center gap-2"
                     >
                       🔑 Reset User Password
                     </button>
-                    {formData.password && (
-                      <p className="text-emerald-600 text-xs font-bold mt-1.5 ml-0.5">✓ New password staged (will save on submit)</p>
-                    )}
                   </div>
                 );
               }
