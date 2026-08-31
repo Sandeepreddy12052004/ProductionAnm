@@ -813,10 +813,10 @@ const currentFields = current.fields.map(f => {
             try {
               const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
               if (!rawTag) continue;
-
-              const rawCrossingType = String(row['crossingType'] || row['crossing_type'] || 'Natural').trim();
-              const rawMaleTag = String(row['maleTag'] || row['male_tag'] || '').trim();
-              const rawBatchNumber = String(row['batchNumber'] || row['batch_number'] || '').trim();
+              
+              const rawCrossingType = row['crossingType'] || row['crossing_type'] ? String(row['crossingType'] || row['crossing_type']).trim() : '';
+              const rawMaleTag = row['maleTag'] || row['male_tag'] ? String(row['maleTag'] || row['male_tag']).trim() : '';
+              const rawBatchNumber = row['batchNumber'] || row['batch_number'] ? String(row['batchNumber'] || row['batch_number']).trim() : '';
               
               let rawCrossingDate = null;
               if (row['crossingDate'] || row['crossing_date']) {
@@ -825,42 +825,42 @@ const currentFields = current.fields.map(f => {
                   rawCrossingDate = parsedDate;
                 }
               }
-              const finalCrossingDate = rawCrossingDate || new Date();
+              const finalCrossingDate = rawCrossingDate; // Keep null if not in excel
 
-              const rawAttempt = Number(row['crossingAttemptNumber'] || row['crossing_attempt_number'] || 1);
-              const rawPdDate = parseDateString(row['pdDate'] || row['pd_date'] || row['pdDate ']);
-              const rawPregnancyStatus = String(row['pregnancyStatus'] || row['pregnancy_status'] || 'Pending').trim();
-              const rawPregnancyConfirmedDate = parseDateString(row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date']);
-              const rawEstimatedCalvingDate = parseDateString(row['estimatedCalvingDate'] || row['estimated_calving_date']);
-              const rawPregnantAge = String(row['pregnantAge'] || row['pregnant_age'] || '').trim();
-              const rawActualCalvingDate = parseDateString(row['actualCalvingDate'] || row['actual_calving_date']);
-              const rawCalvingStatus = String(row['calvingStatus'] || row['calving_status'] || 'pending').trim();
-              const rawCalfTag = String(row['calfTag'] || row['calf_tag'] || '').trim();
-              const rawBreedType = String(row['breedType'] || row['breed_type'] || '').trim();
+              const rawAttempt = row['crossingAttemptNumber'] || row['crossing_attempt_number'] ? Number(row['crossingAttemptNumber'] || row['crossing_attempt_number']) : null;
+              const rawPdDate = (row['pdDate'] || row['pd_date'] || row['pdDate ']) ? parseDateString(row['pdDate'] || row['pd_date'] || row['pdDate ']) : null;
+              const rawPregnancyStatus = row['pregnancyStatus'] || row['pregnancy_status'] ? String(row['pregnancyStatus'] || row['pregnancy_status']).trim() : '';
+              const rawPregnancyConfirmedDate = (row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date']) ? parseDateString(row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date']) : null;
+              const rawEstimatedCalvingDate = (row['estimatedCalvingDate'] || row['estimated_calving_date']) ? parseDateString(row['estimatedCalvingDate'] || row['estimated_calving_date']) : null;
+              const rawPregnantAge = row['pregnantAge'] || row['pregnant_age'] ? String(row['pregnantAge'] || row['pregnant_age']).trim() : '';
+              const rawActualCalvingDate = (row['actualCalvingDate'] || row['actual_calving_date']) ? parseDateString(row['actualCalvingDate'] || row['actual_calving_date']) : null;
+              const rawCalvingStatus = row['calvingStatus'] || row['calving_status'] ? String(row['calvingStatus'] || row['calving_status']).trim() : '';
+              const rawCalfTag = row['calfTag'] || row['calf_tag'] ? String(row['calfTag'] || row['calf_tag']).trim() : '';
+              const rawBreedType = row['breedType'] || row['breed_type'] ? String(row['breedType'] || row['breed_type']).trim() : '';
               
-              const rawHeat1 = parseDateString(row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification']);
-              const rawHeat2 = parseDateString(row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification']);
-              const rawRemarks = String(row['remarks'] || '').trim();
+              const rawHeat1 = (row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification']) ? parseDateString(row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification']) : null;
+              const rawHeat2 = (row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification']) ? parseDateString(row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification']) : null;
+              const rawRemarks = row['remarks'] ? String(row['remarks']).trim() : '';
 
               const payload = {
                 tag: rawTag,
                 tagId: rawTag,
-                crossingType: rawCrossingType,
-                maleTag: rawMaleTag,
-                batchNumber: rawBatchNumber,
-                crossingDate: finalCrossingDate,
-                crossingAttemptNumber: rawAttempt,
-                pdDate: rawPdDate,
-                pregnancyStatus: rawPregnancyStatus,
-                pregnancyConfirmedDate: rawPregnancyConfirmedDate,
-                estimatedCalvingDate: rawEstimatedCalvingDate,
-                pregnantAge: rawPregnantAge,
-                actualCalvingDate: rawActualCalvingDate,
-                calvingStatus: rawCalvingStatus,
-                calfTag: rawCalfTag,
-                breedType: rawBreedType,
-                heatMonitoring1stNotification: rawHeat1,
-                heatMonitoring2ndNotification: rawHeat2,
+                crossingType: rawCrossingType || undefined,
+                maleTag: rawMaleTag || undefined,
+                batchNumber: rawBatchNumber || undefined,
+                crossingDate: finalCrossingDate || undefined,
+                crossingAttemptNumber: rawAttempt !== null ? rawAttempt : undefined,
+                pdDate: rawPdDate || undefined,
+                pregnancyStatus: rawPregnancyStatus || undefined,
+                pregnancyConfirmedDate: rawPregnancyConfirmedDate || undefined,
+                estimatedCalvingDate: rawEstimatedCalvingDate || undefined,
+                pregnantAge: rawPregnantAge || undefined,
+                actualCalvingDate: rawActualCalvingDate || undefined,
+                calvingStatus: rawCalvingStatus || undefined,
+                calfTag: rawCalfTag || undefined,
+                breedType: rawBreedType || undefined,
+                heatMonitoring1stNotification: rawHeat1 || undefined,
+                heatMonitoring2ndNotification: rawHeat2 || undefined,
                 remarks: rawRemarks || 'Excel Import Crossing Log'
               };
 
