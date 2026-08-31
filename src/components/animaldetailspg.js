@@ -3456,19 +3456,6 @@ const getShedFromLivestock = (tagValue) => {
               Deceased <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'DECEASED' ? 'bg-white/20 text-white' : 'bg-[#16223F]/10 text-[#16223F]'}`}>{deceasedCount}</span>
             </button>
 
-            <button
-              onClick={() => {
-                setLivestockSubTab('WARNINGS');
-                setCurrentPage(1);
-              }}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
-                livestockSubTab === 'WARNINGS'
-                  ? 'bg-[#D1867D] text-white shadow-md shadow-[#D1867D]/10 scale-[1.02]'
-                  : 'text-red-600 opacity-70 hover:opacity-100 hover:bg-white hover:shadow-sm'
-              }`}
-            >
-              ⚠️ Warnings <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${livestockSubTab === 'WARNINGS' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'}`}>{pendingImports.length}</span>
-            </button>
           </div>
 
           <div className="flex items-center gap-2 min-w-[160px]">
