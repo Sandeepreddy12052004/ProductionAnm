@@ -268,12 +268,13 @@ const getStandardHeaderKey = (headerValue) => {
     remarks: ['remarks', 'remark', 'note', 'notes', 'reason', 'reasonforsale', 'reason for sale'],
     age: ['age', 'animalage', 'animal age'],
     buyerName: ['buyer', 'buyername', 'buyer name', 'purchaser', 'purchasername', 'purchaser name'],
-    buyerPhone: ['contact', 'phone', 'buyerphone', 'buyercontact', 'buyer phone', 'buyer contact', 'contactnumber', 'contact number'],
-    salePrice: ['price', 'saleprice', 'amount', 'sale price', 'sale amount'],
-    date: ['saledate', 'date', 'sale date'],
+    buyerPhone: ['contact', 'phone', 'buyerphone', 'buyercontact', 'buyer phone', 'buyer contact', 'contactnumber', 'contact number', 'sellercontact', 'seller contact'],
+    salePrice: ['price', 'saleprice', 'amount', 'sale price', 'sale amount', 'purchaseprice', 'purchase price'],
+    date: ['saledate', 'date', 'sale date', 'purchasedate', 'purchase date'],
     shiftingDate: ['shiftingdate', 'shifting date', 'date', 'move date', 'movedate', 'transfer date', 'transferdate'],
     oldShed: ['oldshed', 'oldshedno', 'oldshednumber', 'old shed', 'old shed no', 'old shed number', 'fromshed', 'from shed'],
-    newShed: ['newshed', 'newshedno', 'newshednumber', 'new shed', 'new shed no', 'new shed number', 'toshed', 'to shed']
+    newShed: ['newshed', 'newshedno', 'newshednumber', 'new shed', 'new shed no', 'new shed number', 'toshed', 'to shed'],
+    purchaseFrom: ['purchasefrom', 'purchase from', 'seller', 'sellername', 'seller name', 'vendor', 'vendorname', 'vendor name']
   };
 
   for (const [standardKey, list] of Object.entries(aliases)) {
@@ -877,21 +878,31 @@ const currentFields = current.fields.map(f => {
             try {
               const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
               if (!rawTag) continue;
-
               const rawSeller = String(row['purchaseFrom'] || row['sellerName'] || row['seller'] || '').trim();
-              const rawContact = String(row['sellerContact'] || row['contact'] || '').trim();
-              const rawPrice = Number(row['purchasePrice'] || row['price'] || 0);
+              const rawContact = String(row['buyerPhone'] || row['sellerContact'] || row['contact'] || '').trim();
+              const rawPrice = Number(row['salePrice'] || row['purchasePrice'] || row['price'] || 0);
               
               let rawPurchaseDate = null;
-              if (row['purchaseDate'] || row['purchase_date'] || row['date']) {
-                const parsedDate = parseDateString(row['purchaseDate'] || row['purchase_date'] || row['date']);
+              if (row['date'] || row['purchaseDate'] || row['purchase_date']) {
+                const parsedDate = parseDateString(row['date'] || row['purchaseDate'] || row['purchase_date']);
                 if (parsedDate && !isNaN(parsedDate.getTime())) {
                   rawPurchaseDate = parsedDate;
                 }
               }
               const finalPurchaseDate = rawPurchaseDate || new Date();
 
-              const rawFarmId = String(row['farmId'] || row['farm'] || '').trim();
+              const rawFarm = String(row['farmId'] || row['farm'] || '').trim();
+              let rowFarmObj = null;
+              if (rawFarm) {
+                rowFarmObj = farmsList.find(f =>
+                  String(f.code || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
+                  String(f.name || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
+                  String(f._id || f.id) === rawFarm
+                );
+              }
+              const finalFarmId = rowFarmObj 
+                ? (rowFarmObj._id || rowFarmObj.id) 
+                : (moduleConfig?.farmCode || router.query.code || null);
 
               const payload = {
                 tag: rawTag,
@@ -900,7 +911,7 @@ const currentFields = current.fields.map(f => {
                 sellerContact: rawContact,
                 purchasePrice: rawPrice,
                 purchaseDate: finalPurchaseDate,
-                farmId: rawFarmId || null,
+                farmId: finalFarmId || null,
               };
 
               await api.purchase.create(payload);
