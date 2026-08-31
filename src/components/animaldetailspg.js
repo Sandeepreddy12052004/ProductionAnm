@@ -271,7 +271,7 @@ const getStandardHeaderKey = (headerValue) => {
     buyerPhone: ['contact', 'phone', 'buyerphone', 'buyercontact', 'buyer phone', 'buyer contact', 'contactnumber', 'contact number', 'sellercontact', 'seller contact'],
     salePrice: ['price', 'saleprice', 'amount', 'sale price', 'sale amount', 'purchaseprice', 'purchase price'],
     date: ['saledate', 'date', 'sale date', 'purchasedate', 'purchase date'],
-    shiftingDate: ['shiftingdate', 'shifting date', 'date', 'move date', 'movedate', 'transfer date', 'transferdate'],
+    shiftingDate: ['shiftingdate', 'shifting date', 'date', 'move date', 'movedate', 'transfer date', 'transferdate', 'allocateddate', 'allocated date'],
     oldShed: ['oldshed', 'oldshedno', 'oldshednumber', 'old shed', 'old shed no', 'old shed number', 'fromshed', 'from shed'],
     newShed: ['newshed', 'newshedno', 'newshednumber', 'new shed', 'new shed no', 'new shed number', 'toshed', 'to shed'],
     purchaseFrom: ['purchasefrom', 'purchase from', 'seller', 'sellername', 'seller name', 'vendor', 'vendorname', 'vendor name']
@@ -1047,9 +1047,16 @@ const currentFields = current.fields.map(f => {
               const isDOBValid = rawDOB !== null && rawDOB !== undefined && !isNaN(rawDOB.getTime());
               const isInvalid = !isDeadOrSold && (!isShedValid || !isBreedValid || !isAnimalValid || !isDOBValid);
 
-              const finalFarmId = matchedShedObj 
+              let finalFarmId = matchedShedObj 
                 ? (matchedShedObj.farmId?._id || matchedShedObj.farmId?.id || matchedShedObj.farmId)
                 : (rowFarmObj ? (rowFarmObj._id || rowFarmObj.id) : (moduleConfig?.farmCode || router.query.code || null));
+
+              if (!finalFarmId && matchedShed) {
+                const matchingShed = rawShedsList.find(s => String(s.code || '').trim() === String(matchedShed).trim());
+                if (matchingShed) {
+                  finalFarmId = matchingShed.farmId?._id || matchingShed.farmId?.id || matchingShed.farmId || null;
+                }
+              }
 
               const payload = {
                 tag: rawTag,
