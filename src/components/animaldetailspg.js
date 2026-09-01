@@ -13,15 +13,48 @@ import FarmFilterSelector from './FarmFilterSelector';
 
 const parseDateString = (dateVal) => {
   if (!dateVal) return null;
-  if (dateVal instanceof Date) return dateVal;
-  const valStr = String(dateVal).trim();
-  if (valStr.includes("/")) {
-    const parts = valStr.split("/");
-    if (parts.length === 3) {
-      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+  
+  // Handle Excel numeric serial dates (e.g. 45321 or "45321")
+  if (typeof dateVal === 'number' || (/^\d{4,5}(\.\d+)?$/.test(String(dateVal).trim()) && !String(dateVal).includes('-') && !String(dateVal).includes('/'))) {
+    const num = typeof dateVal === 'number' ? dateVal : parseFloat(dateVal);
+    if (num > 1000 && num < 100000) {
+      // Excel epoch starts Dec 30 1899
+      const d = new Date(Math.round((num - 25569) * 86400 * 1000));
       if (!isNaN(d.getTime())) return d;
     }
   }
+
+  const valStr = String(dateVal).trim();
+  if (!valStr || valStr === '-' || valStr.toLowerCase() === 'null' || valStr.toLowerCase() === 'undefined') return null;
+
+  // Handle DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, YYYY-MM-DD
+  if (valStr.includes('/') || valStr.includes('-') || valStr.includes('.')) {
+    const sep = valStr.includes('/') ? '/' : (valStr.includes('-') ? '-' : '.');
+    const parts = valStr.split(sep);
+    if (parts.length === 3) {
+      const p0 = parseInt(parts[0], 10);
+      const p1 = parseInt(parts[1], 10);
+      const p2 = parseInt(parts[2], 10);
+      if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          const d = new Date(p0, p1 - 1, p2);
+          if (!isNaN(d.getTime())) return d;
+        } else if (parts[2].length === 4) {
+          // DD-MM-YYYY
+          const d = new Date(p2, p1 - 1, p0);
+          if (!isNaN(d.getTime())) return d;
+        } else {
+          // Two-digit year e.g. DD-MM-YY
+          const year = p2 < 100 ? (p2 > 50 ? 1900 + p2 : 2000 + p2) : p2;
+          const d = new Date(year, p1 - 1, p0);
+          if (!isNaN(d.getTime())) return d;
+        }
+      }
+    }
+  }
+
   const parsed = new Date(valStr);
   if (!isNaN(parsed.getTime())) return parsed;
   return null;
@@ -231,15 +264,28 @@ const resolveShedNumber = (inputVal, shedsList = [], farmCode = '', farmsList = 
   return null;
 };
 
-// Helper to extract raw text value from Excel cell (handling strings, formatted richText objects, formulas, etc.)
+// Helper to extract raw text value from Excel cell (handling strings, formatted richText objects, Date objects, formulas, etc.)
 const getCellStringValue = (cellValue) => {
   if (cellValue === undefined || cellValue === null) return '';
+  if (cellValue instanceof Date) {
+    if (isNaN(cellValue.getTime())) return '';
+    const y = cellValue.getFullYear();
+    const m = String(cellValue.getMonth() + 1).padStart(2, '0');
+    const d = String(cellValue.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   if (typeof cellValue === 'object') {
     if (cellValue.richText) {
       return cellValue.richText.map(t => t.text).join('').trim();
     } else if (cellValue.text) {
       return String(cellValue.text).trim();
     } else if (cellValue.result !== undefined && cellValue.result !== null) {
+      if (cellValue.result instanceof Date) {
+        const y = cellValue.result.getFullYear();
+        const m = String(cellValue.result.getMonth() + 1).padStart(2, '0');
+        const d = String(cellValue.result.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
       return String(cellValue.result).trim();
     }
     return '';
@@ -254,17 +300,17 @@ const getStandardHeaderKey = (headerValue) => {
   const clean = rawStr.toLowerCase().replace(/[^a-z0-9?]/g, '');
   
   const aliases = {
-    tag: ['tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number', 'animal tag'],
+    tag: ['tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number', 'animal tag', 'animal id', 'animalid', 'femaletag', 'female tag'],
     farm: ['farm', 'farmid', 'farmcode', 'farmname', 'farm_id', 'farm_code', 'farm_name', 'farm id', 'farm code', 'farm name'],
     shed: ['shed', 'shedno', 'shednumber', 'shedid', 'shed number', 'shed no', 'shed id'],
     cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type'],
     breed: ['breed', 'breedtype', 'breed type'],
     gender: ['gender', 'sex'],
-    'date of birth': ['dateofbirth', 'dob', 'birthdate', 'birth date', 'date of birth'],
-    'sire id': ['sireid', 'fatherid', 'siresid', 'sire id', 'father id'],
+    'date of birth': ['dateofbirth', 'dob', 'birthdate', 'birth date', 'date of birth', 'bdate', 'birth_date', 'date_of_birth'],
+    'sire id': ['sireid', 'fatherid', 'siresid', 'sire id', 'father id', 'bulltag', 'bull tag', 'siretag', 'sire tag'],
     'sire breed': ['sirebreed', 'fatherbreed', 'sire breed', 'father breed'],
-    'dame id': ['dameid', 'motherid', 'damesid', 'dame id', 'mother id'],
-    'dame breed': ['damebreed', 'motherbreed', 'dame breed', 'mother breed'],
+    'dame id': ['dameid', 'motherid', 'damesid', 'dame id', 'mother id', 'damid', 'dam id', 'damtag', 'dam tag'],
+    'dame breed': ['damebreed', 'motherbreed', 'dame breed', 'mother breed', 'dam breed'],
     'farm born?': ['farmborn', 'farmborn?', 'farm born', 'farm born?'],
     calving: ['calving', 'calvings', 'noofcalving', 'noofcalvings', 'calvingcount', 'calving count', 'no of calvings'],
     remarks: ['remarks', 'remark', 'note', 'notes', 'reason', 'reasonforsale', 'reason for sale'],
@@ -272,8 +318,13 @@ const getStandardHeaderKey = (headerValue) => {
     buyerName: ['buyer', 'buyername', 'buyer name', 'purchaser', 'purchasername', 'purchaser name'],
     buyerPhone: ['contact', 'phone', 'buyerphone', 'buyercontact', 'buyer phone', 'buyer contact', 'contactnumber', 'contact number', 'sellercontact', 'seller contact'],
     salePrice: ['price', 'saleprice', 'amount', 'sale price', 'sale amount', 'purchaseprice', 'purchase price'],
-    date: ['saledate', 'date', 'sale date', 'purchasedate', 'purchase date'],
-    shiftingDate: ['shiftingdate', 'shifting date', 'date', 'move date', 'movedate', 'transfer date', 'transferdate', 'allocateddate', 'allocated date'],
+    shiftingDate: ['shiftingdate', 'shifting date', 'move date', 'movedate', 'transfer date', 'transferdate', 'allocateddate', 'allocated date', 'allocation date'],
+    crossingDate: ['crossingdate', 'crossing date', 'inseminationdate', 'insemination date', 'aidate', 'ai date', 'servicedate', 'service date'],
+    purchaseDate: ['purchasedate', 'purchase date', 'boughtdate', 'bought date'],
+    saleDate: ['saledate', 'sale date', 'solddate', 'sold date'],
+    treatmentDate: ['treatmentdate', 'treatment date', 'treateddate', 'treated date'],
+    vaccinationDate: ['vaccinationdate', 'vaccination date', 'vaccinedate', 'vaccine date'],
+    date: ['date', 'entrydate', 'entry date', 'logdate', 'log date', 'recorddate', 'record date', 'eventdate', 'event date', 'date of log', 'dateoflog'],
     oldShed: ['oldshed', 'oldshedno', 'oldshednumber', 'old shed', 'old shed no', 'old shed number', 'fromshed', 'from shed'],
     newShed: ['newshed', 'newshedno', 'newshednumber', 'new shed', 'new shed no', 'new shed number', 'toshed', 'to shed'],
     purchaseFrom: ['purchasefrom', 'purchase from', 'seller', 'sellername', 'seller name', 'vendor', 'vendorname', 'vendor name']
@@ -1256,7 +1307,7 @@ const fetchLogs = async () => {
     }
 
     const normalizedData = rawList.map(log => {
-      const dateValue = log.createdAt || log.entryDate || log.date || log.shiftingDate || log.purchaseDate || log.crossingDate;
+      const dateValue = log.shiftingDate || log.crossingDate || log.purchaseDate || log.saleDate || log.treatmentDate || log.vaccinationDate || log.date || log.dateOfBirth || log.dob || log.entryDate || log.createdAt;
       const formattedDate = dateValue ? formatDateToDDMMYYYY(dateValue) : "";
       
       let initialDob = log.dateOfBirth || log.dob || "";
@@ -3853,7 +3904,6 @@ const getShedFromLivestock = (tagValue) => {
                           <table className="w-full text-left min-w-[600px]">
                             <thead className="bg-slate-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                               <tr>
-                                <th className="p-3.5">Date</th>
                                 {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => (
                                   <th key={f.name} className="p-3.5">{f.label}</th>
                                 ))}
@@ -3867,12 +3917,9 @@ const getShedFromLivestock = (tagValue) => {
                                   onClick={() => setSelectedEntry(log)}
                                   className="hover:bg-[#D1867D]/5 cursor-pointer transition-colors"
                                 >
-                                  <td className="p-3.5 font-bold font-mono text-[#16223F] whitespace-nowrap">
-                                    {log.entryDate}
-                                  </td>
                                   {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => {
-                                    let val = log[f.name] || '-';
-                                    if (f.type === 'date' || f.name.toLowerCase().includes('date')) {
+                                    let val = log[f.name] !== undefined && log[f.name] !== null && String(log[f.name]).trim() !== '' ? log[f.name] : '-';
+                                    if (f.type === 'date' || f.name.toLowerCase().includes('date') || f.name === 'dob') {
                                       val = log[f.name] ? formatDateToDDMMYYYY(log[f.name]) : '-';
                                     }
                                     return (
@@ -3901,14 +3948,13 @@ const getShedFromLivestock = (tagValue) => {
               <table className="w-full text-left min-w-[600px] relative">
                 <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
                   <tr>
-                    <th className="p-4 border-b">Date</th>
                     {currentFields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
                     <th className="p-4 border-b w-10 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading ? (
-                    <SkeletonLoader type="table" columns={currentFields.length + 2} />
+                    <SkeletonLoader type="table" columns={currentFields.length + 1} />
                   ) : paginatedLogs.length > 0 ? (
                     paginatedLogs.map(log => (
                       <tr 
@@ -3921,10 +3967,6 @@ const getShedFromLivestock = (tagValue) => {
                         `}
                         onClick={() => setSelectedEntry(log)}
                       >
-                        <td className="p-4 text-sm text-black font-sans whitespace-nowrap">
-                          {log.entryDate}
-                        </td>
-
                         {currentFields.map(f => {
                           // Interactive Tag Link (ONLY in Live Stock)
                           if (['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)) {
@@ -3961,7 +4003,7 @@ const getShedFromLivestock = (tagValue) => {
                             return (
                               <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
                                 {getLiveAge(
-                                  log.dob,
+                                  log.dob || log.dateOfBirth,
                                   log.age,
                                   isInactive ? log.soldDate || log.deadDate || log.updatedAt : null,
                                   String(log.status).toUpperCase() === "SOLD"
@@ -4048,7 +4090,7 @@ const getShedFromLivestock = (tagValue) => {
 
                           return (
                             <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
-                              {log[f.name]}
+                              {log[f.name] !== undefined && log[f.name] !== null && String(log[f.name]).trim() !== '' ? log[f.name] : '-'}
                             </td>
                           );
                         })}
@@ -4061,7 +4103,7 @@ const getShedFromLivestock = (tagValue) => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={currentFields.length + 2}
+                        colSpan={currentFields.length + 1}
                         className="p-12 text-center text-black text-sm font-medium opacity-50"
                       >
                         No records found for {current.name}.
