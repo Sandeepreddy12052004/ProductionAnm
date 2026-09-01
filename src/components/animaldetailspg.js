@@ -408,6 +408,8 @@ const [showFilters, setShowFilters] = useState(false);
 const [livestockSubTab, setLivestockSubTab] = useState('ACTIVE');
 const [crossingSubTab, setCrossingSubTab] = useState('PENDING');
 const [selectedCategory, setSelectedCategory] = useState('ALL');
+const setCurrentPage = () => {};
+const currentPage = 1;
 
 // Animal Grouping & History State
 const [viewLayout, setViewLayout] = useState('FLAT'); // 'FLAT' | 'GROUPED'

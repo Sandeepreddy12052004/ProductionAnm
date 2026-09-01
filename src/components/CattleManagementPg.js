@@ -125,6 +125,8 @@ export default function CattleManagementPg({
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: "tag", value: "" }]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
+  const setCurrentPage = () => {};
+  const currentPage = 1;
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
   const canEdit = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
