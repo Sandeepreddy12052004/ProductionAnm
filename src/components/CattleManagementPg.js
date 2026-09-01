@@ -125,8 +125,8 @@ export default function CattleManagementPg({
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: "tag", value: "" }]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
-  const setCurrentPage = () => {};
-  const currentPage = 1;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
   const canEdit = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
@@ -466,6 +466,11 @@ export default function CattleManagementPg({
     }
     return isMatched;
   });
+
+  const totalPages = Math.ceil(filteredData.length / recordsPerPage) || 1;
+  const startIndex = (currentPage - 1) * recordsPerPage;
+  const endIndex = startIndex + recordsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
 
   return (
     <div className="w-full flex flex-col text-black font-sans">
@@ -1074,7 +1079,7 @@ export default function CattleManagementPg({
                   </td>
                 </tr>
               ) : (
-                filteredData.map((item, index) => (
+                paginatedData.map((item, index) => (
                   <tr
                     key={index}
                     onClick={() => {
@@ -1173,24 +1178,88 @@ export default function CattleManagementPg({
           </table>
         </div>
 
-        {/* FOOTER */}
+        {/* FOOTER PAGINATION */}
         <div className="
-          flex items-center justify-between
+          flex flex-wrap items-center justify-between
+          gap-4
           px-4 md:px-6
           py-4
           border-t border-gray-200
           bg-white
         ">
-          <div className="
-            text-[15px]
-            text-gray-500
-            font-medium
-          ">
-            Showing all{" "}
-            <span className="font-semibold text-gray-700">
-              {filteredData.length}
-            </span>{" "}
-            {filteredData.length === 1 ? 'record' : 'records'}
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-500 font-medium">
+              Showing{" "}
+              <span className="font-semibold text-gray-800">
+                {filteredData.length === 0 ? 0 : startIndex + 1}–{Math.min(endIndex, filteredData.length)}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-gray-800">
+                {filteredData.length}
+              </span>{" "}
+              records
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-2 text-xs text-gray-500 font-bold">
+              <span>Per page:</span>
+              <select
+                value={recordsPerPage}
+                onChange={(e) => {
+                  setRecordsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-[#16223F] outline-none focus:border-[#D1867D] cursor-pointer shadow-2xs"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+              className={`
+                h-9 px-4
+                rounded-xl
+                border
+                text-xs
+                font-bold
+                transition-all
+                ${currentPage === 1
+                  ? "border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed"
+                  : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 cursor-pointer shadow-2xs"
+                }
+              `}
+            >
+              ← Prev
+            </button>
+
+            <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 font-mono text-xs font-black text-[#16223F]">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              disabled={currentPage >= totalPages || endIndex >= filteredData.length}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              className={`
+                h-9 px-4
+                rounded-xl
+                border
+                text-xs
+                font-bold
+                transition-all
+                ${currentPage >= totalPages || endIndex >= filteredData.length
+                  ? "border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed"
+                  : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 cursor-pointer shadow-2xs"
+                }
+              `}
+            >
+              Next →
+            </button>
           </div>
         </div>
       </div>

@@ -408,8 +408,8 @@ const [showFilters, setShowFilters] = useState(false);
 const [livestockSubTab, setLivestockSubTab] = useState('ACTIVE');
 const [crossingSubTab, setCrossingSubTab] = useState('PENDING');
 const [selectedCategory, setSelectedCategory] = useState('ALL');
-const setCurrentPage = () => {};
-const currentPage = 1;
+const [currentPage, setCurrentPage] = useState(1);
+const [itemsPerPage, setItemsPerPage] = useState(10);
 
 // Animal Grouping & History State
 const [viewLayout, setViewLayout] = useState('FLAT'); // 'FLAT' | 'GROUPED'
@@ -1809,6 +1809,12 @@ if (!moduleConfig) {
   }, [searchedLogs, rawCattleList]);
 
   const totalItems = viewLayout === 'GROUPED' ? groupedAnimalsList.length : searchedLogs.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  const paginatedLogs = searchedLogs.slice(startIndex, endIndex);
+  const paginatedGroupedAnimals = groupedAnimalsList.slice(startIndex, endIndex);
 
   const toggleAnimalAccordion = (tag) => {
     setOpenAnimalAccordions(prev => {
@@ -3779,12 +3785,12 @@ const getShedFromLivestock = (tagValue) => {
                 <div className="space-y-3">
                   <SkeletonLoader type="table" columns={4} />
                 </div>
-              ) : groupedAnimalsList.length === 0 ? (
+              ) : paginatedGroupedAnimals.length === 0 ? (
                 <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
                   <p className="text-sm font-bold text-slate-600">No animal logs found matching your filter criteria.</p>
                 </div>
               ) : (
-                groupedAnimalsList.map(group => {
+                paginatedGroupedAnimals.map(group => {
                   const isExpanded = openAnimalAccordions.has(group.tag);
                   const animalObj = group.animal || {};
                   const animalStatus = String(animalObj.status || 'ACTIVE').toUpperCase();
@@ -3919,8 +3925,8 @@ const getShedFromLivestock = (tagValue) => {
                 <tbody className="divide-y divide-gray-100">
                   {isLoading ? (
                     <SkeletonLoader type="table" columns={currentFields.length + 2} />
-                  ) : searchedLogs.length > 0 ? (
-                    searchedLogs.map(log => (
+                  ) : paginatedLogs.length > 0 ? (
+                    paginatedLogs.map(log => (
                       <tr 
                         key={log._id || log.id}
                         className={`
@@ -4076,11 +4082,59 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           )}
 
-          {/* Records Summary Footer */}
-          <div className="flex justify-between items-center mt-4 px-1">
-            <p className="text-sm font-semibold text-slate-500">
-              Showing all {viewLayout === 'GROUPED' ? groupedAnimalsList.length : searchedLogs.length} {viewLayout === 'GROUPED' ? (groupedAnimalsList.length === 1 ? 'animal' : 'animals') : (searchedLogs.length === 1 ? 'record' : 'records')}
-            </p>
+          {/* Pagination Controls Footer */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mt-6 px-1">
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-bold text-slate-600">
+                Showing <span className="text-[#16223F] font-black">{totalItems === 0 ? 0 : startIndex + 1}</span>–<span className="text-[#16223F] font-black">{Math.min(endIndex, totalItems)}</span> of <span className="text-[#16223F] font-black">{totalItems}</span> {viewLayout === 'GROUPED' ? 'animals' : 'records'}
+              </p>
+              <div className="flex items-center gap-1.5 ml-2 text-xs text-slate-500 font-bold">
+                <span>Per page:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="h-8 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-[#16223F] outline-none focus:border-[#D1867D] cursor-pointer shadow-2xs"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${
+                  currentPage === 1
+                    ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                    : 'bg-white text-[#16223F] border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-2xs cursor-pointer'
+                }`}
+              >
+                ← Prev
+              </button>
+
+              <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 font-mono text-xs font-black text-[#16223F]">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage >= totalPages || endIndex >= totalItems}
+                className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${
+                  currentPage >= totalPages || endIndex >= totalItems
+                    ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                    : 'bg-white text-[#16223F] border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-2xs cursor-pointer'
+                }`}
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </>
       )}
