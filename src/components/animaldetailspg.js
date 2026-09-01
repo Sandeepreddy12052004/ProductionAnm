@@ -670,12 +670,20 @@ const currentFields = current.fields.map(f => {
         let errorCount = 0;
         const errorDetails = [];
 
+        // Helper to process items in parallel concurrent batches of 20
+        const processInBatches = async (items, batchSize, processFn) => {
+          for (let i = 0; i < items.length; i += batchSize) {
+            const chunk = items.slice(i, i + batchSize);
+            await Promise.allSettled(chunk.map((item, idx) => processFn(item, i + idx)));
+          }
+        };
+
         if (current.id === 'sale') {
           // --- SALE LOG IMPORT PIPELINE ---
           const cattleList = await api.cattle.getAll();
           const activeCattle = Array.isArray(cattleList) ? cattleList : (cattleList?.data ?? []);
 
-          for (const row of uniqueParsed) {
+          await processInBatches(uniqueParsed, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || '').trim();
               const rawBuyer = String(row['buyerName'] || '').trim();
@@ -683,13 +691,7 @@ const currentFields = current.fields.map(f => {
               const rawPrice = Number(row['salePrice'] || 0);
               const rawRemarks = String(row['remarks'] || '').trim();
               
-              let rawDate = null;
-              if (row['date']) {
-                const parsedDate = parseDateString(row['date']);
-                if (parsedDate && !isNaN(parsedDate.getTime())) {
-                  rawDate = parsedDate;
-                }
-              }
+              const rawDate = parseDateString(row['date'] || row['saleDate'] || row['sale_date']);
               const finalDate = rawDate || new Date();
 
               const payload = {
@@ -724,31 +726,20 @@ const currentFields = current.fields.map(f => {
               console.error(`Error importing sale log for ${row['tag']}:`, err);
               errorCount++;
             }
-          }
+          });
         } else if (current.id === 'shed') {
           // --- SHED LOG IMPORT PIPELINE ---
           const cattleList = await api.cattle.getAll();
           const activeCattle = Array.isArray(cattleList) ? cattleList : (cattleList?.data ?? []);
 
-          for (const row of uniqueParsed) {
+          await processInBatches(uniqueParsed, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || '').trim();
               const rawOldShed = String(row['oldShed'] || '').trim();
               const rawNewShed = String(row['newShed'] || '').trim();
               const rawReason = String(row['reason'] || row['remarks'] || '').trim();
 
-              let rawDate = null;
-              if (row['shiftingDate']) {
-                const parsedDate = parseDateString(row['shiftingDate']);
-                if (parsedDate && !isNaN(parsedDate.getTime())) {
-                  rawDate = parsedDate;
-                }
-              } else if (row['date']) {
-                const parsedDate = parseDateString(row['date']);
-                if (parsedDate && !isNaN(parsedDate.getTime())) {
-                  rawDate = parsedDate;
-                }
-              }
+              const rawDate = parseDateString(row['shiftingDate'] || row['shifting_date'] || row['date']);
               const finalDate = rawDate || new Date();
 
               const matchedAnimal = activeCattle.find(a => 
@@ -777,9 +768,9 @@ const currentFields = current.fields.map(f => {
               console.error(`Error importing shed log for ${row['tag']}:`, err);
               errorCount++;
             }
-          }
+          });
 
-          // === NEW LOGIC TO UPDATE CATTLE REGISTRY AFTER SHED LOG IMPORT ===
+          // === UPDATE CATTLE REGISTRY AFTER SHED LOG IMPORT (IN BATCHES) ===
           try {
             const uniqueTags = Array.from(new Set(uniqueParsed.map(row => String(row['tag'] || '').trim().toUpperCase()))).filter(Boolean);
             
@@ -791,11 +782,10 @@ const currentFields = current.fields.map(f => {
               const crossingLogs = Array.isArray(crossingRes) ? crossingRes : (crossingRes?.data ?? []);
               const latestCattle = Array.isArray(cattleListRes) ? cattleListRes : (cattleListRes?.data ?? []);
 
-              for (const tag of uniqueTags) {
+              await processInBatches(uniqueTags, 20, async (tag) => {
                 const tagRows = uniqueParsed.filter(row => String(row['tag'] || '').trim().toUpperCase() === tag);
-                if (tagRows.length === 0) continue;
+                if (tagRows.length === 0) return;
 
-                // Sort ascending by date to find the most recent one
                 tagRows.sort((a, b) => {
                   const dateA = parseDateString(a['shiftingDate'] || a['date']) || new Date(0);
                   const dateB = parseDateString(b['shiftingDate'] || b['date']) || new Date(0);
@@ -810,7 +800,6 @@ const currentFields = current.fields.map(f => {
                 let resolvedShedCode = null;
 
                 if (newShedVal) {
-                  // Case 1: Has new shed number -> belongs to the farm of that new shed
                   const matchedShed = rawShedsList.find(s => 
                     String(s.code || '').trim().toUpperCase() === newShedVal.toUpperCase() ||
                     String(s.name || '').trim().toUpperCase() === newShedVal.toUpperCase()
@@ -822,7 +811,6 @@ const currentFields = current.fields.map(f => {
                     resolvedShedCode = newShedVal;
                   }
                 } else if (oldShedVal) {
-                  // Case 2: Has old shed number and empty new shed number
                   const matchedShed = rawShedsList.find(s => 
                     String(s.code || '').trim().toUpperCase() === oldShedVal.toUpperCase() ||
                     String(s.name || '').trim().toUpperCase() === oldShedVal.toUpperCase()
@@ -832,7 +820,6 @@ const currentFields = current.fields.map(f => {
                     resolvedShedCode = matchedShed.code || matchedShed.name || oldShedVal;
                   }
                 } else {
-                  // Case 3: Both old and new sheds numbers empty -> check mother tag in crossing log
                   const matchingCrossing = crossingLogs.find(c => 
                     String(c.calfTag || '').trim().toUpperCase() === tag
                   );
@@ -850,7 +837,6 @@ const currentFields = current.fields.map(f => {
                   }
                 }
 
-                // Update the matching cattle record with resolved farm/shed
                 const matchedAnimal = latestCattle.find(a => 
                   String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === tag
                 );
@@ -866,30 +852,24 @@ const currentFields = current.fields.map(f => {
                   }
                   await api.cattle.update(animalId, updatePayload);
                 }
-              }
+              });
             }
           } catch (updateErr) {
             console.error("Failed to update cattle registry after shed log import:", updateErr);
           }
         } else if (current.id === 'crossing') {
           // --- CROSSING LOG IMPORT PIPELINE ---
-          for (const row of uniqueParsed) {
+          await processInBatches(uniqueParsed, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
-              if (!rawTag) continue;
+              if (!rawTag) return;
               
               const rawCrossingType = row['crossingType'] || row['crossing_type'] ? String(row['crossingType'] || row['crossing_type']).trim() : '';
               const rawMaleTag = row['maleTag'] || row['male_tag'] ? String(row['maleTag'] || row['male_tag']).trim() : '';
               const rawBatchNumber = row['batchNumber'] || row['batch_number'] ? String(row['batchNumber'] || row['batch_number']).trim() : '';
               
-              let rawCrossingDate = null;
-              if (row['crossingDate'] || row['crossing_date']) {
-                const parsedDate = parseDateString(row['crossingDate'] || row['crossing_date']);
-                if (parsedDate && !isNaN(parsedDate.getTime())) {
-                  rawCrossingDate = parsedDate;
-                }
-              }
-              const finalCrossingDate = rawCrossingDate; // Keep null if not in excel
+              const rawCrossingDate = parseDateString(row['crossingDate'] || row['crossing_date'] || row['date']);
+              const finalCrossingDate = rawCrossingDate;
 
               const rawAttempt = row['crossingAttemptNumber'] || row['crossing_attempt_number'] ? Number(row['crossingAttemptNumber'] || row['crossing_attempt_number']) : null;
               const rawPdDate = (row['pdDate'] || row['pd_date'] || row['pdDate ']) ? parseDateString(row['pdDate'] || row['pd_date'] || row['pdDate ']) : null;
@@ -934,24 +914,18 @@ const currentFields = current.fields.map(f => {
               console.error(`Error importing crossing log for ${row['tag']}:`, err);
               errorCount++;
             }
-          }
+          });
         } else if (current.id === 'purchase') {
           // --- PURCHASE LOG IMPORT PIPELINE ---
-          for (const row of uniqueParsed) {
+          await processInBatches(uniqueParsed, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
-              if (!rawTag) continue;
+              if (!rawTag) return;
               const rawSeller = String(row['purchaseFrom'] || row['sellerName'] || row['seller'] || '').trim();
               const rawContact = String(row['buyerPhone'] || row['sellerContact'] || row['contact'] || '').trim();
               const rawPrice = Number(row['salePrice'] || row['purchasePrice'] || row['price'] || 0);
               
-              let rawPurchaseDate = null;
-              if (row['date'] || row['purchaseDate'] || row['purchase_date']) {
-                const parsedDate = parseDateString(row['date'] || row['purchaseDate'] || row['purchase_date']);
-                if (parsedDate && !isNaN(parsedDate.getTime())) {
-                  rawPurchaseDate = parsedDate;
-                }
-              }
+              const rawPurchaseDate = parseDateString(row['date'] || row['purchaseDate'] || row['purchase_date']);
               const finalPurchaseDate = rawPurchaseDate || new Date();
 
               const rawFarm = String(row['farmId'] || row['farm'] || '').trim();
@@ -983,7 +957,56 @@ const currentFields = current.fields.map(f => {
               console.error(`Error importing purchase log for ${row['tag']}:`, err);
               errorCount++;
             }
-          }
+          });
+        } else if (current.id === 'health' || current.id === 'treatment') {
+          // --- TREATMENT LOG IMPORT PIPELINE ---
+          await processInBatches(uniqueParsed, 20, async (row) => {
+            try {
+              const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
+              if (!rawTag) return;
+              const rawDate = parseDateString(row['date'] || row['treatmentDate'] || row['treatment_date']) || new Date();
+              const payload = {
+                tag: rawTag,
+                tagId: rawTag,
+                date: rawDate,
+                treatmentDate: rawDate,
+                symptoms: String(row['symptoms'] || '').trim(),
+                diagnosis: String(row['diagnosis'] || '').trim(),
+                medicine: String(row['medicine'] || '').trim(),
+                dose: String(row['dose'] || '').trim(),
+                treatedBy: String(row['treatedBy'] || row['treated_by'] || '').trim()
+              };
+              await api.health.treatments.create(payload);
+              successCount++;
+            } catch (err) {
+              console.error(`Error importing treatment log for ${row['tag']}:`, err);
+              errorCount++;
+            }
+          });
+        } else if (current.id === 'vaccine' || current.id === 'vaccination') {
+          // --- VACCINE LOG IMPORT PIPELINE ---
+          await processInBatches(uniqueParsed, 20, async (row) => {
+            try {
+              const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
+              if (!rawTag) return;
+              const rawDate = parseDateString(row['date'] || row['vaccinationDate'] || row['vaccination_date']) || new Date();
+              const payload = {
+                tagId: rawTag,
+                tag: rawTag,
+                vaccinationName: String(row['vaccinationName'] || row['vaccineName'] || row['vaccine'] || '').trim(),
+                batchNo: String(row['batchNo'] || row['batch_no'] || row['batchNumber'] || '').trim(),
+                manufactureDate: parseDateString(row['manufactureDate'] || row['manufacture_date']),
+                expiryDate: parseDateString(row['expiryDate'] || row['expiry_date']),
+                treatmentOrStatus: String(row['treatmentOrStatus'] || row['status'] || 'Completed').trim(),
+                date: rawDate
+              };
+              await api.health.vaccinations.create(payload);
+              successCount++;
+            } catch (err) {
+              console.error(`Error importing vaccine log for ${row['tag']}:`, err);
+              errorCount++;
+            }
+          });
         } else {
           // --- LIVE STOCK IMPORT PIPELINE ---
           const [suffixRulesRes, cattleListRes] = await Promise.all([
@@ -993,7 +1016,7 @@ const currentFields = current.fields.map(f => {
           const suffixRules = Array.isArray(suffixRulesRes) ? suffixRulesRes : (suffixRulesRes?.data ?? []);
           const activeCattle = Array.isArray(cattleListRes) ? cattleListRes : (cattleListRes?.data ?? []);
 
-          for (const row of uniqueParsed) {
+          await processInBatches(uniqueParsed, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || '').trim();
               const rawShed = String(row['shed'] || '-').trim();
@@ -1175,7 +1198,7 @@ const currentFields = current.fields.map(f => {
               errorDetails.push(`Tag ${row['tag'] || 'unknown'}: ${err.message || err || 'Unknown error'}`);
               errorCount++;
             }
-          }
+          });
         }
 
         swalSuccess(
