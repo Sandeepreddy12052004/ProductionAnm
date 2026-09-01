@@ -548,13 +548,14 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 // ---------------------------------------------------------------------------
 // PUBLIC API SURFACE
 // ---------------------------------------------------------------------------
+// PUBLIC API SURFACE
+// ---------------------------------------------------------------------------
+const toQuery = (params) => (params ? '?' + new URLSearchParams(params).toString() : '');
+
 export const api = {
   // Live Stock (Cattle)
   cattle: {
-    getAll:              (params)   => {
-      const query = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiRequest('/api/cattle' + query);
-    },
+    getAll:              (params)   => apiRequest('/api/cattle' + toQuery(params)),
     create:              (data)     => apiRequest('/api/cattle', 'POST', data),
     update:              (id, data) => apiRequest(`/api/cattle/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/cattle/${id}`, 'DELETE'),
@@ -562,7 +563,7 @@ export const api = {
 
   // Crossing Log
   crossing: {
-    getAll:              ()         => apiRequest('/api/crossing'),
+    getAll:              (params)   => apiRequest('/api/crossing' + toQuery(params)),
     create:              (data)     => apiRequest('/api/crossing', 'POST', data),
     update:              (id, data) => apiRequest(`/api/crossing/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/crossing/${id}`, 'DELETE'),
@@ -571,19 +572,19 @@ export const api = {
   // Health Logs (Treatments & Vaccinations)
   health: {
     treatments: {
-      getAll:            ()         => apiRequest('/api/health/treatments'),
+      getAll:            (params)   => apiRequest('/api/health/treatments' + toQuery(params)),
       create:            (data)     => apiRequest('/api/health/treatments', 'POST', data),
       update:            (id, data) => apiRequest(`/api/health/treatments/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/health/treatments/${id}`, 'DELETE'),
     },
     vaccinations: {
-      getAll:            ()         => apiRequest('/api/health/vaccinations'),
+      getAll:            (params)   => apiRequest('/api/health/vaccinations' + toQuery(params)),
       create:            (data)     => apiRequest('/api/health/vaccinations', 'POST', data),
       update:            (id, data) => apiRequest(`/api/health/vaccinations/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/health/vaccinations/${id}`, 'DELETE'),
     },
     vaccines: {
-      getAll:            ()         => apiRequest('/api/health/vaccines'),
+      getAll:            (params)   => apiRequest('/api/health/vaccines' + toQuery(params)),
       create:            (data)     => apiRequest('/api/health/vaccines', 'POST', data),
       update:            (id, data) => apiRequest(`/api/health/vaccines/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/health/vaccines/${id}`, 'DELETE'),
@@ -593,7 +594,7 @@ export const api = {
   // Inventory Modules (Medicine & Feed)
   inventory: {
     medicines: {
-      getAll:            ()         => apiRequest('/api/inventory/medicines'),
+      getAll:            (params)   => apiRequest('/api/inventory/medicines' + toQuery(params)),
       create:            (data)     => apiRequest('/api/inventory/medicines', 'POST', data),
       update:            (id, data) => apiRequest(`/api/inventory/medicines/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/inventory/medicines/${id}`, 'DELETE'),
@@ -703,19 +704,19 @@ export const api = {
 
   // Operational logs (stored in database)
   shed: {
-    getAll:              ()         => apiRequest('/api/logs/shed'),
+    getAll:              (params)   => apiRequest('/api/logs/shed' + toQuery(params)),
     create:              (data)     => apiRequest('/api/logs/shed', 'POST', data),
     update:              (id, data) => apiRequest(`/api/logs/shed/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/logs/shed/${id}`, 'DELETE'),
   },
   purchase: {
-    getAll:              ()         => apiRequest('/api/logs/purchase'),
+    getAll:              (params)   => apiRequest('/api/logs/purchase' + toQuery(params)),
     create:              (data)     => apiRequest('/api/logs/purchase', 'POST', data),
     update:              (id, data) => apiRequest(`/api/logs/purchase/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/logs/purchase/${id}`, 'DELETE'),
   },
   sale: {
-    getAll:              ()         => apiRequest('/api/logs/sale'),
+    getAll:              (params)   => apiRequest('/api/logs/sale' + toQuery(params)),
     create:              (data)     => apiRequest('/api/logs/sale', 'POST', data),
     update:              (id, data) => apiRequest(`/api/logs/sale/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/logs/sale/${id}`, 'DELETE'),

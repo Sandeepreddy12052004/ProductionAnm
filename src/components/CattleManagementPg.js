@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import LogForm from "@/components/LogForm";
+import AnimalLogHistoryModal from "./AnimalLogHistoryModal";
 import swalInstance, { swalSuccess, swalError, swalConfirm } from "@/utils/swal";
 import SkeletonLoader from "./SkeletonLoader";
 import { api } from "@/utils/api";
@@ -116,14 +117,14 @@ export default function CattleManagementPg({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
+  const [historyModalTag, setHistoryModalTag] = useState(null);
+  const [historyModalAnimal, setHistoryModalAnimal] = useState(null);
   const [allSheds, setAllSheds] = useState([]);
 
   // Dynamic Filters State
   const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
   const [appliedFilters, setAppliedFilters] = useState([{ field: "tag", value: "" }]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
-  const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10;
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
   const canEdit = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
@@ -463,13 +464,6 @@ export default function CattleManagementPg({
     }
     return isMatched;
   });
-
-  const totalPages = Math.ceil(filteredData.length / recordsPerPage) || 1;
-  const startIndex = (currentPage - 1) * recordsPerPage;
-  const paginatedData = filteredData.slice(
-    startIndex,
-    startIndex + recordsPerPage
-  );
 
   return (
     <div className="w-full flex flex-col text-black font-sans">
@@ -1078,7 +1072,7 @@ export default function CattleManagementPg({
                   </td>
                 </tr>
               ) : (
-                paginatedData.map((item, index) => (
+                filteredData.map((item, index) => (
                   <tr
                     key={index}
                     onClick={() => {
@@ -1096,6 +1090,27 @@ export default function CattleManagementPg({
                       let cellVal = item[field.name];
                       if (field.name === 'farmId') {
                         cellVal = item.farmName || cellVal;
+                      }
+
+                      if (['tag', 'tagId', 'code', 'tag_id'].includes(field.name)) {
+                        const tagVal = item[field.name];
+                        return (
+                          <td key={field.name} className="p-4 text-sm font-semibold whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setHistoryModalTag(tagVal);
+                                setHistoryModalAnimal(item);
+                              }}
+                              className="group/tag inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#16223F]/5 hover:bg-[#16223F] text-[#16223F] hover:text-white font-mono text-xs font-black transition-all border border-[#16223F]/10 hover:border-[#16223F] shadow-2xs cursor-pointer"
+                              title={`Click to view 360° log history for Animal [${tagVal}]`}
+                            >
+                              <span>{tagVal || '-'}</span>
+                              <span className="text-[10px] text-slate-400 group-hover/tag:text-amber-300 transition-colors">📜</span>
+                            </button>
+                          </td>
+                        );
                       }
 
                       return (
@@ -1169,64 +1184,11 @@ export default function CattleManagementPg({
             text-gray-500
             font-medium
           ">
-            Showing{" "}
-            <span className="font-semibold text-gray-700">
-              {filteredData.length === 0
-                ? "0-0"
-                : `${startIndex + 1}-${Math.min(
-                  startIndex + recordsPerPage,
-                  filteredData.length
-                )}`}
-            </span>{" "}
-            of{" "}
+            Showing all{" "}
             <span className="font-semibold text-gray-700">
               {filteredData.length}
             </span>{" "}
-            records
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className={`
-                h-10 px-5
-                rounded-xl
-                border
-                text-[15px]
-                font-medium
-                transition-all
-                ${currentPage === 1
-                  ? "border-gray-100 text-gray-300 bg-white cursor-not-allowed"
-                  : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 transition-all duration-200"
-                }
-              `}
-            >
-              Prev
-            </button>
-
-            <span className="text-[15px] font-bold text-slate-800">
-              Page {currentPage}
-            </span>
-
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className={`
-                h-10 px-5
-                rounded-xl
-                border
-                text-[15px]
-                font-medium
-                transition-all
-                ${currentPage === totalPages
-                  ? "border-gray-100 text-gray-300 bg-white cursor-not-allowed"
-                  : "border-gray-200 text-[#16223F] bg-white hover:bg-slate-50 transition-all duration-200"
-                }
-              `}
-            >
-              Next
-            </button>
+            {filteredData.length === 1 ? 'record' : 'records'}
           </div>
         </div>
       </div>
@@ -1239,10 +1201,22 @@ export default function CattleManagementPg({
             <div className="space-y-2">
               <button
                 onClick={() => {
+                  const tag = selectedAnimal.tag || selectedAnimal.tagId || selectedAnimal.code;
+                  setShowActionModal(false);
+                  setHistoryModalTag(tag);
+                  setHistoryModalAnimal(selectedAnimal);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-[#16223F] text-white py-3 rounded-xl font-bold hover:bg-[#16223F]/90 shadow-md transition-all text-xs"
+              >
+                📜 View All Logs & 360° History
+              </button>
+
+              <button
+                onClick={() => {
                   setShowActionModal(false);
                   setShowViewModal(true);
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-gray-400 text-white py-3 rounded-xl font-semibold hover:bg-gray-500 transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-gray-100 text-slate-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all text-xs"
               >
                 👁️ View Details
               </button>
@@ -1253,7 +1227,7 @@ export default function CattleManagementPg({
                     setShowActionModal(false);
                     setShowEditModal(true);
                   }}
-                  className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#b06a62] transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#b06a62] transition-all text-xs"
                 >
                   ✏️ Edit Cattle
                 </button>
@@ -1263,7 +1237,7 @@ export default function CattleManagementPg({
                 <button
                   onClick={handleDelete}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-all disabled:opacity-50 text-xs"
                 >
                   🗑️ Delete
                 </button>
@@ -1274,7 +1248,7 @@ export default function CattleManagementPg({
                   setShowActionModal(false);
                   setSelectedAnimal(null);
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-600 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition-all text-xs"
               >
                 Cancel
               </button>
@@ -1368,6 +1342,19 @@ export default function CattleManagementPg({
           onClose={() => {
             setShowEditModal(false);
             setSelectedAnimal(null);
+          }}
+        />
+      )}
+
+      {/* ── ANIMAL 360° LIFECYCLE & LOG DOSSIER MODAL ── */}
+      {historyModalTag && (
+        <AnimalLogHistoryModal
+          isOpen={!!historyModalTag}
+          animalTag={historyModalTag}
+          initialAnimalProfile={historyModalAnimal}
+          onClose={() => {
+            setHistoryModalTag(null);
+            setHistoryModalAnimal(null);
           }}
         />
       )}

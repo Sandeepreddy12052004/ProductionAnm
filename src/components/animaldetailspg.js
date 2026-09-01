@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from "next/router";
 import LogForm from './LogForm';
+import AnimalLogHistoryModal from './AnimalLogHistoryModal';
+import { groupLogsByAnimal } from '../utils/animalLogsHelper';
 import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -403,11 +405,17 @@ const [filters, setFilters] = useState([
   { field: "entryDate", value: "" }
 ]);
 const [showFilters, setShowFilters] = useState(false);
-const [currentPage, setCurrentPage] = useState(1);
 const [livestockSubTab, setLivestockSubTab] = useState('ACTIVE');
 const [crossingSubTab, setCrossingSubTab] = useState('PENDING');
 const [selectedCategory, setSelectedCategory] = useState('ALL');
-const itemsPerPage = 10;
+
+// Animal Grouping & History State
+const [viewLayout, setViewLayout] = useState('FLAT'); // 'FLAT' | 'GROUPED'
+const [openAnimalAccordions, setOpenAnimalAccordions] = useState(new Set());
+const [historyModalTag, setHistoryModalTag] = useState(null);
+const [historyModalAnimal, setHistoryModalAnimal] = useState(null);
+const [animalTagSearch, setAnimalTagSearch] = useState('');
+const [rawCattleList, setRawCattleList] = useState([]);
 
 // MODULE ROUTING (PILL TABS)
 const modules = [
@@ -422,9 +430,11 @@ useEffect(() => {
   Promise.all([
     api.sheds.getAll(),
     api.breeds.getAll(),
-    api.animals.getAll()
-  ]).then(([sheds, breeds, animals]) => {
+    api.animals.getAll(),
+    api.cattle.getAll()
+  ]).then(([sheds, breeds, animals, cattle]) => {
     if (isMounted) {
+      setRawCattleList(Array.isArray(cattle) ? cattle : (cattle?.data ?? []));
       setRawShedsList(sheds || []);
       const shedSet = new Set();
       (sheds || []).forEach(s => {
@@ -1785,17 +1795,40 @@ if (!moduleConfig) {
     return matchesAppliedFilters(log);
   });
 
-  const totalItems = filteredLogs.length;
+  const searchedLogs = filteredLogs.filter(log => {
+    if (!animalTagSearch.trim()) return true;
+    const q = animalTagSearch.trim().toLowerCase();
+    const t = String(log.tag || log.tagId || log.tag_id || log.femaleTag || log.bullTag || log.calfTag || '').toLowerCase();
+    return t.includes(q);
+  });
 
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
+  const groupedAnimalsList = useMemo(() => {
+    return groupLogsByAnimal(searchedLogs, rawCattleList);
+  }, [searchedLogs, rawCattleList]);
 
-const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
-const activeFilterCount = (isCustomFilterModule ? appliedFilters : filters).filter(
-  f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || 
-       f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays
-).length;
+  const totalItems = viewLayout === 'GROUPED' ? groupedAnimalsList.length : searchedLogs.length;
 
+  const toggleAnimalAccordion = (tag) => {
+    setOpenAnimalAccordions(prev => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  };
+
+  const expandAllAccordions = () => {
+    setOpenAnimalAccordions(new Set(groupedAnimalsList.map(g => g.tag)));
+  };
+
+  const collapseAllAccordions = () => {
+    setOpenAnimalAccordions(new Set());
+  };
+
+  const activeFilterCount = (isCustomFilterModule ? appliedFilters : filters).filter(
+    f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || 
+         f.from || f.to || f.fromYears || f.fromMonths || f.fromDays || f.toYears || f.toMonths || f.toDays
+  ).length;
 
   const saveToStorage = (updatedLogs) => {
     setLogs(updatedLogs);
@@ -3661,182 +3694,394 @@ const getShedFromLivestock = (tagValue) => {
               />
             </div>
           )}
-          <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
-            <table className="w-full text-left min-w-[600px] relative">
-              <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
-                <tr>
-                  <th className="p-4 border-b">Date</th>
-                  {currentFields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
-                  <th className="p-4 border-b w-10 text-center"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {isLoading ? (
-                  <SkeletonLoader type="table" columns={currentFields.length + 2} />
-                ) : paginatedLogs.length > 0 ? (
-                  paginatedLogs.map(log => (
-                    <tr 
-                      key={log._id || log.id}
-                      className={`
-                        cursor-pointer group transition-colors
-                        hover:bg-[#D1867D]/5
-                        ${["DEAD", "DECEASED"].includes(String(log.status).toUpperCase()) ? "bg-red-50" : ""}
-                        ${String(log.status).toUpperCase() === "SOLD" ? "bg-[#FFC145]/5" : ""}
-                      `}
-                      onClick={() => setSelectedEntry(log)}
-                    >
-                      <td className="p-4 text-sm text-black font-sans whitespace-nowrap">
-                        {log.entryDate}
-                      </td>
 
-                      {currentFields.map(f => {
-                        if (f.name === "age") {
-                          const isInactive = ["SOLD", "DECEASED", "DEAD"].includes(String(log.status).toUpperCase());
-                          return (
-                            <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
-                              {getLiveAge(
-                                log.dob,
-                                log.age,
-                                isInactive ? log.soldDate || log.deadDate || log.updatedAt : null,
-                                String(log.status).toUpperCase() === "SOLD"
-                                  ? "sold"
-                                  : ["DEAD", "DECEASED"].includes(String(log.status).toUpperCase())
-                                  ? "dead"
-                                  : null
-                              )}
-                            </td>
-                          );
-                        }
+          {/* ── LOG GROUPING & DISPLAY CONTROLS TOOLBAR ── */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 p-3 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* View Mode Toggle: Flat vs Grouped by Animal */}
+              <div className="flex items-center p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                <button
+                  onClick={() => { setViewLayout('FLAT'); setCurrentPage(1); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    viewLayout === 'FLAT'
+                      ? 'bg-[#16223F] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>📄 Flat Table</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${viewLayout === 'FLAT' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                    {searchedLogs.length}
+                  </span>
+                </button>
 
-                        if (f.name === "Pregnant age" || f.name === "pregnantAge") {
-                          const isPreg = (log.pregnancyStatus || log["pregnancy status"]) === "Positive";
-                          if (!isPreg) {
+                <button
+                  onClick={() => { setViewLayout('GROUPED'); setCurrentPage(1); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    viewLayout === 'GROUPED'
+                      ? 'bg-[#16223F] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>🐄 Group by Animal</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${viewLayout === 'GROUPED' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                    {groupedAnimalsList.length} Animals
+                  </span>
+                </button>
+              </div>
+
+              {viewLayout === 'GROUPED' && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={expandAllAccordions}
+                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition-all"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    onClick={collapseAllAccordions}
+                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition-all"
+                  >
+                    Collapse All
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Animal Tag Search */}
+            <div className="flex items-center gap-2 flex-1 max-w-xs min-w-[200px]">
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  value={animalTagSearch}
+                  onChange={(e) => { setAnimalTagSearch(e.target.value); setCurrentPage(1); }}
+                  placeholder="Search by Animal Tag..."
+                  className="w-full h-9 pl-8 pr-7 text-xs bg-white border border-slate-200 rounded-xl font-medium placeholder-slate-400 focus:outline-none focus:border-[#D1867D] focus:ring-1 focus:ring-[#D1867D]"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+                {animalTagSearch && (
+                  <button
+                    onClick={() => { setAnimalTagSearch(''); setCurrentPage(1); }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── GROUPED BY ANIMAL VIEW ── */}
+          {viewLayout === 'GROUPED' ? (
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="space-y-3">
+                  <SkeletonLoader type="table" columns={4} />
+                </div>
+              ) : groupedAnimalsList.length === 0 ? (
+                <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
+                  <p className="text-sm font-bold text-slate-600">No animal logs found matching your filter criteria.</p>
+                </div>
+              ) : (
+                groupedAnimalsList.map(group => {
+                  const isExpanded = openAnimalAccordions.has(group.tag);
+                  const animalObj = group.animal || {};
+                  const animalStatus = String(animalObj.status || 'ACTIVE').toUpperCase();
+
+                  return (
+                    <div key={group.tag} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden transition-all duration-200 hover:border-slate-300">
+                      {/* Accordion Group Header */}
+                      <div 
+                        onClick={() => toggleAnimalAccordion(group.tag)}
+                        className="p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHistoryModalTag(group.tag);
+                              setHistoryModalAnimal(group.animal);
+                            }}
+                            className="font-mono text-xs font-black bg-[#16223F] text-white hover:bg-[#D1867D] px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                            title="Click to view full 360° animal lifecycle dossier"
+                          >
+                            <span>🐄 {group.tag}</span>
+                            <span className="text-[10px] text-amber-300">📜</span>
+                          </button>
+
+                          <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
+                            {animalObj.cattleType && (
+                              <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-bold text-slate-700">
+                                {animalObj.cattleType || animalObj.animalType}
+                              </span>
+                            )}
+                            {animalObj.breed && (
+                              <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-semibold text-slate-600">
+                                Breed: {animalObj.breed}
+                              </span>
+                            )}
+                            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-semibold text-slate-600">
+                              Shed: <strong className="text-[#16223F]">Shed {animalObj.shed || animalObj.shedId || '-'}</strong>
+                            </span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
+                              animalStatus === 'SOLD' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                              ['DEAD', 'DECEASED'].includes(animalStatus) ? 'bg-red-50 text-red-800 border-red-200' :
+                              animalStatus === 'PREGNANT' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                              'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {animalStatus}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                          <span className="bg-[#16223F]/10 text-[#16223F] font-black text-xs px-3 py-1 rounded-full">
+                            {group.count} {group.count === 1 ? 'Record' : 'Records'}
+                          </span>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHistoryModalTag(group.tag);
+                              setHistoryModalAnimal(group.animal);
+                            }}
+                            className="hidden sm:flex items-center gap-1 px-3 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 shadow-2xs transition-all"
+                          >
+                            📜 History Dossier
+                          </button>
+
+                          <span className="text-slate-400 font-bold text-xs px-1">
+                            {isExpanded ? '▲' : '▼'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Accordion Group Body Table */}
+                      {isExpanded && (
+                        <div className="overflow-x-auto bg-white">
+                          <table className="w-full text-left min-w-[600px]">
+                            <thead className="bg-slate-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
+                              <tr>
+                                <th className="p-3.5">Date</th>
+                                {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => (
+                                  <th key={f.name} className="p-3.5">{f.label}</th>
+                                ))}
+                                <th className="p-3.5 w-10 text-center"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
+                              {group.logs.map(log => (
+                                <tr 
+                                  key={log._id || log.id}
+                                  onClick={() => setSelectedEntry(log)}
+                                  className="hover:bg-[#D1867D]/5 cursor-pointer transition-colors"
+                                >
+                                  <td className="p-3.5 font-bold font-mono text-[#16223F] whitespace-nowrap">
+                                    {log.entryDate}
+                                  </td>
+                                  {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => {
+                                    let val = log[f.name] || '-';
+                                    if (f.type === 'date' || f.name.toLowerCase().includes('date')) {
+                                      val = log[f.name] ? formatDateToDDMMYYYY(log[f.name]) : '-';
+                                    }
+                                    return (
+                                      <td key={f.name} className="p-3.5 font-semibold whitespace-nowrap">
+                                        {val}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="p-3.5 text-gray-400 hover:text-[#D1867D] font-bold text-center">
+                                    ⋮
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            /* ── FLAT TABLE VIEW ── */
+            <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
+              <table className="w-full text-left min-w-[600px] relative">
+                <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
+                  <tr>
+                    <th className="p-4 border-b">Date</th>
+                    {currentFields.map(f => <th key={f.name} className="p-4 border-b">{f.label}</th>)}
+                    <th className="p-4 border-b w-10 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {isLoading ? (
+                    <SkeletonLoader type="table" columns={currentFields.length + 2} />
+                  ) : searchedLogs.length > 0 ? (
+                    searchedLogs.map(log => (
+                      <tr 
+                        key={log._id || log.id}
+                        className={`
+                          cursor-pointer group transition-colors
+                          hover:bg-[#D1867D]/5
+                          ${["DEAD", "DECEASED"].includes(String(log.status).toUpperCase()) ? "bg-red-50" : ""}
+                          ${String(log.status).toUpperCase() === "SOLD" ? "bg-[#FFC145]/5" : ""}
+                        `}
+                        onClick={() => setSelectedEntry(log)}
+                      >
+                        <td className="p-4 text-sm text-black font-sans whitespace-nowrap">
+                          {log.entryDate}
+                        </td>
+
+                        {currentFields.map(f => {
+                          // Interactive Tag Link
+                          if (['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)) {
+                            const tagVal = log[f.name];
                             return (
-                              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
-                                -
+                              <td key={f.name} className="p-4 font-semibold whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setHistoryModalTag(tagVal);
+                                    const foundAnimal = rawCattleList.find(c => String(c.tag || c.tagId || c.tag_id || '').toUpperCase() === String(tagVal).toUpperCase());
+                                    setHistoryModalAnimal(foundAnimal || null);
+                                  }}
+                                  className="group/tag inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#16223F]/5 hover:bg-[#16223F] text-[#16223F] hover:text-white font-mono text-xs font-black transition-all border border-[#16223F]/10 hover:border-[#16223F] shadow-2xs cursor-pointer"
+                                  title={`Click to view 360° log history for Animal [${tagVal}]`}
+                                >
+                                  <span>{tagVal || '-'}</span>
+                                  <span className="text-[10px] text-slate-400 group-hover/tag:text-amber-300 transition-colors">📜</span>
+                                </button>
                               </td>
                             );
                           }
-                          return (
-                            <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
-                              {getLiveAge(
-                                log.crossingDate || log["crossingDate"],
-                                log.pregnantAge || log["Pregnant age"],
-                                log.actualCalvingDate || log["actual calving date"],
-                                "calved"
-                              )}
-                            </td>
-                          );
-                        }
 
-                        if (f.name === "status") {
-                          const statusUpper = String(log.status).toUpperCase();
-                          let badgeStyle = "bg-emerald-50 text-emerald-700 border border-emerald-100/50";
-                          if (statusUpper === "SOLD") {
-                            badgeStyle = "bg-[#FFC145]/10 text-[#16223F] border border-[#FFC145]/20";
-                          } else if (["DEAD", "DECEASED"].includes(statusUpper)) {
-                            badgeStyle = "bg-red-50 text-red-700 border border-red-100/50";
-                          } else if (statusUpper === "PREGNANT") {
-                            badgeStyle = "bg-violet-50 text-violet-700 border border-violet-100/50";
-                          } else if (statusUpper === "EMPTY") {
-                            badgeStyle = "bg-slate-100 text-slate-700 border border-slate-200/50";
-                          } else if (statusUpper === "PENDING") {
-                            badgeStyle = "bg-amber-50 text-amber-700 border border-amber-100/50";
+                          if (f.name === "age") {
+                            const isInactive = ["SOLD", "DECEASED", "DEAD"].includes(String(log.status).toUpperCase());
+                            return (
+                              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                                {getLiveAge(
+                                  log.dob,
+                                  log.age,
+                                  isInactive ? log.soldDate || log.deadDate || log.updatedAt : null,
+                                  String(log.status).toUpperCase() === "SOLD"
+                                    ? "sold"
+                                    : ["DEAD", "DECEASED"].includes(String(log.status).toUpperCase())
+                                    ? "dead"
+                                    : null
+                                )}
+                              </td>
+                            );
                           }
-                          return (
-                            <td key={f.name} className="p-4 font-semibold whitespace-nowrap">
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${badgeStyle}`}>
-                                {log.status}
-                              </span>
-                            </td>
-                          );
-                        }
 
-                        if (f.name === "farmId") {
-                          const rawFarmId = log.farmId;
-                          let displayVal = "Unknown";
-                          if (rawFarmId) {
-                            if (typeof rawFarmId === 'object') {
-                              displayVal = rawFarmId.name || rawFarmId.code || "Unknown";
-                            } else {
-                              const foundFarm = farmsList.find(farm => (farm._id || farm.id) === rawFarmId || farm.code === rawFarmId);
-                              displayVal = foundFarm ? foundFarm.name : rawFarmId;
+                          if (f.name === "Pregnant age" || f.name === "pregnantAge") {
+                            const isPreg = (log.pregnancyStatus || log["pregnancy status"]) === "Positive";
+                            if (!isPreg) {
+                              return (
+                                <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                                  -
+                                </td>
+                              );
                             }
+                            return (
+                              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                                {getLiveAge(
+                                  log.crossingDate || log["crossingDate"],
+                                  log.pregnantAge || log["Pregnant age"],
+                                  log.actualCalvingDate || log["actual calving date"],
+                                  "calved"
+                                )}
+                              </td>
+                            );
                           }
-                          return (
-                            <td key={f.name} className="p-4 font-semibold text-[#16223F] whitespace-nowrap">
-                              {displayVal}
-                            </td>
-                          );
-                        }
 
-                        if (f.type === "date" || f.name.toLowerCase().includes("date") || f.name === "dob" || f.name === "dateOfBirth") {
-                          const rawDate = log[f.name];
-                          const dateDisplay = rawDate ? formatDateToDDMMYYYY(rawDate) : "-";
+                          if (f.name === "status") {
+                            const statusUpper = String(log.status).toUpperCase();
+                            let badgeStyle = "bg-emerald-50 text-emerald-700 border border-emerald-100/50";
+                            if (statusUpper === "SOLD") {
+                              badgeStyle = "bg-[#FFC145]/10 text-[#16223F] border border-[#FFC145]/20";
+                            } else if (["DEAD", "DECEASED"].includes(statusUpper)) {
+                              badgeStyle = "bg-red-50 text-red-700 border border-red-100/50";
+                            } else if (statusUpper === "PREGNANT") {
+                              badgeStyle = "bg-violet-50 text-violet-700 border border-violet-100/50";
+                            } else if (statusUpper === "EMPTY") {
+                              badgeStyle = "bg-slate-100 text-slate-700 border border-slate-200/50";
+                            } else if (statusUpper === "PENDING") {
+                              badgeStyle = "bg-amber-50 text-amber-700 border border-amber-100/50";
+                            }
+                            return (
+                              <td key={f.name} className="p-4 font-semibold whitespace-nowrap">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${badgeStyle}`}>
+                                  {log.status}
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          if (f.name === "farmId") {
+                            const rawFarmId = log.farmId;
+                            let displayVal = "Unknown";
+                            if (rawFarmId) {
+                              if (typeof rawFarmId === 'object') {
+                                displayVal = rawFarmId.name || rawFarmId.code || "Unknown";
+                              } else {
+                                const foundFarm = farmsList.find(farm => (farm._id || farm.id) === rawFarmId || farm.code === rawFarmId);
+                                displayVal = foundFarm ? foundFarm.name : rawFarmId;
+                              }
+                            }
+                            return (
+                              <td key={f.name} className="p-4 font-semibold text-[#16223F] whitespace-nowrap">
+                                {displayVal}
+                              </td>
+                            );
+                          }
+
+                          if (f.type === "date" || f.name.toLowerCase().includes("date") || f.name === "dob" || f.name === "dateOfBirth") {
+                            const rawDate = log[f.name];
+                            const dateDisplay = rawDate ? formatDateToDDMMYYYY(rawDate) : "-";
+                            return (
+                              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                                {dateDisplay}
+                              </td>
+                            );
+                          }
+
                           return (
                             <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
-                              {dateDisplay}
+                              {log[f.name]}
                             </td>
                           );
-                        }
+                        })}
 
-                        return (
-                          <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
-                            {log[f.name]}
-                          </td>
-                        );
-                      })}
-
-                      <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors whitespace-nowrap">
-                        ⋮
+                        <td className="p-4 text-gray-400 group-hover:text-[#D1867D] text-xl font-bold text-center transition-colors whitespace-nowrap">
+                          ⋮
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={currentFields.length + 2}
+                        className="p-12 text-center text-black text-sm font-medium opacity-50"
+                      >
+                        No records found for {current.name}.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={currentFields.length + 2}
-                      className="p-12 text-center text-black text-sm font-medium opacity-50"
-                    >
-                      No records found for {current.name}.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-between items-center mt-4">
-            <p className="text-sm text-black opacity-60">
-              Showing {totalItems === 0 ? 0 : startIndex + 1}–
-              {Math.min(endIndex, totalItems)} of {totalItems} records
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition"
-              >
-                Prev
-              </button>
-
-              <span className="px-3 py-1 font-semibold text-sm">
-                Page {currentPage}
-              </span>
-
-              <button
-                onClick={() => setCurrentPage(prev => prev + 1)}
-                disabled={endIndex >= totalItems}
-                className="px-4 py-1 border rounded-lg bg-white hover:bg-gray-100 transition"
-              >
-                Next
-              </button>
+                  )}
+                </tbody>
+              </table>
             </div>
+          )}
+
+          {/* Records Summary Footer */}
+          <div className="flex justify-between items-center mt-4 px-1">
+            <p className="text-sm font-semibold text-slate-500">
+              Showing all {viewLayout === 'GROUPED' ? groupedAnimalsList.length : searchedLogs.length} {viewLayout === 'GROUPED' ? (groupedAnimalsList.length === 1 ? 'animal' : 'animals') : (searchedLogs.length === 1 ? 'record' : 'records')}
+            </p>
           </div>
         </>
       )}
-
 
       {/* Action Popover */}
       {selectedEntry && !showForm && (
@@ -3845,213 +4090,218 @@ const getShedFromLivestock = (tagValue) => {
             <h3 className="font-bold text-lg mb-4 text-center text-black">Manage Record</h3>
             <div className="space-y-2">
 
-  {/* ✅ NEW VIEW BUTTON */}
-  <button 
-    onClick={() => {
-      setViewMode(true);
-    }}
-    className="w-full flex items-center justify-center gap-2 bg-gray-400 text-white py-3 rounded-xl font-semibold hover:bg-gray-500 transition-all"
-  >
-    👁️ View Details
-  </button>
+              {/* 360° Animal History Dossier Button */}
+              <button 
+                onClick={() => {
+                  const targetTag = selectedEntry.tag || selectedEntry.tagId || selectedEntry.femaleTag || selectedEntry.tag_id;
+                  if (targetTag) {
+                    setHistoryModalTag(targetTag);
+                    const foundAnimal = rawCattleList.find(c => String(c.tag || c.tagId || c.tag_id || '').toUpperCase() === String(targetTag).toUpperCase());
+                    setHistoryModalAnimal(foundAnimal || null);
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-[#16223F] text-white py-3 rounded-xl font-bold hover:bg-[#16223F]/90 shadow-md transition-all text-xs"
+              >
+                📜 View Animal 360° History
+              </button>
 
-  {hasCRUD('edit') && (
-    <button 
-      onClick={() => { setIsEditing(true); setShowForm(true); }} 
-      className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all"
-    >
-      ✏️ Edit Entry
-    </button>
-  )}
+              {/* View Details Button */}
+              <button 
+                onClick={() => {
+                  setViewMode(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-gray-100 text-slate-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all text-xs"
+              >
+                👁️ View Row Details
+              </button>
 
-  {hasCRUD('delete') && (
-    <button 
-      onClick={handleDelete} 
-      className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all"
-    >
-      🗑️ Delete Entry
-    </button>
-  )}
+              {hasCRUD('edit') && (
+                <button 
+                  onClick={() => { setIsEditing(true); setShowForm(true); }} 
+                  className="w-full flex items-center justify-center gap-2 bg-[#D1867D] text-white py-3 rounded-xl font-semibold hover:bg-[#D1867D]/90 shadow-lg shadow-[#D1867D]/10 transition-all text-xs"
+                >
+                  ✏️ Edit Entry
+                </button>
+              )}
 
-  <button 
-    onClick={() => setSelectedEntry(null)} 
-    className="w-full text-black opacity-50 py-2 hover:opacity-100 transition-colors"
-  >
-    Close Menu
-  </button>
+              {hasCRUD('delete') && (
+                <button 
+                  onClick={handleDelete} 
+                  className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-semibold hover:bg-red-100 transition-all text-xs"
+                >
+                  🗑️ Delete Entry
+                </button>
+              )}
 
-</div>
-{selectedEntry && viewMode && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    
-    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
-      
-      {/* CLOSE CROSS ICON */}
-      <button 
-        onClick={() => setViewMode(false)}
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
-      >
-        ✕
-      </button>
+              <button 
+                onClick={() => setSelectedEntry(null)} 
+                className="w-full text-black opacity-50 py-2 hover:opacity-100 transition-colors text-xs font-semibold"
+              >
+                Close Menu
+              </button>
 
-      <h3 className="text-lg font-bold mb-4 text-center text-black">
-        Animal Details
-      </h3>
-
-      {/* DATA DISPLAY */}
-     
-      <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
-
-  {/* DATE */}
-  <div className="flex justify-between border-b pb-2">
-    <span className="font-semibold text-gray-500">Date</span>
-    <span className="text-right">{selectedEntry.entryDate}</span>
-  </div>
-
-  {/* FIELDS */}
-  {currentFields.map(field => {
-    let displayVal = selectedEntry[field.name] || "-";
-    if (field.name === "farmId") {
-      const rawFarmId = selectedEntry.farmId;
-      if (rawFarmId) {
-        if (typeof rawFarmId === 'object') {
-          displayVal = rawFarmId.name || rawFarmId.code || "Unknown";
-        } else {
-          const foundFarm = farmsList.find(farm => (farm._id || farm.id) === rawFarmId || farm.code === rawFarmId);
-          displayVal = foundFarm ? foundFarm.name : rawFarmId;
-        }
-      }
-    } else if (field.name === "age") {
-      const isInactive = ["SOLD", "DECEASED", "DEAD"].includes(String(selectedEntry.status).toUpperCase());
-      displayVal = getLiveAge(
-        selectedEntry.dob || selectedEntry.dateOfBirth,
-        selectedEntry.age,
-        isInactive ? selectedEntry.soldDate || selectedEntry.deadDate || selectedEntry.updatedAt : null,
-        String(selectedEntry.status).toUpperCase() === "SOLD"
-          ? "sold"
-          : ["DEAD", "DECEASED"].includes(String(selectedEntry.status).toUpperCase())
-          ? "dead"
-          : null
-      );
-    } else if (field.type === "date" || field.name.toLowerCase().includes("date") || field.name === "dob" || field.name === "dateOfBirth") {
-      const rawDate = selectedEntry[field.name];
-      displayVal = rawDate ? formatDateToDDMMYYYY(rawDate) : "-";
-    }
-    return (
-      <div key={field.name} className="flex justify-between border-b pb-2">
-        <span className="font-semibold text-gray-500">
-          {field.label}
-        </span>
-        <span className="text-right font-medium text-[#16223F]">
-          {displayVal}
-        </span>
-      </div>
-    );
-  })}
-
-</div>
-
-      {/* CLOSE BUTTON */}
-      <button
-        onClick={() => setViewMode(false)}
-        className="mt-6 w-full bg-gray-300 py-2 rounded-lg font-semibold"
-      >
-        Close
-      </button>
-
-    </div>
-  </div>
-)}
+            </div>
           </div>
         </div>
       )}
 
-      
-      {showForm && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-200 p-4">
+      {/* Row Details Modal */}
+      {selectedEntry && viewMode && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto relative">
+            <button 
+              onClick={() => setViewMode(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl font-bold p-1 focus:outline-none"
+            >
+              ✕
+            </button>
 
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      
-      <LogForm 
-        title={
-          selectedEntry?.isPendingDetails
-            ? selectedEntry.onboardingType === 'CALVING'
-              ? "🍼 Register Newborn Calf Profile"
-              : "📥 Complete Purchased Animal Profile"
-            : isEditing
-            ? `Update ${current.name}`
-            : `New ${current.name}`
-        } 
-        fields={currentFields} 
-        initialData={(() => {
-          if (!isEditing || !selectedEntry) return {};
-          let base = { ...selectedEntry };
-          if (base.isPendingDetails && base.onboardingType === 'CALVING') {
-            base.farmBorn = base.farmBorn || 'Yes';
-            if (!base.cattleType || base.cattleType === 'PENDING') {
-              // Automatically resolve animal type (buffalo calf vs cow calf) based on mother (dameId)
-              const motherTag = String(base.dameId || '').trim().toUpperCase();
-              let mother = null;
-              if (motherTag) {
-                mother = logs.find(a => String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === motherTag);
-              }
-              
-              if (mother) {
-                const motherType = String(mother.cattleType || mother.animalType || '').toUpperCase();
-                if (motherType.includes('BUFFALO')) {
-                  base.cattleType = 'Buffalo Calf';
-                } else if (motherType.includes('COW')) {
-                  base.cattleType = 'Cow Calf';
-                } else {
-                  base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+            <h3 className="text-lg font-bold mb-4 text-center text-black">
+              Record Details
+            </h3>
+
+            <div className="mt-4 border-t pt-4 space-y-3 text-sm text-black">
+              <div className="flex justify-between border-b pb-2">
+                <span className="font-semibold text-gray-500">Date</span>
+                <span className="text-right font-medium">{selectedEntry.entryDate}</span>
+              </div>
+
+              {currentFields.map(field => {
+                let displayVal = selectedEntry[field.name] || "-";
+                if (field.name === "farmId") {
+                  const rawFarmId = selectedEntry.farmId;
+                  if (rawFarmId) {
+                    if (typeof rawFarmId === 'object') {
+                      displayVal = rawFarmId.name || rawFarmId.code || "Unknown";
+                    } else {
+                      const foundFarm = farmsList.find(farm => (farm._id || farm.id) === rawFarmId || farm.code === rawFarmId);
+                      displayVal = foundFarm ? foundFarm.name : rawFarmId;
+                    }
+                  }
+                } else if (field.name === "age") {
+                  const isInactive = ["SOLD", "DECEASED", "DEAD"].includes(String(selectedEntry.status).toUpperCase());
+                  displayVal = getLiveAge(
+                    selectedEntry.dob || selectedEntry.dateOfBirth,
+                    selectedEntry.age,
+                    isInactive ? selectedEntry.soldDate || selectedEntry.deadDate || selectedEntry.updatedAt : null,
+                    String(selectedEntry.status).toUpperCase() === "SOLD"
+                      ? "sold"
+                      : ["DEAD", "DECEASED"].includes(String(selectedEntry.status).toUpperCase())
+                      ? "dead"
+                      : null
+                  );
+                } else if (field.type === "date" || field.name.toLowerCase().includes("date") || field.name === "dob" || field.name === "dateOfBirth") {
+                  const rawDate = selectedEntry[field.name];
+                  displayVal = rawDate ? formatDateToDDMMYYYY(rawDate) : "-";
                 }
-              } else {
-                base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
-              }
-            }
-          }
-          return base;
-        })()} 
-        existingRecords={logs}
-        onSubmit={handleSave} 
-        onClose={closeAllModals} 
-      />
+                return (
+                  <div key={field.name} className="flex justify-between border-b pb-2">
+                    <span className="font-semibold text-gray-500">{field.label}</span>
+                    <span className="text-right font-medium text-[#16223F]">{displayVal}</span>
+                  </div>
+                );
+              })}
+            </div>
 
-    </div>
+            <button
+              onClick={() => setViewMode(false)}
+              className="mt-6 w-full bg-gray-200 py-2 rounded-xl font-bold text-xs hover:bg-gray-300 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
-  </div>
-)}
-{/* MOBILE FLOATING ADD BUTTON */}
-{/* MOBILE FLOATING ADD BUTTON */}
-{!showForm &&
- !selectedEntry &&
- !viewMode &&
- !showFilters &&
- hasCRUD('create') && (
-  <div className="md:hidden fixed bottom-20 right-6 z-[100]">
+      {/* Log Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-200 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <LogForm 
+              title={
+                selectedEntry?.isPendingDetails
+                  ? selectedEntry.onboardingType === 'CALVING'
+                    ? "🍼 Register Newborn Calf Profile"
+                    : "📥 Complete Purchased Animal Profile"
+                  : isEditing
+                  ? `Update ${current.name}`
+                  : `New ${current.name}`
+              } 
+              fields={currentFields} 
+              initialData={(() => {
+                if (!isEditing || !selectedEntry) return {};
+                let base = { ...selectedEntry };
+                if (base.isPendingDetails && base.onboardingType === 'CALVING') {
+                  base.farmBorn = base.farmBorn || 'Yes';
+                  if (!base.cattleType || base.cattleType === 'PENDING') {
+                    const motherTag = String(base.dameId || '').trim().toUpperCase();
+                    let mother = null;
+                    if (motherTag) {
+                      mother = logs.find(a => String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === motherTag);
+                    }
+                    if (mother) {
+                      const motherType = String(mother.cattleType || mother.animalType || '').toUpperCase();
+                      if (motherType.includes('BUFFALO')) {
+                        base.cattleType = 'Buffalo Calf';
+                      } else if (motherType.includes('COW')) {
+                        base.cattleType = 'Cow Calf';
+                      } else {
+                        base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                      }
+                    } else {
+                      base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                    }
+                  }
+                }
+                return base;
+              })()} 
+              existingRecords={logs}
+              onSubmit={handleSave} 
+              onClose={closeAllModals} 
+            />
+          </div>
+        </div>
+      )}
 
-    <button
-      onClick={() => {
-        setIsEditing(false);
-        setShowForm(true);
-      }}
-      className="
-        w-14 h-14
-        bg-[#D1867D] text-white
-        rounded-full
-        shadow-[0_10px_25px_rgba(209,134,125,0.4)]
-        flex items-center justify-center
-        text-3xl font-bold
-        hover:bg-[#D1867D]/95 hover:-translate-y-1
-        active:scale-95
-        transition-all duration-200
-      "
-    >
-      +
-    </button>
+      {/* ── ANIMAL 360° LIFECYCLE & LOG DOSSIER MODAL ── */}
+      {historyModalTag && (
+        <AnimalLogHistoryModal
+          isOpen={!!historyModalTag}
+          animalTag={historyModalTag}
+          initialAnimalProfile={historyModalAnimal}
+          onClose={() => {
+            setHistoryModalTag(null);
+            setHistoryModalAnimal(null);
+          }}
+          onQuickAddLog={(modType, initData) => {
+            setHistoryModalTag(null);
+            setHistoryModalAnimal(null);
+            setSelectedEntry(initData);
+            setIsEditing(false);
+            setShowForm(true);
+          }}
+        />
+      )}
 
-  </div>
-)}
+      {/* MOBILE FLOATING ADD BUTTON */}
+      {!showForm &&
+       !selectedEntry &&
+       !viewMode &&
+       !showFilters &&
+       !historyModalTag &&
+       hasCRUD('create') && (
+        <div className="md:hidden fixed bottom-20 right-6 z-[100]">
+          <button
+            onClick={() => {
+              setIsEditing(false);
+              setShowForm(true);
+            }}
+            className="w-14 h-14 bg-[#D1867D] text-white rounded-full shadow-[0_10px_25px_rgba(209,134,125,0.4)] flex items-center justify-center text-3xl font-bold hover:bg-[#D1867D]/95 hover:-translate-y-1 active:scale-95 transition-all duration-200"
+          >
+            +
+          </button>
+        </div>
+      )}
     </div>
   );
 };
