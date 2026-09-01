@@ -327,7 +327,17 @@ const getStandardHeaderKey = (headerValue) => {
     date: ['date', 'entrydate', 'entry date', 'logdate', 'log date', 'recorddate', 'record date', 'eventdate', 'event date', 'date of log', 'dateoflog'],
     oldShed: ['oldshed', 'oldshedno', 'oldshednumber', 'old shed', 'old shed no', 'old shed number', 'fromshed', 'from shed'],
     newShed: ['newshed', 'newshedno', 'newshednumber', 'new shed', 'new shed no', 'new shed number', 'toshed', 'to shed'],
-    purchaseFrom: ['purchasefrom', 'purchase from', 'seller', 'sellername', 'seller name', 'vendor', 'vendorname', 'vendor name']
+    purchaseFrom: ['purchasefrom', 'purchase from', 'seller', 'sellername', 'seller name', 'vendor', 'vendorname', 'vendor name'],
+    crossingSireTag: ['crossingsiretagid', 'crossingsireid', 'crossingsiretag', 'crossingsire', 'siretagid', 'siretag', 'sireid', 'sire tag id', 'sire tag', 'sire id', 'maletagid', 'maletag', 'maleid', 'male tag id', 'male tag', 'bulltagid', 'bulltag', 'bull tag id', 'bull tag', 'sire', 'bull', 'male', 'maletag'],
+    batchNumber: ['batchnumber', 'batchno', 'batchnum', 'strawbatch', 'strawbatchno', 'semenbatch', 'semenstrawbatch', 'batch number', 'batch no', 'batch no.', 'straw batch', 'straw batch no'],
+    crossingAttemptNumber: ['crossingattemptnumber', 'crossingattemptno', 'crossingattempt', 'attemptnumber', 'attemptno', 'attempt', 'noofattempt', 'noofattempts', 'aiattempt', 'crossing attempt number', 'crossing attempt no', 'crossing attempt no.', 'attempt number', 'attempt no', 'attempt no.', 'no of attempt', 'no of attempts', 'ai attempt', 'service attempt'],
+    pdDate: ['pddate', 'pddue', 'pdtestdate', 'pdduedate', 'pregnancycheckdate', 'pd date', 'pd due', 'pd test date', 'pd due date', 'pregnancy check date', 'pdcheckdate', 'pddate '],
+    pregnancyStatus: ['pregnancystatus', 'pdstatus', 'pdresult', 'pregnancyresult', 'pregnancy status', 'pd status', 'pd result', 'pregnancy result', 'pregnancy_status'],
+    pregnancyConfirmedDate: ['pregnancyconfirmeddate', 'pregnancyconformeddate', 'pdconfirmeddate', 'confirmationdate', 'conformationdate', 'confirmeddate', 'pregnancy confirmed date', 'pregnancy conformed date', 'pd confirmed date', 'confirmation date', 'conformation date', 'confirmed date', 'pregnancy_confirmed_date'],
+    estimatedCalvingDate: ['estimatedcalvingdate', 'expecteddeliverydate', 'expectedcalvingdate', 'expecteddelivery', 'estimateddeliverydate', 'deliverydate', 'ecd', 'edd', 'estimated calving date', 'expected delivery date', 'expected calving date', 'expected delivery', 'estimated delivery date', 'delivery date', 'estimated_calving_date', 'expected_delivery_date'],
+    actualCalvingDate: ['actualcalvingdate', 'birthingdate', 'birthdate', 'calvingdate', 'dateofcalving', 'parturitiondate', 'acd', 'actual calving date', 'birthing date', 'birth date', 'calving date', 'date of calving', 'parturition date', 'actual_calving_date', 'birthing_date'],
+    calfTag: ['calftag', 'calftagid', 'calftagno', 'newcalftag', 'borncalftag', 'calf tag', 'calf tag id', 'calf tag no', 'new calf tag', 'born calf tag', 'calf_tag'],
+    calvingStatus: ['calvingstatus', 'birthstatus', 'calvingoutcome', 'outcome', 'calving status', 'birth status', 'calving outcome', 'calving_status']
   };
 
   for (const [standardKey, list] of Object.entries(aliases)) {
@@ -858,46 +868,186 @@ const currentFields = current.fields.map(f => {
           }
         } else if (current.id === 'crossing') {
           // --- CROSSING LOG IMPORT PIPELINE ---
+          let latestCattle = rawCattleList;
+          try {
+            const lsData = await api.cattle.getAll();
+            latestCattle = Array.isArray(lsData) ? lsData : (lsData?.data ?? rawCattleList);
+          } catch (_) {}
+
           await processInBatches(uniqueParsed, 20, async (row) => {
             try {
-              const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
+              const rawTag = String(
+                row['tag'] || row['tagId'] || row['tag_id'] || row['tag id'] || row['tag no'] || 
+                row['femaleTag'] || row['female tag'] || row['animalTag'] || row['animal tag'] || ''
+              ).trim();
               if (!rawTag) return;
-              
-              const rawCrossingType = row['crossingType'] || row['crossing_type'] ? String(row['crossingType'] || row['crossing_type']).trim() : '';
-              const rawMaleTag = row['maleTag'] || row['male_tag'] ? String(row['maleTag'] || row['male_tag']).trim() : '';
-              const rawBatchNumber = row['batchNumber'] || row['batch_number'] ? String(row['batchNumber'] || row['batch_number']).trim() : '';
-              
-              const rawCrossingDate = parseDateString(row['crossingDate'] || row['crossing_date'] || row['date']);
+
+              // 1. Male Tag ID / Crossing Sire Tag ID resolution
+              const rawSireInput = String(
+                row['crossingSireTag'] || row['crossing sire tag id'] || row['crossing sire id'] || row['crossing sire'] ||
+                row['sire tag id'] || row['sire tag'] || row['sire id'] || row['siretag'] || row['sireid'] ||
+                row['male tag id'] || row['male tag'] || row['maleTag'] || row['male_tag'] || row['maletag'] || row['male id'] ||
+                row['bull tag id'] || row['bull tag'] || row['bulltag'] || row['bull_tag'] || row['bull id'] ||
+                row['sire'] || row['bull'] || row['male'] || ''
+              ).trim();
+
+              const rawBatchInput = String(
+                row['batchNumber'] || row['batch_number'] || row['batch number'] || row['batch no'] || row['batch no.'] ||
+                row['straw batch'] || row['straw batch no'] || row['semen batch'] || row['batch'] || ''
+              ).trim();
+
+              // Natural crossing if male tag id is present in live stock; if not present, then Artificial (place crossing sire tag id in batch no)
+              let finalCrossingType = 'Natural';
+              let finalMaleTag = '';
+              let finalBatchNumber = rawBatchInput;
+
+              if (rawSireInput) {
+                const sireInLiveStock = latestCattle.find(a => 
+                  String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === rawSireInput.toUpperCase()
+                );
+
+                if (sireInLiveStock) {
+                  finalCrossingType = 'Natural';
+                  finalMaleTag = rawSireInput;
+                } else {
+                  finalCrossingType = 'Artificial';
+                  finalBatchNumber = rawSireInput;
+                  finalMaleTag = '';
+                }
+              } else if (rawBatchInput) {
+                finalCrossingType = 'Artificial';
+                finalBatchNumber = rawBatchInput;
+              } else if (row['crossingType'] || row['crossing_type'] || row['crossing type']) {
+                finalCrossingType = String(row['crossingType'] || row['crossing_type'] || row['crossing type']).trim();
+              }
+
+              // 2. Crossing Date
+              const rawCrossingDate = parseDateString(
+                row['crossingDate'] || row['crossing_date'] || row['crossing date'] ||
+                row['insemination date'] || row['ai date'] || row['service date'] || row['date']
+              );
               const finalCrossingDate = rawCrossingDate;
 
-              const rawAttempt = row['crossingAttemptNumber'] || row['crossing_attempt_number'] ? Number(row['crossingAttemptNumber'] || row['crossing_attempt_number']) : null;
-              const rawPdDate = (row['pdDate'] || row['pd_date'] || row['pdDate ']) ? parseDateString(row['pdDate'] || row['pd_date'] || row['pdDate ']) : null;
-              const rawPregnancyStatus = row['pregnancyStatus'] || row['pregnancy_status'] ? String(row['pregnancyStatus'] || row['pregnancy_status']).trim() : '';
-              const rawPregnancyConfirmedDate = (row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date']) ? parseDateString(row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date']) : null;
-              const rawEstimatedCalvingDate = (row['estimatedCalvingDate'] || row['estimated_calving_date']) ? parseDateString(row['estimatedCalvingDate'] || row['estimated_calving_date']) : null;
-              const rawPregnantAge = row['pregnantAge'] || row['pregnant_age'] ? String(row['pregnantAge'] || row['pregnant_age']).trim() : '';
-              const rawActualCalvingDate = (row['actualCalvingDate'] || row['actual_calving_date']) ? parseDateString(row['actualCalvingDate'] || row['actual_calving_date']) : null;
-              const rawCalvingStatus = row['calvingStatus'] || row['calving_status'] ? String(row['calvingStatus'] || row['calving_status']).trim() : '';
-              const rawCalfTag = row['calfTag'] || row['calf_tag'] ? String(row['calfTag'] || row['calf_tag']).trim() : '';
-              const rawBreedType = row['breedType'] || row['breed_type'] ? String(row['breedType'] || row['breed_type']).trim() : '';
+              // 3. Crossing Attempt No from Excel
+              let rawAttemptVal = row['crossingAttemptNumber'] || row['crossing_attempt_number'] || row['crossing attempt number'] ||
+                row['crossing attempt no'] || row['crossing attempt no.'] || row['attempt no'] || row['attempt no.'] ||
+                row['attempt number'] || row['crossing attempt'] || row['attempt'] || row['no of attempt'] || row['no of attempts'] ||
+                row['ai attempt'] || row['service attempt'] || row['attempt_no'] || row['crossing_attempt'];
               
-              const rawHeat1 = (row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification']) ? parseDateString(row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification']) : null;
-              const rawHeat2 = (row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification']) ? parseDateString(row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification']) : null;
-              const rawRemarks = row['remarks'] ? String(row['remarks']).trim() : '';
+              let finalAttempt = null;
+              if (rawAttemptVal !== undefined && rawAttemptVal !== null && String(rawAttemptVal).trim() !== '') {
+                const parsedNum = parseInt(String(rawAttemptVal).replace(/[^0-9]/g, ''), 10);
+                if (!isNaN(parsedNum) && parsedNum > 0) {
+                  finalAttempt = parsedNum;
+                }
+              }
+
+              // 4. PD Due as PD Test Date (pdDate)
+              const rawPdDate = parseDateString(
+                row['pdDate'] || row['pd_date'] || row['pd date'] || row['pdDate '] ||
+                row['pd due'] || row['pd_due'] || row['pd due date'] || row['pd_due_date'] ||
+                row['pd test date'] || row['pd_test_date'] || row['pdtestdate'] || row['pregnancy diagnosis date'] || row['pd check date']
+              );
+
+              // 5. Expected Delivery Date as Estimated Calving Date (estimatedCalvingDate)
+              const rawEstimatedCalvingDate = parseDateString(
+                row['estimatedCalvingDate'] || row['estimated_calving_date'] || row['estimated calving date'] ||
+                row['expected delivery date'] || row['expected_delivery_date'] || row['expecteddeliverydate'] ||
+                row['expected calving date'] || row['expected_calving_date'] || row['expected delivery'] ||
+                row['estimated delivery date'] || row['delivery date'] || row['ecd'] || row['edd']
+              );
+
+              // 6. Birthing Date as Actual Calving Date (actualCalvingDate)
+              const rawActualCalvingDate = parseDateString(
+                row['actualCalvingDate'] || row['actual_calving_date'] || row['actual calving date'] ||
+                row['birthing date'] || row['birthing_date'] || row['birth date'] || row['calving date'] ||
+                row['calving_date'] || row['date of calving'] || row['parturition date'] || row['acd']
+              );
+
+              // 7. Pregnancy Confirmed Date & Status
+              const rawPregnancyConfirmedDate = parseDateString(
+                row['pregnancyConfirmedDate'] || row['pregnancy_confirmed_date'] || row['pregnancy confirmed date'] ||
+                row['pregnancy conformed date'] || row['pregnancy confirmed'] || row['pd confirmed date'] ||
+                row['pd positive date'] || row['confirmation date'] || row['conformation date'] || row['confirmed date']
+              );
+
+              let rawPregnancyStatus = String(
+                row['pregnancyStatus'] || row['pregnancy_status'] || row['pregnancy status'] ||
+                row['pd status'] || row['pd result'] || row['pd_result'] || row['pregnancy result'] || ''
+              ).trim();
+
+              if (rawPregnancyStatus) {
+                const pUpper = rawPregnancyStatus.toUpperCase();
+                if (pUpper.includes('POS') || pUpper === 'PREGNANT' || pUpper === 'YES' || pUpper === '+') {
+                  rawPregnancyStatus = 'Positive';
+                } else if (pUpper.includes('NEG') || pUpper === 'EMPTY' || pUpper === 'NON PREGNANT' || pUpper === 'NO' || pUpper === '-') {
+                  rawPregnancyStatus = 'Negative';
+                } else if (pUpper.includes('PEND')) {
+                  rawPregnancyStatus = 'Pending';
+                }
+              } else if (rawPregnancyConfirmedDate || rawActualCalvingDate) {
+                rawPregnancyStatus = 'Positive';
+              }
+
+              // 8. Pregnant Age: Duration from crossing date to till now (or till actualCalvingDate) if pregnancy confirmed date is there
+              let computedPregnantAge = null;
+              if (finalCrossingDate && (rawPregnancyConfirmedDate || rawPregnancyStatus === 'Positive' || rawActualCalvingDate)) {
+                const endDate = rawActualCalvingDate || new Date();
+                const cDate = finalCrossingDate;
+                if (cDate instanceof Date && !isNaN(cDate.getTime())) {
+                  const diffMs = endDate.getTime() - cDate.getTime();
+                  if (diffMs >= 0) {
+                    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const months = Math.floor(totalDays / 30.44);
+                    const days = Math.floor(totalDays % 30.44);
+                    computedPregnantAge = `${months}M ${days}D`;
+                  }
+                }
+              }
+              const finalPregnantAge = computedPregnantAge || row['pregnantAge'] || row['pregnant_age'] || row['pregnant age'] || undefined;
+
+              // 9. Calving Status, Calf Tag, Breed Type, Heat Notifications, Remarks
+              let rawCalvingStatus = String(
+                row['calvingStatus'] || row['calving_status'] || row['calving status'] || row['birth status'] || ''
+              ).trim().toLowerCase();
+              if (!rawCalvingStatus && rawActualCalvingDate) {
+                rawCalvingStatus = 'normal';
+              }
+
+              const rawCalfTag = String(
+                row['calfTag'] || row['calf_tag'] || row['calf tag'] || row['calf tag id'] || row['new calf tag'] || ''
+              ).trim();
+
+              const rawBreedType = String(
+                row['breedType'] || row['breed_type'] || row['breed type'] || row['breed'] || ''
+              ).trim();
+
+              const rawHeat1 = parseDateString(
+                row['heatMonitoring1stNotification'] || row['heat_monitoring_1st_notification'] ||
+                row['heat monitoring 1st notification'] || row['heat 1'] || row['1st heat date']
+              );
+
+              const rawHeat2 = parseDateString(
+                row['heatMonitoring2ndNotification'] || row['heat_monitoring_2nd_notification'] ||
+                row['heat monitoring 2nd notification'] || row['heat 2'] || row['2nd heat date']
+              );
+
+              const rawRemarks = String(row['remarks'] || row['remark'] || row['comments'] || row['notes'] || '').trim();
 
               const payload = {
                 tag: rawTag,
                 tagId: rawTag,
-                crossingType: rawCrossingType || undefined,
-                maleTag: rawMaleTag || undefined,
-                batchNumber: rawBatchNumber || undefined,
+                tag_id: rawTag,
+                crossingType: finalCrossingType || 'Natural',
+                maleTag: finalMaleTag || undefined,
+                batchNumber: finalBatchNumber || undefined,
                 crossingDate: finalCrossingDate || undefined,
-                crossingAttemptNumber: rawAttempt !== null ? rawAttempt : undefined,
+                crossingAttemptNumber: finalAttempt !== null ? finalAttempt : undefined,
                 pdDate: rawPdDate || undefined,
                 pregnancyStatus: rawPregnancyStatus || undefined,
                 pregnancyConfirmedDate: rawPregnancyConfirmedDate || undefined,
                 estimatedCalvingDate: rawEstimatedCalvingDate || undefined,
-                pregnantAge: rawPregnantAge || undefined,
+                pregnantAge: finalPregnantAge,
                 actualCalvingDate: rawActualCalvingDate || undefined,
                 calvingStatus: rawCalvingStatus || undefined,
                 calfTag: rawCalfTag || undefined,
@@ -910,7 +1060,7 @@ const currentFields = current.fields.map(f => {
               await api.crossing.create(payload);
               successCount++;
             } catch (err) {
-              console.error(`Error importing crossing log for ${row['tag']}:`, err);
+              console.error(`Error importing crossing log for ${row['tag'] || row['tagId']}:`, err);
               errorCount++;
             }
           });
