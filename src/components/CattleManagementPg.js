@@ -601,34 +601,6 @@ export default function CattleManagementPg({
               )}
             </button>
 
-            {/* Quick Records Per Page Selector */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1.5">Show:</span>
-              {[10, 25, 50, 100].map((size) => (
-                <button
-                  key={size}
-                  onClick={() => { setRecordsPerPage(size); setCurrentPage(1); }}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    recordsPerPage === size
-                      ? 'bg-[#16223F] text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-              <button
-                onClick={() => { setRecordsPerPage(9999); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                  recordsPerPage >= 9999
-                    ? 'bg-[#16223F] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                }`}
-              >
-                All
-              </button>
-            </div>
-
             <button
               onClick={() => setShowAddModal(true)}
               className="
@@ -1242,6 +1214,7 @@ export default function CattleManagementPg({
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
+                <option value={9999}>All</option>
               </select>
             </div>
           </div>
