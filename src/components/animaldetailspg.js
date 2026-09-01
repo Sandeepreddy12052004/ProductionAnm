@@ -514,11 +514,10 @@ useEffect(() => {
         });
       }
       setAllowedAnimals(animalMap);
-      fetchLogs();
     }
   }).catch(console.error);
   return () => { isMounted = false; };
-}, [logs.length]);
+}, []);
 
 useEffect(() => {
   let isMounted = true;
@@ -1298,21 +1297,20 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
   setIsLoading(true);
   try {
     let data = [];
-    const params = limit < 9999 ? { page, limit } : null;
     if (current.id === 'livestock') {
-      data = await api.cattle.getAll(params);
+      data = await api.cattle.getAll();
     } else if (current.id === 'crossing') {
-      data = await api.crossing.getAll(params);
+      data = await api.crossing.getAll();
     } else if (current.id === 'shed') {
-      data = await api.shed.getAll(params);
+      data = await api.shed.getAll();
     } else if (current.id === 'purchase') {
-      data = await api.purchase.getAll(params);
+      data = await api.purchase.getAll();
     } else if (current.id === 'sale') {
-      data = await api.sale.getAll(params);
+      data = await api.sale.getAll();
     } else if (current.id === 'health') {
-      data = await api.health.treatments.getAll(params);
+      data = await api.health.treatments.getAll();
     } else if (current.id === 'vaccine') {
-      data = await api.health.vaccinations.getAll(params);
+      data = await api.health.vaccinations.getAll();
     } else {
       const savedData = localStorage.getItem(storageKey);
       data = savedData ? JSON.parse(savedData) : [];
@@ -1320,20 +1318,16 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
 
     // Unwrap various response shapes defensively:
     // 1. Plain array (normal API success)
-    // 2. { data: [...], pagination: {...} } envelope
+    // 2. { data: [...] } envelope
     // 3. { firewallBlocked: true, data: [] } — silently blocked
     let rawList;
-    let pagInfo = null;
     if (Array.isArray(data)) {
       rawList = data;
     } else if (data && Array.isArray(data.data)) {
       rawList = data.data;
-      pagInfo = data.pagination || null;
     } else {
       rawList = [];
     }
-
-    setServerPagination(pagInfo);
 
     const normalizedData = rawList.map(log => {
       const dateValue = log.shiftingDate || log.crossingDate || log.purchaseDate || log.saleDate || log.treatmentDate || log.vaccinationDate || log.date || log.dateOfBirth || log.dob || log.entryDate || log.createdAt;
@@ -1408,80 +1402,22 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
         const tagVal = log.tag || log.tagId || '';
         const remarksVal = log.remarks || '';
         const resolvedStatus = resolveStatusFromInfo(tagVal, remarksVal, log.status);
-        
-        let statusChanged = false;
         if (resolvedStatus !== log.status) {
           log.status = resolvedStatus;
-          statusChanged = true;
         }
 
-        let dobChanged = false;
         if (!log.dateOfBirth || log.dateOfBirth === '-' || String(log.dateOfBirth).trim() === '') {
           const extracted = extractDOBFromTag(tagVal);
           if (extracted) {
             log.dateOfBirth = extracted.toISOString().split('T')[0];
             log.dob = log.dateOfBirth;
-            dobChanged = true;
           } else if (log.age) {
             const computed = calculateDOBFromAge(log.age);
             if (computed) {
               log.dateOfBirth = computed.toISOString().split('T')[0];
               log.dob = log.dateOfBirth;
-              dobChanged = true;
             }
           }
-        }
-
-        const wasPending = log.isPendingDetails === true || String(log.isPendingDetails) === 'true';
-        if (wasPending) {
-          if (resolvedStatus === 'DECEASED' || resolvedStatus === 'SOLD') {
-            log.isPendingDetails = false;
-            api.cattle.update(log._id || log.id, { 
-              status: resolvedStatus, 
-              isPendingDetails: false,
-              ...(dobChanged ? { dateOfBirth: log.dateOfBirth } : {})
-            }).catch(console.error);
-
-            if (resolvedStatus === 'SOLD') {
-              api.sale.getAll().then(async (sales) => {
-                const salesList = Array.isArray(sales) ? sales : (sales?.data ?? []);
-                const alreadyHasSale = salesList.some(s => 
-                  String(s.tag || s.tagId || '').trim().toUpperCase() === tagVal.trim().toUpperCase()
-                );
-                if (!alreadyHasSale) {
-                  const priceMatch = remarksVal.match(/(\d+)\s*(?:RS|RUPEES|INR|PRICE|AMT|AMOUNT)/i) || remarksVal.match(/(?:RS|RUPEES|INR|PRICE|AMT|AMOUNT)\.?\s*(\d+)/i);
-                  const salePrice = priceMatch ? Number(priceMatch[1]) : 0;
-                  await api.sale.create({
-                    tag: tagVal,
-                    tagId: tagVal,
-                    buyerName: 'Auto Classified from Remarks',
-                    buyerPhone: '0000000000',
-                    salePrice: salePrice,
-                    remarks: remarksVal || 'Auto resolved from import remarks keyword',
-                    date: new Date()
-                  });
-                }
-              }).catch(console.error);
-            }
-          } else {
-            const isShedOk = log.shed && allowedSheds.has(String(log.shed).toUpperCase());
-            const isBreedOk = log.breed && allowedBreeds.has(String(log.breed).toUpperCase());
-            const isAnimalOk = log.cattleType && allowedAnimals.has(String(log.cattleType).toUpperCase());
-            const isDOBOk = log.dateOfBirth && log.dateOfBirth !== '-' && String(log.dateOfBirth).trim() !== '';
-
-            if (isShedOk && isBreedOk && isAnimalOk && isDOBOk) {
-              log.isPendingDetails = false;
-              api.cattle.update(log._id || log.id, { 
-                isPendingDetails: false,
-                ...(dobChanged ? { dateOfBirth: log.dateOfBirth } : {})
-              }).catch(console.error);
-            }
-          }
-        } else if (statusChanged) {
-          api.cattle.update(log._id || log.id, { 
-            status: resolvedStatus,
-            ...(dobChanged ? { dateOfBirth: log.dateOfBirth } : {})
-          }).catch(console.error);
         }
       });
 
@@ -1517,8 +1453,8 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
 
 useEffect(() => {
   if (!moduleConfig) return;
-  fetchLogs(currentPage, itemsPerPage);
-}, [moduleConfig, current.id, currentPage, itemsPerPage]);
+  fetchLogs();
+}, [moduleConfig, current.id]);
 
 useEffect(() => {
   setFilters([{ field: "entryDate", value: "" }]);
@@ -1893,13 +1829,13 @@ if (!moduleConfig) {
   }, [searchedLogs, rawCattleList, current.id]);
 
   const isGroupedView = current.id !== 'livestock' && viewLayout === 'GROUPED';
-  const totalItems = serverPagination ? serverPagination.total : (isGroupedView ? groupedAnimalsList.length : searchedLogs.length);
-  const totalPages = serverPagination ? serverPagination.totalPages : (Math.ceil(totalItems / itemsPerPage) || 1);
+  const totalItems = isGroupedView ? groupedAnimalsList.length : searchedLogs.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
-  const paginatedLogs = serverPagination ? searchedLogs : searchedLogs.slice(startIndex, endIndex);
-  const paginatedGroupedAnimals = serverPagination ? groupedAnimalsList : groupedAnimalsList.slice(startIndex, endIndex);
+  const paginatedLogs = searchedLogs.slice(startIndex, endIndex);
+  const paginatedGroupedAnimals = groupedAnimalsList.slice(startIndex, endIndex);
 
   const toggleAnimalAccordion = (tag) => {
     setOpenAnimalAccordions(prev => {
