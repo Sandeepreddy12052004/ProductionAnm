@@ -265,6 +265,15 @@ async function verifyTokenSession(token) {
 }
 
 const inflightRequests = new Map();
+const metadataCache = new Map();
+const CACHEABLE_LOOKUP_ROUTES = [
+  '/api/farms',
+  '/api/breeds',
+  '/api/sheds',
+  '/api/animals',
+  '/api/tags/suffixes',
+  '/api/roles'
+];
 
 // ---------------------------------------------------------------------------
 // CENTRAL API REQUEST FUNCTION
@@ -281,10 +290,25 @@ const inflightRequests = new Map();
 async function apiRequest(endpoint, method = 'GET', body = null) {
   if (typeof window === 'undefined') return null;
 
-  // ── 1. CLIENT-SIDE FIREWALL & DEDUPLICATION ──────────────────────────────
+  const cleanPath = endpoint.split('?')[0];
+
+  // Invalidate lookup cache on mutations
+  if (method !== 'GET') {
+    metadataCache.clear();
+  }
+
+  // ── 1. CLIENT-SIDE FIREWALL, CACHING & DEDUPLICATION ──────────────────────
   if (method === 'GET') {
     const blocked = evaluateFirewall(endpoint);
     if (blocked) return blocked;
+
+    // Check fast metadata cache (TTL: 15 seconds) to minimize Vercel transfer requests
+    if (CACHEABLE_LOOKUP_ROUTES.includes(cleanPath)) {
+      const cached = metadataCache.get(endpoint);
+      if (cached && Date.now() - cached.timestamp < 15000) {
+        return cached.data;
+      }
+    }
 
     // Return the active in-flight promise if a request to this endpoint is already running
     if (inflightRequests.has(endpoint)) {
@@ -510,6 +534,10 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             }
           }
         }
+      }
+
+      if (method === 'GET' && CACHEABLE_LOOKUP_ROUTES.includes(cleanPath)) {
+        metadataCache.set(endpoint, { data: finalData, timestamp: Date.now() });
       }
 
       return finalData;
