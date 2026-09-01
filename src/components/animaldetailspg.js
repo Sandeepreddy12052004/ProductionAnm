@@ -916,44 +916,84 @@ const currentFields = current.fields.map(f => {
           });
         } else if (current.id === 'purchase') {
           // --- PURCHASE LOG IMPORT PIPELINE ---
+          let latestCattle = rawCattleList;
+          try {
+            const lsData = await api.cattle.getAll();
+            latestCattle = Array.isArray(lsData) ? lsData : (lsData?.data ?? rawCattleList);
+          } catch (_) {}
+
           await processInBatches(uniqueParsed, 20, async (row) => {
             try {
-              const rawTag = String(row['tag'] || row['tagId'] || row['tag_id'] || '').trim();
+              const rawTag = String(
+                row['tag'] || row['tagId'] || row['tag_id'] || row['tag id'] || row['tag no'] || 
+                row['animalTag'] || row['animal_tag'] || row['animal tag'] || row['animalId'] || ''
+              ).trim();
               if (!rawTag) return;
-              const rawSeller = String(row['purchaseFrom'] || row['sellerName'] || row['seller'] || '').trim();
-              const rawContact = String(row['buyerPhone'] || row['sellerContact'] || row['contact'] || '').trim();
-              const rawPrice = Number(row['salePrice'] || row['purchasePrice'] || row['price'] || 0);
+
+              const rawSeller = String(
+                row['purchaseFrom'] || row['purchasedFrom'] || row['purchased from'] || row['purchase from'] ||
+                row['sellerName'] || row['seller_name'] || row['seller name'] || row['seller'] || row['vendor'] || row['from'] || ''
+              ).trim();
+
+              const rawContact = String(
+                row['sellerContact'] || row['seller_contact'] || row['seller contact'] || row['buyerPhone'] || 
+                row['sellerPhone'] || row['seller_phone'] || row['phone'] || row['contact'] || row['mobile'] || ''
+              ).trim();
+
+              const rawPrice = Number(
+                row['purchasePrice'] || row['purchase_price'] || row['purchase price'] || row['price'] || 
+                row['salePrice'] || row['amount'] || row['cost'] || 0
+              );
               
-              const rawPurchaseDate = parseDateString(row['date'] || row['purchaseDate'] || row['purchase_date']);
+              const rawPurchaseDate = parseDateString(
+                row['date'] || row['purchaseDate'] || row['purchase_date'] || row['purchase date'] || row['entryDate'] || row['entry date']
+              );
               const finalPurchaseDate = rawPurchaseDate || new Date();
 
-              const rawFarm = String(row['farmId'] || row['farm'] || '').trim();
-              let rowFarmObj = null;
-              if (rawFarm) {
-                rowFarmObj = farmsList.find(f =>
-                  String(f.code || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
-                  String(f.name || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
-                  String(f._id || f.id) === rawFarm
-                );
+              // Look up farm assigned directly from Live Stock registry
+              const matchedAnimal = latestCattle.find(a => 
+                String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === rawTag.toUpperCase()
+              );
+
+              let finalFarmId = null;
+              if (matchedAnimal) {
+                finalFarmId = matchedAnimal.farmId?._id || matchedAnimal.farmId?.id || matchedAnimal.farmId || null;
               }
-              const finalFarmId = rowFarmObj 
-                ? (rowFarmObj._id || rowFarmObj.id) 
-                : (moduleConfig?.farmCode || router.query.code || null);
+
+              // Fallback to explicit farm column in Excel or active user farm if not found
+              if (!finalFarmId) {
+                const rawFarm = String(row['farmId'] || row['farm'] || row['farmName'] || row['farm_name'] || '').trim();
+                if (rawFarm) {
+                  const rowFarmObj = farmsList.find(f =>
+                    String(f.code || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
+                    String(f.name || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
+                    String(f._id || f.id) === rawFarm
+                  );
+                  if (rowFarmObj) finalFarmId = rowFarmObj._id || rowFarmObj.id;
+                }
+              }
+              if (!finalFarmId) {
+                finalFarmId = moduleConfig?.farmCode || router.query.code || null;
+              }
 
               const payload = {
                 tag: rawTag,
                 tagId: rawTag,
+                tag_id: rawTag,
                 purchaseFrom: rawSeller || 'Unknown Seller',
+                sellerName: rawSeller || 'Unknown Seller',
                 sellerContact: rawContact,
                 purchasePrice: rawPrice,
+                price: rawPrice,
                 purchaseDate: finalPurchaseDate,
+                date: finalPurchaseDate,
                 farmId: finalFarmId || null,
               };
 
               await api.purchase.create(payload);
               successCount++;
             } catch (err) {
-              console.error(`Error importing purchase log for ${row['tag']}:`, err);
+              console.error(`Error importing purchase log for ${row['tag'] || row['tagId']}:`, err);
               errorCount++;
             }
           });
@@ -1388,6 +1428,51 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
           ...log,
           animalType: log.animalType || log.animalId || (animal ? (animal.animalType || animal.cattleType || '') : ''),
           shedId:     log.shedId || log.shed || (animal ? (animal.shed || animal.shedId || '') : ''),
+        };
+      });
+      setLogs(enriched);
+      setPendingPurchases([]);
+      setPendingCalves([]);
+      setPendingImports([]);
+      return;
+    }
+    // ── Enrich purchase records with farmId from livestock registry ──
+    if (current.id === 'purchase') {
+      let livestockMap = {};
+      try {
+        const lsData = await api.cattle.getAll();
+        const lsList = Array.isArray(lsData) ? lsData : (lsData?.data ?? []);
+        lsList.forEach(a => {
+          const key = String(a.tag_id || a.tag || a.tagId || '').trim().toUpperCase();
+          if (key) livestockMap[key] = a;
+        });
+      } catch (_) {}
+
+      const enriched = normalizedData.map(log => {
+        const tagKey = String(log.tagId || log.tag_id || log.tag || '').trim().toUpperCase();
+        const animal = tagKey ? livestockMap[tagKey] : null;
+        
+        let resolvedFarmId = log.farmId;
+        if (!resolvedFarmId && animal) {
+          resolvedFarmId = animal.farmId?._id || animal.farmId?.id || animal.farmId || null;
+        }
+
+        let resolvedFarmName = '';
+        if (resolvedFarmId) {
+          if (typeof resolvedFarmId === 'object' && resolvedFarmId.name) {
+            resolvedFarmName = resolvedFarmId.name;
+          } else {
+            const foundFarm = farmsList.find(f => String(f._id || f.id) === String(resolvedFarmId) || String(f.code || '').toUpperCase() === String(resolvedFarmId).toUpperCase());
+            resolvedFarmName = foundFarm ? foundFarm.name : (animal?.farmName || '');
+          }
+        } else if (animal?.farmName) {
+          resolvedFarmName = animal.farmName;
+        }
+
+        return {
+          ...log,
+          farmId: resolvedFarmId,
+          farmName: resolvedFarmName || '-'
         };
       });
       setLogs(enriched);
