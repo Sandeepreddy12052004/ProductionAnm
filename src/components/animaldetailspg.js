@@ -3776,6 +3776,34 @@ const getShedFromLivestock = (tagValue) => {
                 )}
               </div>
             </div>
+
+            {/* Quick Records Per Page Selector */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1.5 hidden sm:inline">Show:</span>
+              {[10, 25, 50, 100].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => { setItemsPerPage(size); setCurrentPage(1); }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    itemsPerPage === size
+                      ? 'bg-[#16223F] text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+              <button
+                onClick={() => { setItemsPerPage(9999); setCurrentPage(1); }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  itemsPerPage >= 9999
+                    ? 'bg-[#16223F] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                All
+              </button>
+            </div>
           </div>
 
           {/* ── GROUPED BY ANIMAL VIEW ── */}
