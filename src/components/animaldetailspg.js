@@ -1804,34 +1804,12 @@ if (!moduleConfig) {
     return t.includes(q);
   });
 
-  const groupedAnimalsList = useMemo(() => {
-    return groupLogsByAnimal(searchedLogs, rawCattleList);
-  }, [searchedLogs, rawCattleList]);
-
-  const totalItems = viewLayout === 'GROUPED' ? groupedAnimalsList.length : searchedLogs.length;
+  const totalItems = searchedLogs.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
   const paginatedLogs = searchedLogs.slice(startIndex, endIndex);
-  const paginatedGroupedAnimals = groupedAnimalsList.slice(startIndex, endIndex);
-
-  const toggleAnimalAccordion = (tag) => {
-    setOpenAnimalAccordions(prev => {
-      const next = new Set(prev);
-      if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
-      return next;
-    });
-  };
-
-  const expandAllAccordions = () => {
-    setOpenAnimalAccordions(new Set(groupedAnimalsList.map(g => g.tag)));
-  };
-
-  const collapseAllAccordions = () => {
-    setOpenAnimalAccordions(new Set());
-  };
 
   const activeFilterCount = (isCustomFilterModule ? appliedFilters : filters).filter(
     f => (f.value && (Array.isArray(f.value) ? f.value.length > 0 : String(f.value).trim() !== "")) || 
@@ -3703,66 +3681,16 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           )}
 
-          {/* ── LOG GROUPING & DISPLAY CONTROLS TOOLBAR ── */}
+          {/* ── CONTROLS TOOLBAR ── */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 p-3 rounded-2xl border border-slate-200 shadow-2xs">
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* View Mode Toggle: Flat vs Grouped by Animal */}
-              <div className="flex items-center p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                <button
-                  onClick={() => { setViewLayout('FLAT'); setCurrentPage(1); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    viewLayout === 'FLAT'
-                      ? 'bg-[#16223F] text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span>📄 Flat Table</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${viewLayout === 'FLAT' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                    {searchedLogs.length}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => { setViewLayout('GROUPED'); setCurrentPage(1); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    viewLayout === 'GROUPED'
-                      ? 'bg-[#16223F] text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <span>🐄 Group by Animal</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${viewLayout === 'GROUPED' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                    {groupedAnimalsList.length} Animals
-                  </span>
-                </button>
-              </div>
-
-              {viewLayout === 'GROUPED' && (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={expandAllAccordions}
-                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition-all"
-                  >
-                    Expand All
-                  </button>
-                  <button
-                    onClick={collapseAllAccordions}
-                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 transition-all"
-                  >
-                    Collapse All
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Quick Animal Tag Search */}
-            <div className="flex items-center gap-2 flex-1 max-w-xs min-w-[200px]">
+            <div className="flex items-center gap-2 flex-1 max-w-sm min-w-[200px]">
               <div className="relative w-full">
                 <input
                   type="text"
                   value={animalTagSearch}
                   onChange={(e) => { setAnimalTagSearch(e.target.value); setCurrentPage(1); }}
-                  placeholder="Search by Animal Tag..."
+                  placeholder="Search records / Animal Tag..."
                   className="w-full h-9 pl-8 pr-7 text-xs bg-white border border-slate-200 rounded-xl font-medium placeholder-slate-400 focus:outline-none focus:border-[#D1867D] focus:ring-1 focus:ring-[#D1867D]"
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
@@ -3806,143 +3734,9 @@ const getShedFromLivestock = (tagValue) => {
             </div>
           </div>
 
-          {/* ── GROUPED BY ANIMAL VIEW ── */}
-          {viewLayout === 'GROUPED' ? (
-            <div className="space-y-4">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <SkeletonLoader type="table" columns={4} />
-                </div>
-              ) : paginatedGroupedAnimals.length === 0 ? (
-                <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
-                  <p className="text-sm font-bold text-slate-600">No animal logs found matching your filter criteria.</p>
-                </div>
-              ) : (
-                paginatedGroupedAnimals.map(group => {
-                  const isExpanded = openAnimalAccordions.has(group.tag);
-                  const animalObj = group.animal || {};
-                  const animalStatus = String(animalObj.status || 'ACTIVE').toUpperCase();
-
-                  return (
-                    <div key={group.tag} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden transition-all duration-200 hover:border-slate-300">
-                      {/* Accordion Group Header */}
-                      <div 
-                        onClick={() => toggleAnimalAccordion(group.tag)}
-                        className="p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setHistoryModalTag(group.tag);
-                              setHistoryModalAnimal(group.animal);
-                            }}
-                            className="font-mono text-xs font-black bg-[#16223F] text-white hover:bg-[#D1867D] px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
-                            title="Click to view full 360° animal lifecycle dossier"
-                          >
-                            <span>🐄 {group.tag}</span>
-                            <span className="text-[10px] text-amber-300">📜</span>
-                          </button>
-
-                          <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
-                            {animalObj.cattleType && (
-                              <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-bold text-slate-700">
-                                {animalObj.cattleType || animalObj.animalType}
-                              </span>
-                            )}
-                            {animalObj.breed && (
-                              <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-semibold text-slate-600">
-                                Breed: {animalObj.breed}
-                              </span>
-                            )}
-                            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 font-semibold text-slate-600">
-                              Shed: <strong className="text-[#16223F]">Shed {animalObj.shed || animalObj.shedId || '-'}</strong>
-                            </span>
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
-                              animalStatus === 'SOLD' ? 'bg-amber-50 text-amber-800 border-amber-200' :
-                              ['DEAD', 'DECEASED'].includes(animalStatus) ? 'bg-red-50 text-red-800 border-red-200' :
-                              animalStatus === 'PREGNANT' ? 'bg-purple-50 text-purple-800 border-purple-200' :
-                              'bg-emerald-50 text-emerald-800 border-emerald-200'
-                            }`}>
-                              {animalStatus}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2.5">
-                          <span className="bg-[#16223F]/10 text-[#16223F] font-black text-xs px-3 py-1 rounded-full">
-                            {group.count} {group.count === 1 ? 'Record' : 'Records'}
-                          </span>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setHistoryModalTag(group.tag);
-                              setHistoryModalAnimal(group.animal);
-                            }}
-                            className="hidden sm:flex items-center gap-1 px-3 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 shadow-2xs transition-all"
-                          >
-                            📜 History Dossier
-                          </button>
-
-                          <span className="text-slate-400 font-bold text-xs px-1">
-                            {isExpanded ? '▲' : '▼'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Accordion Group Body Table */}
-                      {isExpanded && (
-                        <div className="overflow-x-auto bg-white">
-                          <table className="w-full text-left min-w-[600px]">
-                            <thead className="bg-slate-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
-                              <tr>
-                                <th className="p-3.5">Date</th>
-                                {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => (
-                                  <th key={f.name} className="p-3.5">{f.label}</th>
-                                ))}
-                                <th className="p-3.5 w-10 text-center"></th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
-                              {group.logs.map(log => (
-                                <tr 
-                                  key={log._id || log.id}
-                                  onClick={() => setSelectedEntry(log)}
-                                  className="hover:bg-[#D1867D]/5 cursor-pointer transition-colors"
-                                >
-                                  <td className="p-3.5 font-bold font-mono text-[#16223F] whitespace-nowrap">
-                                    {log.entryDate}
-                                  </td>
-                                  {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => {
-                                    let val = log[f.name] || '-';
-                                    if (f.type === 'date' || f.name.toLowerCase().includes('date')) {
-                                      val = log[f.name] ? formatDateToDDMMYYYY(log[f.name]) : '-';
-                                    }
-                                    return (
-                                      <td key={f.name} className="p-3.5 font-semibold whitespace-nowrap">
-                                        {val}
-                                      </td>
-                                    );
-                                  })}
-                                  <td className="p-3.5 text-gray-400 hover:text-[#D1867D] font-bold text-center">
-                                    ⋮
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          ) : (
-            /* ── FLAT TABLE VIEW ── */
-            <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
-              <table className="w-full text-left min-w-[600px] relative">
+          {/* ── TABLE VIEW ── */}
+          <div className="flex-1 overflow-auto bg-white border border-gray-200 rounded-xl shadow-sm relative">
+            <table className="w-full text-left min-w-[600px] relative">
                 <thead className="sticky top-0 z-10 bg-gray-50 text-[#16223F] uppercase text-[10px] font-black tracking-widest shadow-sm">
                   <tr>
                     <th className="p-4 border-b">Date</th>
@@ -3970,25 +3764,32 @@ const getShedFromLivestock = (tagValue) => {
                         </td>
 
                         {currentFields.map(f => {
-                          // Interactive Tag Link
+                          // Interactive Tag Link (ONLY in Live Stock)
                           if (['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)) {
                             const tagVal = log[f.name];
+                            if (current.id === 'livestock') {
+                              return (
+                                <td key={f.name} className="p-4 font-semibold whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setHistoryModalTag(tagVal);
+                                      const foundAnimal = rawCattleList.find(c => String(c.tag || c.tagId || c.tag_id || '').toUpperCase() === String(tagVal).toUpperCase());
+                                      setHistoryModalAnimal(foundAnimal || log);
+                                    }}
+                                    className="group/tag inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#16223F]/5 hover:bg-[#16223F] text-[#16223F] hover:text-white font-mono text-xs font-black transition-all border border-[#16223F]/10 hover:border-[#16223F] shadow-2xs cursor-pointer"
+                                    title={`Click to view 360° log history for Animal [${tagVal}]`}
+                                  >
+                                    <span>{tagVal || '-'}</span>
+                                    <span className="text-[10px] text-slate-400 group-hover/tag:text-amber-300 transition-colors">📜</span>
+                                  </button>
+                                </td>
+                              );
+                            }
                             return (
-                              <td key={f.name} className="p-4 font-semibold whitespace-nowrap">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setHistoryModalTag(tagVal);
-                                    const foundAnimal = rawCattleList.find(c => String(c.tag || c.tagId || c.tag_id || '').toUpperCase() === String(tagVal).toUpperCase());
-                                    setHistoryModalAnimal(foundAnimal || null);
-                                  }}
-                                  className="group/tag inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#16223F]/5 hover:bg-[#16223F] text-[#16223F] hover:text-white font-mono text-xs font-black transition-all border border-[#16223F]/10 hover:border-[#16223F] shadow-2xs cursor-pointer"
-                                  title={`Click to view 360° log history for Animal [${tagVal}]`}
-                                >
-                                  <span>{tagVal || '-'}</span>
-                                  <span className="text-[10px] text-slate-400 group-hover/tag:text-amber-300 transition-colors">📜</span>
-                                </button>
+                              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                                {tagVal || '-'}
                               </td>
                             );
                           }
@@ -4108,13 +3909,12 @@ const getShedFromLivestock = (tagValue) => {
                 </tbody>
               </table>
             </div>
-          )}
 
           {/* Pagination Controls Footer */}
           <div className="flex flex-wrap items-center justify-between gap-4 mt-6 px-1">
             <div className="flex items-center gap-3">
               <p className="text-sm font-bold text-slate-600">
-                Showing <span className="text-[#16223F] font-black">{totalItems === 0 ? 0 : startIndex + 1}</span>–<span className="text-[#16223F] font-black">{Math.min(endIndex, totalItems)}</span> of <span className="text-[#16223F] font-black">{totalItems}</span> {viewLayout === 'GROUPED' ? 'animals' : 'records'}
+                Showing <span className="text-[#16223F] font-black">{totalItems === 0 ? 0 : startIndex + 1}</span>–<span className="text-[#16223F] font-black">{Math.min(endIndex, totalItems)}</span> of <span className="text-[#16223F] font-black">{totalItems}</span> {current.id === 'livestock' ? 'animals' : 'records'}
               </p>
               <div className="flex items-center gap-1.5 ml-2 text-xs text-slate-500 font-bold">
                 <span>Per page:</span>
@@ -4174,20 +3974,22 @@ const getShedFromLivestock = (tagValue) => {
             <h3 className="font-bold text-lg mb-4 text-center text-black">Manage Record</h3>
             <div className="space-y-2">
 
-              {/* 360° Animal History Dossier Button */}
-              <button 
-                onClick={() => {
-                  const targetTag = selectedEntry.tag || selectedEntry.tagId || selectedEntry.femaleTag || selectedEntry.tag_id;
-                  if (targetTag) {
-                    setHistoryModalTag(targetTag);
-                    const foundAnimal = rawCattleList.find(c => String(c.tag || c.tagId || c.tag_id || '').toUpperCase() === String(targetTag).toUpperCase());
-                    setHistoryModalAnimal(foundAnimal || null);
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-[#16223F] text-white py-3 rounded-xl font-bold hover:bg-[#16223F]/90 shadow-md transition-all text-xs"
-              >
-                📜 View Animal 360° History
-              </button>
+              {/* 360° Animal History Dossier Button (ONLY in Live Stock) */}
+              {current.id === 'livestock' && (
+                <button 
+                  onClick={() => {
+                    const targetTag = selectedEntry.tag || selectedEntry.tagId || selectedEntry.femaleTag || selectedEntry.tag_id;
+                    if (targetTag) {
+                      setHistoryModalTag(targetTag);
+                      const foundAnimal = rawCattleList.find(c => String(c.tag || c.tagId || c.tag_id || '').toUpperCase() === String(targetTag).toUpperCase());
+                      setHistoryModalAnimal(foundAnimal || selectedEntry);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-[#16223F] text-white py-3 rounded-xl font-bold hover:bg-[#16223F]/90 shadow-md transition-all text-xs"
+                >
+                  📜 View Animal 360° History
+                </button>
+              )}
 
               {/* View Details Button */}
               <button 
