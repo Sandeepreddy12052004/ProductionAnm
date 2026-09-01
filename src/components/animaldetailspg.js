@@ -1221,6 +1221,7 @@ const currentFields = current.fields.map(f => {
   const isCustomFilterModule = ['vaccine', 'health', 'livestock', 'shed', 'crossing', 'purchase', 'sale'].includes(current.id);
 
   const [allLivestockTags, setAllLivestockTags] = useState([]);
+  const [serverPagination, setServerPagination] = useState(null);
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [appliedFilters, setAppliedFilters] = useState([
@@ -1292,25 +1293,26 @@ const currentFields = current.fields.map(f => {
 
 const storageKey = `global_${current.id}_logs`;
 
-const fetchLogs = async () => {
+const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
 
   setIsLoading(true);
   try {
     let data = [];
+    const params = limit < 9999 ? { page, limit } : null;
     if (current.id === 'livestock') {
-      data = await api.cattle.getAll();
+      data = await api.cattle.getAll(params);
     } else if (current.id === 'crossing') {
-      data = await api.crossing.getAll();
+      data = await api.crossing.getAll(params);
     } else if (current.id === 'shed') {
-      data = await api.shed.getAll();
+      data = await api.shed.getAll(params);
     } else if (current.id === 'purchase') {
-      data = await api.purchase.getAll();
+      data = await api.purchase.getAll(params);
     } else if (current.id === 'sale') {
-      data = await api.sale.getAll();
+      data = await api.sale.getAll(params);
     } else if (current.id === 'health') {
-      data = await api.health.treatments.getAll();
+      data = await api.health.treatments.getAll(params);
     } else if (current.id === 'vaccine') {
-      data = await api.health.vaccinations.getAll();
+      data = await api.health.vaccinations.getAll(params);
     } else {
       const savedData = localStorage.getItem(storageKey);
       data = savedData ? JSON.parse(savedData) : [];
@@ -1318,16 +1320,20 @@ const fetchLogs = async () => {
 
     // Unwrap various response shapes defensively:
     // 1. Plain array (normal API success)
-    // 2. { data: [...] } envelope
+    // 2. { data: [...], pagination: {...} } envelope
     // 3. { firewallBlocked: true, data: [] } — silently blocked
     let rawList;
+    let pagInfo = null;
     if (Array.isArray(data)) {
       rawList = data;
     } else if (data && Array.isArray(data.data)) {
       rawList = data.data;
+      pagInfo = data.pagination || null;
     } else {
       rawList = [];
     }
+
+    setServerPagination(pagInfo);
 
     const normalizedData = rawList.map(log => {
       const dateValue = log.shiftingDate || log.crossingDate || log.purchaseDate || log.saleDate || log.treatmentDate || log.vaccinationDate || log.date || log.dateOfBirth || log.dob || log.entryDate || log.createdAt;
@@ -1511,10 +1517,13 @@ const fetchLogs = async () => {
 
 useEffect(() => {
   if (!moduleConfig) return;
-  fetchLogs();
+  fetchLogs(currentPage, itemsPerPage);
+}, [moduleConfig, current.id, currentPage, itemsPerPage]);
+
+useEffect(() => {
   setFilters([{ field: "entryDate", value: "" }]);
   setCurrentPage(1);
-}, [moduleConfig, current.id]);
+}, [current.id]);
 
 useEffect(() => {
   const modalOpen =
@@ -1884,13 +1893,13 @@ if (!moduleConfig) {
   }, [searchedLogs, rawCattleList, current.id]);
 
   const isGroupedView = current.id !== 'livestock' && viewLayout === 'GROUPED';
-  const totalItems = isGroupedView ? groupedAnimalsList.length : searchedLogs.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const totalItems = serverPagination ? serverPagination.total : (isGroupedView ? groupedAnimalsList.length : searchedLogs.length);
+  const totalPages = serverPagination ? serverPagination.totalPages : (Math.ceil(totalItems / itemsPerPage) || 1);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
-  const paginatedLogs = searchedLogs.slice(startIndex, endIndex);
-  const paginatedGroupedAnimals = groupedAnimalsList.slice(startIndex, endIndex);
+  const paginatedLogs = serverPagination ? searchedLogs : searchedLogs.slice(startIndex, endIndex);
+  const paginatedGroupedAnimals = serverPagination ? groupedAnimalsList : groupedAnimalsList.slice(startIndex, endIndex);
 
   const toggleAnimalAccordion = (tag) => {
     setOpenAnimalAccordions(prev => {

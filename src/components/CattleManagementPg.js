@@ -127,6 +127,7 @@ export default function CattleManagementPg({
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [serverPagination, setServerPagination] = useState(null);
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
   const canEdit = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'edit');
@@ -142,12 +143,19 @@ export default function CattleManagementPg({
     ONE_TIME_MILKING: "bg-blue-50 text-blue-700 border border-blue-100",
   };
 
-  const fetchCattleData = async () => {
+  const fetchCattleData = async (page = currentPage, limit = recordsPerPage) => {
     setIsFetching(true);
     try {
-      const res = await api.cattle.getAll();
-      const raw = Array.isArray(res) ? res : (res?.data ?? []);
-      setCattleData(raw);
+      const params = limit < 9999 ? { page, limit } : null;
+      const res = await api.cattle.getAll(params);
+      if (res && Array.isArray(res.data) && res.pagination) {
+        setCattleData(res.data);
+        setServerPagination(res.pagination);
+      } else {
+        const raw = Array.isArray(res) ? res : (res?.data ?? []);
+        setCattleData(raw);
+        setServerPagination(null);
+      }
     } catch (err) {
       console.error(err);
       swalError("Error", "Failed to retrieve cattle records from server.");
@@ -155,6 +163,10 @@ export default function CattleManagementPg({
       setIsFetching(false);
     }
   };
+
+  useEffect(() => {
+    fetchCattleData(currentPage, recordsPerPage);
+  }, [currentPage, recordsPerPage]);
 
   // Fetch options for Select fields (breeds, sheds, farms)
   useEffect(() => {
@@ -467,10 +479,11 @@ export default function CattleManagementPg({
     return isMatched;
   });
 
-  const totalPages = Math.ceil(filteredData.length / recordsPerPage) || 1;
+  const totalItems = serverPagination ? serverPagination.total : filteredData.length;
+  const totalPages = serverPagination ? serverPagination.totalPages : (Math.ceil(filteredData.length / recordsPerPage) || 1);
   const startIndex = (currentPage - 1) * recordsPerPage;
   const endIndex = startIndex + recordsPerPage;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  const paginatedData = serverPagination ? filteredData : filteredData.slice(startIndex, endIndex);
 
   return (
     <div className="w-full flex flex-col text-black font-sans">
