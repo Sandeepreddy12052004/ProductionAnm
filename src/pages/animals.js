@@ -12,7 +12,11 @@ export default function AnimalsPage() {
     api.sheds.getAll()
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
-          const names = res.map(s => s.name || s.code || String(s._id || s.id));
+          const names = Array.from(new Set(res.map(s => {
+            const raw = String(s.code || s.name || '').trim();
+            const match = raw.match(/(?:SHED|SHED\s+|SHED-|SHED_|-|\b)0*(\d+)$/i) || raw.match(/0*(\d+)$/);
+            return match ? match[1] : raw;
+          }).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
           if (names.length > 0) setShedOptions(names);
         }
       })

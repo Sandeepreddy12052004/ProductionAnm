@@ -264,6 +264,17 @@ const resolveShedNumber = (inputVal, shedsList = [], farmCode = '', farmsList = 
   return null;
 };
 
+// Clean & Normalize shed input to standard single shed number (e.g. "TKP - Shed 1", "TKP-1", "Shed 1", "1" -> "1", or "-" for sold/dead)
+const cleanShedCode = (val) => {
+  if (val === undefined || val === null) return '-';
+  const str = String(val).trim();
+  if (!str || str === '-' || str.toLowerCase() === 'null' || str.toLowerCase() === 'none') return '-';
+  if (/^\d+$/.test(str)) return str;
+  const match = str.match(/(?:SHED|SHED\s+|SHED-|SHED_|-|\b)0*(\d+)$/i) || str.match(/0*(\d+)$/);
+  if (match) return match[1];
+  return str;
+};
+
 // Helper to extract raw text value from Excel cell (handling strings, formatted richText objects, Date objects, formulas, etc.)
 const getCellStringValue = (cellValue) => {
   if (cellValue === undefined || cellValue === null) return '';
@@ -632,7 +643,9 @@ useEffect(() => {
   const hasShedField = (moduleConfig?.fields || []).some(f => ['shed', 'oldShed', 'newShed', 'shedId'].includes(f.name));
   if (hasShedField) {
     api.sheds.getAll().then(sheds => {
-      setDynamicShedOptions(sheds.map(s => s.name));
+      const list = Array.isArray(sheds) ? sheds : (sheds?.data ?? []);
+      const uniqueCodes = Array.from(new Set(list.map(s => cleanShedCode(s.code || s.name)).filter(c => c && c !== '-'))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      setDynamicShedOptions(uniqueCodes);
     }).catch(console.error);
   }
 }, [moduleConfig?.id]);
@@ -1399,8 +1412,22 @@ const currentFields = current.fields.map(f => {
                 return false;
               });
 
-              const matchedShed = resolveShedNumber(rawShed, farmScopedSheds.length > 0 ? farmScopedSheds : allSheds, resolvedFarmCode, allFarms);
-              const finalShed = matchedShed || rawShed || '-';
+              const finalStatus = resolveStatusFromInfo(rawTag, rawRemarks, row['status'] || 'ACTIVE');
+              const isDeadOrSold = finalStatus === 'DECEASED' || finalStatus === 'SOLD';
+
+              let finalShed = '-';
+              let isShedValid = true;
+              if (isDeadOrSold) {
+                finalShed = '-';
+                isShedValid = true;
+              } else if (rawShed && rawShed !== '-') {
+                const matchedShed = resolveShedNumber(rawShed, farmScopedSheds.length > 0 ? farmScopedSheds : allSheds, resolvedFarmCode, allFarms);
+                finalShed = cleanShedCode(matchedShed || rawShed);
+                isShedValid = matchedShed !== null || /^\d+$/.test(finalShed);
+              } else {
+                finalShed = '-';
+                isShedValid = false;
+              }
 
               const matchedBreed = findSmartMatch(rawBreed, allowedBreeds);
               
@@ -1423,10 +1450,6 @@ const currentFields = current.fields.map(f => {
               const finalBreed = matchedBreed || rawBreed;
               const finalCattle = matchedCattle || typeToMatch || 'COW';
 
-              const finalStatus = resolveStatusFromInfo(rawTag, rawRemarks, row['status'] || 'ACTIVE');
-              const isDeadOrSold = finalStatus === 'DECEASED' || finalStatus === 'SOLD';
-
-              const isShedValid = matchedShed !== null;
               const isBreedValid = matchedBreed !== null;
               const isAnimalValid = matchedCattle !== null;
               const isDOBValid = rawDOB !== null && rawDOB !== undefined && !isNaN(rawDOB.getTime());
@@ -1554,30 +1577,38 @@ const currentFields = current.fields.map(f => {
   }, [router.isReady, router.query.tag, router.query.status]);
 
   const getFieldOptions = (fieldName) => {
+    const isShedField = ['shed', 'shedId', 'oldShed', 'newShed'].includes(fieldName);
     const fieldConfig = currentFields.find(f => f.name === fieldName);
     const optionsSet = new Set();
     
     if (fieldConfig?.options && Array.isArray(fieldConfig.options)) {
       fieldConfig.options.forEach(opt => {
         const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
-        if (val && val !== '-' && val !== '') optionsSet.add(String(val));
+        if (val && val !== '-' && val !== '') {
+          const cleaned = isShedField ? cleanShedCode(val) : String(val);
+          if (cleaned && cleaned !== '-') optionsSet.add(cleaned);
+        }
       });
     }
     
     logs.forEach(log => {
       const val = log[fieldName];
       if (val !== undefined && val !== null && String(val).trim() !== '' && String(val) !== '-') {
-        optionsSet.add(String(val).trim());
+        const cleaned = isShedField ? cleanShedCode(val) : String(val).trim();
+        if (cleaned && cleaned !== '-') optionsSet.add(cleaned);
       }
     });
 
-    if (fieldName === 'shedId' && dynamicShedOptions) {
+    if (isShedField && dynamicShedOptions) {
       dynamicShedOptions.forEach(opt => {
-        if (opt && opt !== '-' && opt !== '') optionsSet.add(String(opt));
+        if (opt && opt !== '-' && opt !== '') {
+          const cleaned = cleanShedCode(opt);
+          if (cleaned && cleaned !== '-') optionsSet.add(cleaned);
+        }
       });
     }
     
-    return Array.from(optionsSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    return Array.from(optionsSet).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   };
 
 const storageKey = `global_${current.id}_logs`;
@@ -1768,6 +1799,19 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
           if (matchedFarm) {
             log.farmName = matchedFarm.name;
           }
+        }
+
+        // Clean and normalize shed number (e.g. 1, 2, 3... or '-' if sold/dead)
+        const isInactive = ['DEAD', 'DECEASED', 'SOLD'].includes(String(log.status).toUpperCase());
+        if (isInactive) {
+          log.shed = '-';
+          log.shedId = '-';
+        } else if (log.shed && log.shed !== '-') {
+          log.shed = cleanShedCode(log.shed);
+          log.shedId = cleanShedCode(log.shedId || log.shed);
+        } else {
+          log.shed = '-';
+          log.shedId = '-';
         }
       });
 
@@ -2066,9 +2110,10 @@ if (!moduleConfig) {
         ) {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? String(f.value).split(',').map(v => v.trim()).filter(Boolean) : []);
           if (selectedValues.length > 0) {
-            const recordVal = String(log[f.field] || "").toLowerCase();
+            const isShedField = ['shed', 'shedId', 'oldShed', 'newShed'].includes(f.field);
+            const recordVal = isShedField ? cleanShedCode(log[f.field]).toLowerCase() : String(log[f.field] || "").toLowerCase();
             const optionMatched = selectedValues.some(v => {
-              const valLower = String(v).toLowerCase();
+              const valLower = isShedField ? cleanShedCode(v).toLowerCase() : String(v).toLowerCase();
               if (isCustomFilterModule) {
                 return valLower === recordVal;
               }
@@ -2080,9 +2125,10 @@ if (!moduleConfig) {
         else {
           // 🔁 NORMAL FILTER
           if (f.value) {
-            const filterValues = String(f.value).split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+            const isShedField = ['shed', 'shedId', 'oldShed', 'newShed'].includes(f.field);
+            const filterValues = String(f.value).split(',').map(v => (isShedField ? cleanShedCode(v) : v).trim().toLowerCase()).filter(Boolean);
             if (filterValues.length > 0) {
-              const recordVal = String(log[f.field] || "").toLowerCase();
+              const recordVal = isShedField ? cleanShedCode(log[f.field]).toLowerCase() : String(log[f.field] || "").toLowerCase();
               currentMatch = filterValues.some(v => recordVal === v || recordVal.includes(v));
             }
           }

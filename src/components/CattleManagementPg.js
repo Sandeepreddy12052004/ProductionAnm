@@ -102,6 +102,17 @@ const getFilterAgeInDays = (y, m, d) => {
   return (years * 365) + (months * 30.44) + days;
 };
 
+// Clean & Normalize shed input to standard single shed number (e.g. "TKP - Shed 1", "TKP-1", "Shed 1", "1" -> "1", or "-" for sold/dead)
+const cleanShedCode = (val) => {
+  if (val === undefined || val === null) return '-';
+  const str = String(val).trim();
+  if (!str || str === '-' || str.toLowerCase() === 'null' || str.toLowerCase() === 'none') return '-';
+  if (/^\d+$/.test(str)) return str;
+  const match = str.match(/(?:SHED|SHED\s+|SHED-|SHED_|-|\b)0*(\d+)$/i) || str.match(/0*(\d+)$/);
+  if (match) return match[1];
+  return str;
+};
+
 export default function CattleManagementPg({
   moduleConfig,
 }) {
@@ -118,15 +129,16 @@ export default function CattleManagementPg({
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
   const [historyModalTag, setHistoryModalTag] = useState(null);
-  const [historyModalAnimal, setHistoryModalAnimal] = useState(null);
   const [allSheds, setAllSheds] = useState([]);
-
-  // Dynamic Filters State
-  const [filters, setFilters] = useState([{ field: "tag", value: "" }]);
-  const [appliedFilters, setAppliedFilters] = useState([{ field: "tag", value: "" }]);
+  const [filters, setFilters] = useState([
+    { field: "entryDate", value: "" }
+  ]);
+  const [appliedFilters, setAppliedFilters] = useState([
+    { field: "entryDate", value: "" }
+  ]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const itemsPerPage = 10;
   const [serverPagination, setServerPagination] = useState(null);
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
@@ -148,7 +160,16 @@ export default function CattleManagementPg({
     try {
       const res = await api.cattle.getAll();
       const raw = Array.isArray(res) ? res : (res?.data ?? []);
-      setCattleData(raw);
+      const normalized = raw.map(item => {
+        const isInactive = ['DEAD', 'DECEASED', 'SOLD'].includes(String(item.status || '').toUpperCase());
+        const cleanedShed = isInactive ? '-' : cleanShedCode(item.shed || item.shedId);
+        return {
+          ...item,
+          shed: cleanedShed,
+          shedId: cleanedShed
+        };
+      });
+      setCattleData(normalized);
     } catch (err) {
       console.error(err);
       swalError("Error", "Failed to retrieve cattle records from server.");
@@ -175,7 +196,7 @@ export default function CattleManagementPg({
 
           const shedList = Array.isArray(shedsRes) ? shedsRes : (shedsRes?.data ?? []);
           setAllSheds(shedList);
-          const shedOpts = shedList.map(s => s.name || s.code).filter(Boolean);
+          const shedOpts = Array.from(new Set(shedList.map(s => cleanShedCode(s.code || s.name)).filter(c => c && c !== '-'))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
           let farmList = Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []);
           if (farmList.length === 0) {
@@ -451,11 +472,16 @@ export default function CattleManagementPg({
               recordVal = item.tag || item.tag_id || item.code || "";
             } else if (f.field === "farmId") {
               recordVal = typeof item.farmId === "object" ? (item.farmId?._id || item.farmId?.id || "") : (item.farmId || "");
+            } else if (f.field === "shed" || f.field === "shedId") {
+              recordVal = cleanShedCode(item.shed || item.shedId);
             } else {
               recordVal = item[f.field] || "";
             }
             recordVal = String(recordVal).toLowerCase();
-            const optionMatched = selectedValues.some(v => String(v).toLowerCase() === recordVal || recordVal.includes(String(v).toLowerCase()));
+            const optionMatched = selectedValues.some(v => {
+              const valLower = (f.field === "shed" || f.field === "shedId") ? cleanShedCode(v).toLowerCase() : String(v).toLowerCase();
+              return valLower === recordVal || recordVal.includes(valLower);
+            });
             if (!optionMatched) currentMatch = false;
           }
         }
