@@ -426,10 +426,14 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 
         const cleanPath = endpoint.split('?')[0];
 
+        if (endpoint.includes('bypassFarmFilter=true')) {
+          isBypassedEndpoint = true;
+        }
+
         if (!isGlobal) {
           // Restricted user: locked to their assigned farm
           restrictedFarmId = rawFarmId ? String(rawFarmId).trim() : null;
-          isBypassedEndpoint =
+          isBypassedEndpoint = isBypassedEndpoint ||
             cleanPath === '/api/users' ||
             cleanPath.startsWith('/api/users/') ||
             cleanPath === '/api/roles' ||
@@ -447,8 +451,16 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
           let activeFarmId = 'ALL';
           try {
             if (typeof window !== 'undefined' && window.location && window.location.pathname) {
-              const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
-              activeFarmId = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+              const pName = window.location.pathname;
+              if (pName.startsWith('/farm/')) {
+                const pathCode = pName.split('/')[2];
+                if (pathCode) {
+                  activeFarmId = pathCode.toUpperCase();
+                }
+              } else {
+                const pageKey = '__active_farm_id_' + pName.replace(/\//g, '_') + '__';
+                activeFarmId = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+              }
             } else {
               activeFarmId = localStorage.getItem('__active_farm_id__') || 'ALL';
             }
@@ -459,7 +471,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             restrictedFarmId = String(activeFarmId).trim();
           }
           // Global user must NOT have administrative, auth, or global catalog endpoints filtered
-          isBypassedEndpoint =
+          isBypassedEndpoint = isBypassedEndpoint ||
             cleanPath === '/api/farms' ||
             cleanPath.startsWith('/api/farms/') ||
             cleanPath.startsWith('/api/auth') ||
@@ -491,6 +503,13 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             cleanPath.startsWith('/api/semen-straws/');
         }
 
+        // Cache farms list for client-side farm matching
+        if (cleanPath === '/api/farms' && Array.isArray(finalData)) {
+          try {
+            sessionStorage.setItem('__cached_farms_list__', JSON.stringify(finalData));
+          } catch (e) {}
+        }
+
         if (restrictedFarmId && !isBypassedEndpoint) {
           // Helper to check if item matches the restricted farm
           const matchesRestrictedFarm = (item) => {
@@ -504,20 +523,72 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
               ? (item.farm._id || item.farm.id)
               : item.farm;
 
-            // If the item explicitly has a farmId or farm, it must match.
-            if (itemFarmId && String(itemFarmId).trim() !== restrictedFarmId) {
-              return false;
-            }
-            if (itemFarm && String(itemFarm).trim() !== restrictedFarmId) {
-              return false;
+            const strItemFarmId = itemFarmId ? String(itemFarmId).trim().toUpperCase() : '';
+            const strItemFarm = itemFarm ? String(itemFarm).trim().toUpperCase() : '';
+            const strRestrictedId = String(restrictedFarmId).trim().toUpperCase();
+
+            // Direct literal match
+            if (strItemFarmId && strItemFarmId === strRestrictedId) return true;
+            if (strItemFarm && strItemFarm === strRestrictedId) return true;
+
+            // Attempt to resolve target farm details from cached farms
+            let targetFarmObj = null;
+            try {
+              const cached = sessionStorage.getItem('__cached_farms_list__');
+              if (cached) {
+                const fl = JSON.parse(cached);
+                if (Array.isArray(fl)) {
+                  targetFarmObj = fl.find(f => 
+                    String(f._id || f.id).toUpperCase() === strRestrictedId ||
+                    String(f.code || '').toUpperCase() === strRestrictedId ||
+                    String(f.name || '').toUpperCase() === strRestrictedId
+                  );
+                }
+              }
+            } catch (e) {}
+
+            if (targetFarmObj) {
+              const targetId = String(targetFarmObj._id || targetFarmObj.id || '').toUpperCase();
+              const targetCode = String(targetFarmObj.code || '').toUpperCase();
+              const targetName = String(targetFarmObj.name || '').toUpperCase();
+
+              if (strItemFarmId && (strItemFarmId === targetId || strItemFarmId === targetCode || strItemFarmId === targetName)) {
+                return true;
+              }
+              if (strItemFarm && (strItemFarm === targetId || strItemFarm === targetCode || strItemFarm === targetName)) {
+                return true;
+              }
+
+              const itemFarmName = String(item.farmName || item.farm_name || '').toUpperCase();
+              if (itemFarmName && itemFarmName !== '-') {
+                if (itemFarmName === targetName || itemFarmName === targetCode || itemFarmName.includes(targetCode) || targetName.includes(itemFarmName)) {
+                  return true;
+                }
+                if (targetCode === 'TKP' && (itemFarmName.includes('TANAKONDAPALLI') || itemFarmName.includes('TALAKONDAPALLY'))) return true;
+                if (targetCode === 'TDR' && itemFarmName.includes('TANDUR')) return true;
+              }
+
+              const itemShed = String(item.shed || item.shedId || '').toUpperCase();
+              if (itemShed && targetCode && itemShed !== '-') {
+                if (itemShed.includes(targetCode)) return true;
+                if (targetCode === 'TKP' && (itemShed.includes('TALAKONDAPALLY') || itemShed.includes('TANAKONDAPALLI'))) return true;
+                if (targetCode === 'TDR' && itemShed.includes('TANDUR')) return true;
+              }
+
+              // Item has an explicit different farm
+              if (strItemFarmId || strItemFarm) {
+                return false;
+              }
+            } else {
+              if (strItemFarmId && strItemFarmId !== strRestrictedId) return false;
+              if (strItemFarm && strItemFarm !== strRestrictedId) return false;
             }
 
             // If the item itself is a farm object (returned from /api/farms), check its own ID
-            // Only apply this check if the endpoint is actually querying farms.
             const isFarm = cleanPath.startsWith('/api/farms');
             if (isFarm) {
               const farmId = item._id || item.id;
-              if (String(farmId).trim() !== restrictedFarmId) {
+              if (String(farmId).trim().toUpperCase() !== strRestrictedId) {
                 return false;
               }
             }

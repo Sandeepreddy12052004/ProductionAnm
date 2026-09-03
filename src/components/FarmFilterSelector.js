@@ -31,6 +31,9 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
         .then((data) => {
           if (Array.isArray(data)) {
             setFarms(data);
+            try {
+              sessionStorage.setItem('__cached_farms_list__', JSON.stringify(data));
+            } catch (e) {}
             const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
             const storedActive = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
             let initialActive = storedActive || 'ALL';
@@ -38,6 +41,7 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
             if (initialActive === 'ALL' && !showAllOption && data.length > 0) {
               const firstFarmId = data[0]._id || data[0].id;
               localStorage.setItem(pageKey, firstFarmId);
+              localStorage.setItem('__active_farm_id__', firstFarmId);
               initialActive = firstFarmId;
             }
             
@@ -52,6 +56,7 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
     const selectedId = e.target.value;
     const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
     localStorage.setItem(pageKey, selectedId);
+    localStorage.setItem('__active_farm_id__', selectedId);
     setActiveFarmId(selectedId);
     window.location.reload();
   };

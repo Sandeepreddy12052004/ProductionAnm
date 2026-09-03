@@ -219,12 +219,25 @@ export default function CattleManagementPg({
       const resolvedType = data.cattleType || data.animalType || 'COW';
 
       let resolvedFarmId = data.farmId || null;
-      const matchedShed = allSheds.find(s =>
-        String(s.code).trim() === String(resolvedShed).trim() ||
-        String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase()
-      );
-      if (matchedShed) {
-        resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || resolvedFarmId;
+      if (resolvedFarmId) {
+        const farmShed = allSheds.find(s => {
+          const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
+          const isSameFarm = String(sFarmId) === String(resolvedFarmId);
+          const isSameCode = String(s.code).trim() === String(resolvedShed).trim() ||
+            String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase();
+          return isSameFarm && isSameCode;
+        });
+        if (farmShed) {
+          resolvedFarmId = farmShed.farmId?._id || farmShed.farmId?.id || farmShed.farmId || resolvedFarmId;
+        }
+      } else {
+        const matchedShed = allSheds.find(s =>
+          String(s.code).trim() === String(resolvedShed).trim() ||
+          String(s.name).trim().toUpperCase() === String(resolvedShed).trim().toUpperCase()
+        );
+        if (matchedShed) {
+          resolvedFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId || resolvedFarmId;
+        }
       }
 
       const payload = {

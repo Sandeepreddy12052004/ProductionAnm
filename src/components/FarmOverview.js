@@ -70,10 +70,10 @@ export default function FarmOverview({ farmCode }) {
       setError(null);
       try {
         const [cattle, sheds, treatments, milk, farms] = await Promise.all([
-          api.cattle.getAll().catch(err => ({ isError: true, message: err })),
-          api.sheds.getAll().catch(err => ({ isError: true, message: err })),
-          api.health.treatments.getAll().catch(err => ({ isError: true, message: err })),
-          api.milk.collections.getAll().catch(err => ({ isError: true, message: err })),
+          api.cattle.getAll({ bypassFarmFilter: true }).catch(err => ({ isError: true, message: err })),
+          api.sheds.getAll({ bypassFarmFilter: true }).catch(err => ({ isError: true, message: err })),
+          api.health.treatments.getAll({ bypassFarmFilter: true }).catch(err => ({ isError: true, message: err })),
+          api.milk.collections.getAll({ bypassFarmFilter: true }).catch(err => ({ isError: true, message: err })),
           api.farms.getAll().catch(err => ({ isError: true, message: err }))
         ]);
 
@@ -111,32 +111,73 @@ export default function FarmOverview({ farmCode }) {
         }
 
         // 2. Safe query logic against the guaranteed array fallback
-        const currentFarm = farmsArray.find(f => 
-          f?.code?.toUpperCase() === farmCode?.toUpperCase() || 
-          f?.name?.toUpperCase()?.includes(farmCode?.toUpperCase())
-        );
-        const currentFarmId = currentFarm?._id || currentFarm?.id;
+        const searchFarmCode = (farmCode || '').trim().toUpperCase();
+        const currentFarm = farmsArray.find(f => {
+          const c = String(f?.code || '').trim().toUpperCase();
+          const n = String(f?.name || '').trim().toUpperCase();
+          if (c === searchFarmCode || n === searchFarmCode) return true;
+          if (c && searchFarmCode && (c.includes(searchFarmCode) || searchFarmCode.includes(c))) return true;
+          if (n && searchFarmCode && (n.includes(searchFarmCode) || searchFarmCode.includes(n))) return true;
+          if (searchFarmCode === 'TKP' && (n.includes('TANAKONDAPALLI') || n.includes('TALAKONDAPALLY'))) return true;
+          if (searchFarmCode === 'TDR' && n.includes('TANDUR')) return true;
+          return false;
+        });
+        const currentFarmId = currentFarm?._id ? String(currentFarm._id) : (currentFarm?.id ? String(currentFarm.id) : null);
+        const currentFarmName = currentFarm?.name || '';
+        const currentFarmCode = currentFarm?.code || farmCode || '';
 
         const isCurrentFarm = (item) => {
           if (!farmCode) return false;
-          const searchCode = farmCode.toUpperCase();
+          const searchCode = searchFarmCode;
 
+          // 1. Check object farmId
           if (item?.farmId && typeof item.farmId === 'object') {
-            const fCode = item.farmId.code || item.farmId.name || '';
-            if (fCode?.toUpperCase()?.includes(searchCode)) return true;
-            if (currentFarmId && (item.farmId._id === currentFarmId || item.farmId.id === currentFarmId)) return true;
-          }
-          
-          const rawId = typeof item?.farmId === 'string' ? item.farmId : (typeof item?.farm === 'string' ? item.farm : null);
-          if (rawId && currentFarmId && rawId === currentFarmId) {
-            return true;
+            const fId = item.farmId._id ? String(item.farmId._id) : (item.farmId.id ? String(item.farmId.id) : '');
+            if (currentFarmId && fId && fId.toUpperCase() === currentFarmId.toUpperCase()) return true;
+            const fCode = String(item.farmId.code || item.farmId.name || '').toUpperCase();
+            if (fCode && (fCode.includes(searchCode) || searchCode.includes(fCode))) return true;
           }
 
-          const itemCode = item?.farmId?.code || item?.farmId?.name || rawId;
-          if (typeof itemCode === 'string' && itemCode?.toUpperCase()?.includes(searchCode)) return true;
+          // 2. Check string/primitive farmId
+          const rawId = item?.farmId ? String(item.farmId).trim() : (item?.farm ? String(item.farm).trim() : null);
+          if (rawId) {
+            const rawIdUpper = rawId.toUpperCase();
+            if (currentFarmId && rawIdUpper === currentFarmId.toUpperCase()) return true;
+            if (rawIdUpper === searchCode) return true;
+            if (currentFarmCode && rawIdUpper === currentFarmCode.toUpperCase()) return true;
+            if (searchCode === 'TKP' && (rawIdUpper.includes('TANAKONDAPALLI') || rawIdUpper.includes('TALAKONDAPALLY'))) return true;
+            if (searchCode === 'TDR' && rawIdUpper.includes('TANDUR')) return true;
+          }
 
-          if (typeof item?.shed === 'string' && item?.shed?.toUpperCase()?.includes(searchCode)) return true;
-          
+          // 3. Check farmName
+          const fName = String(item?.farmName || item?.farm_name || '').toUpperCase();
+          if (fName && fName !== '-') {
+            if (currentFarmName && (fName.includes(currentFarmName.toUpperCase()) || currentFarmName.toUpperCase().includes(fName))) return true;
+            if (fName.includes(searchCode)) return true;
+            if (searchCode === 'TKP' && (fName.includes('TANAKONDAPALLI') || fName.includes('TALAKONDAPALLY'))) return true;
+            if (searchCode === 'TDR' && fName.includes('TANDUR')) return true;
+          }
+
+          // 4. Check shed name or shed code against farm sheds
+          const shedVal = String(item?.shed || item?.shedId || '').trim().toUpperCase();
+          if (shedVal && shedVal !== '-') {
+            if (shedVal.includes(searchCode)) return true;
+            if (searchCode === 'TKP' && (shedVal.includes('TANAKONDAPALLI') || shedVal.includes('TALAKONDAPALLY'))) return true;
+            if (searchCode === 'TDR' && shedVal.includes('TANDUR')) return true;
+
+            // Check if this shed matches any shed belonging to this farm in shedsArray
+            const matchingShed = shedsArray.find(s => {
+              const sFarmId = s.farmId?._id ? String(s.farmId._id) : (s.farmId?.id ? String(s.farmId.id) : String(s.farmId || ''));
+              const sFarmCode = String(s.farmId?.code || '').toUpperCase();
+              const isFarmMatch = (currentFarmId && sFarmId.toUpperCase() === currentFarmId.toUpperCase()) || sFarmCode === searchCode;
+              if (!isFarmMatch) return false;
+              const sCode = String(s.code || '').trim().toUpperCase();
+              const sName = String(s.name || '').trim().toUpperCase();
+              return sCode === shedVal || sName === shedVal || sName.includes(shedVal);
+            });
+            if (matchingShed) return true;
+          }
+
           return false;
         };
 

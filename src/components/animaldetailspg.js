@@ -293,6 +293,71 @@ const getCellStringValue = (cellValue) => {
   return String(cellValue).trim();
 };
 
+// Flexible AI Smart Matcher for Farm names, codes, aliases, and IDs
+const findFarmMatch = (farmInput, farmsList = []) => {
+  if (!farmInput || !Array.isArray(farmsList) || farmsList.length === 0) return null;
+  const raw = String(farmInput).trim();
+  if (!raw || raw === '-' || raw.toLowerCase() === 'all') return null;
+  const rawUpper = raw.toUpperCase();
+  const cleanAlphanum = rawUpper.replace(/[^A-Z0-9]/g, '');
+
+  // 1. Exact ID match
+  let match = farmsList.find(f => String(f._id || f.id) === raw);
+  if (match) return match;
+
+  // 2. Exact code match
+  match = farmsList.find(f => String(f.code || '').trim().toUpperCase() === rawUpper);
+  if (match) return match;
+
+  // 3. Exact name match
+  match = farmsList.find(f => String(f.name || '').trim().toUpperCase() === rawUpper);
+  if (match) return match;
+
+  // 4. Normalized clean alphanum match
+  if (cleanAlphanum) {
+    match = farmsList.find(f => {
+      const fNameClean = String(f.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const fCodeClean = String(f.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      return fNameClean === cleanAlphanum || fCodeClean === cleanAlphanum;
+    });
+    if (match) return match;
+  }
+
+  // 5. Code substring or contains
+  match = farmsList.find(f => {
+    const code = String(f.code || '').trim().toUpperCase();
+    return code && (rawUpper.includes(code) || code.includes(rawUpper));
+  });
+  if (match) return match;
+
+  // 6. Name substring or contains
+  match = farmsList.find(f => {
+    const name = String(f.name || '').trim().toUpperCase();
+    return name && (rawUpper.includes(name) || name.includes(rawUpper));
+  });
+  if (match) return match;
+
+  // 7. Known alias checks (TKP <-> Tanakondapalli / Talakondapally, TDR <-> Tandur)
+  if (rawUpper.includes('TKP') || rawUpper.includes('TANAKONDAPALLI') || rawUpper.includes('TALAKONDAPALLY')) {
+    match = farmsList.find(f => {
+      const c = String(f.code || '').toUpperCase();
+      const n = String(f.name || '').toUpperCase();
+      return c === 'TKP' || n.includes('TANAKONDAPALLI') || n.includes('TALAKONDAPALLY') || n.includes('TKP');
+    });
+    if (match) return match;
+  }
+  if (rawUpper.includes('TDR') || rawUpper.includes('TANDUR')) {
+    match = farmsList.find(f => {
+      const c = String(f.code || '').toUpperCase();
+      const n = String(f.name || '').toUpperCase();
+      return c === 'TDR' || n.includes('TANDUR') || n.includes('TDR');
+    });
+    if (match) return match;
+  }
+
+  return null;
+};
+
 // Map familiar/alias Excel column headers to standard schema keys
 const getStandardHeaderKey = (headerValue) => {
   const rawStr = getCellStringValue(headerValue);
@@ -301,7 +366,7 @@ const getStandardHeaderKey = (headerValue) => {
   
   const aliases = {
     tag: ['tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number', 'animal tag', 'animal id', 'animalid', 'femaletag', 'female tag'],
-    farm: ['farm', 'farmid', 'farmcode', 'farmname', 'farm_id', 'farm_code', 'farm_name', 'farm id', 'farm code', 'farm name'],
+    farm: ['farm', 'farmid', 'farmcode', 'farmname', 'farm_id', 'farm_code', 'farm_name', 'farm id', 'farm code', 'farm name', 'farmlocation', 'farm location', 'location', 'branch', 'farm_location'],
     shed: ['shed', 'shedno', 'shednumber', 'shedid', 'shed number', 'shed no', 'shed id'],
     cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type'],
     breed: ['breed', 'breedtype', 'breed type'],
@@ -1112,15 +1177,19 @@ const currentFields = current.fields.map(f => {
 
               // Fallback to explicit farm column in Excel or active user farm if not found
               if (!finalFarmId) {
-                const rawFarm = String(row['farmId'] || row['farm'] || row['farmName'] || row['farm_name'] || '').trim();
-                if (rawFarm) {
-                  const rowFarmObj = farmsList.find(f =>
-                    String(f.code || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
-                    String(f.name || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
-                    String(f._id || f.id) === rawFarm
-                  );
-                  if (rowFarmObj) finalFarmId = rowFarmObj._id || rowFarmObj.id;
-                }
+                const rawFarm = String(row['farmId'] || row['farm'] || row['farmName'] || row['farm_name'] || row['farmCode'] || row['farm_code'] || '').trim();
+                const rowFarmObj = findFarmMatch(rawFarm, farmsList);
+                if (rowFarmObj) finalFarmId = rowFarmObj._id || rowFarmObj.id;
+              }
+              if (!finalFarmId) {
+                try {
+                  const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+                  const stored = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
+                  if (stored && stored !== 'ALL') {
+                    const matched = findFarmMatch(stored, farmsList);
+                    if (matched) finalFarmId = matched._id || matched.id;
+                  }
+                } catch (_) {}
               }
               if (!finalFarmId) {
                 finalFarmId = moduleConfig?.farmCode || router.query.code || null;
@@ -1198,12 +1267,42 @@ const currentFields = current.fields.map(f => {
           });
         } else {
           // --- LIVE STOCK IMPORT PIPELINE ---
-          const [suffixRulesRes, cattleListRes] = await Promise.all([
+          const [suffixRulesRes, cattleListRes, shedsRes, farmsRes] = await Promise.all([
             api.tags.getAllSuffixes().catch(() => []),
-            api.cattle.getAll().catch(() => [])
+            api.cattle.getAll().catch(() => []),
+            api.sheds.getAll({ bypassFarmFilter: true }).catch(() => []),
+            api.farms.getAll().catch(() => [])
           ]);
           const suffixRules = Array.isArray(suffixRulesRes) ? suffixRulesRes : (suffixRulesRes?.data ?? []);
           const activeCattle = Array.isArray(cattleListRes) ? cattleListRes : (cattleListRes?.data ?? []);
+
+          let allFarms = farmsList && farmsList.length > 0 ? farmsList : (Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []));
+          let allSheds = rawShedsList && rawShedsList.length > 0 ? rawShedsList : (Array.isArray(shedsRes) ? shedsRes : (shedsRes?.data ?? []));
+
+          // Detect active farm filter on the current page / user session
+          let pageFarmFilterId = null;
+          try {
+            const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
+            const stored = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
+            if (stored && stored !== 'ALL') {
+              pageFarmFilterId = stored;
+            }
+          } catch (e) {}
+
+          if (!pageFarmFilterId) {
+            try {
+              const storedUser = localStorage.getItem('user');
+              if (storedUser) {
+                const u = JSON.parse(storedUser);
+                const uFarmId = u.farmId && typeof u.farmId === 'object' ? (u.farmId._id || u.farmId.id) : u.farmId;
+                if (uFarmId && uFarmId !== 'ALL') pageFarmFilterId = uFarmId;
+              }
+            } catch (e) {}
+          }
+
+          if (!pageFarmFilterId) {
+            pageFarmFilterId = moduleConfig?.farmCode || router.query.code || null;
+          }
 
           await processInBatches(uniqueParsed, 20, async (row) => {
             try {
@@ -1252,44 +1351,56 @@ const currentFields = current.fields.map(f => {
                 }
               }
 
-              // AI Smart Matcher checks & auto-corrections
-              const rawFarm = String(row['farm'] || '').trim();
-              let rowFarmObj = null;
-              if (rawFarm) {
-                rowFarmObj = farmsList.find(f =>
-                  String(f.code || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
-                  String(f.name || '').trim().toUpperCase() === rawFarm.toUpperCase() ||
-                  String(f._id || f.id) === rawFarm
-                );
+              // Farm Resolution with priority:
+              // 1. Explicit Farm in Row
+              const rawFarm = String(
+                row['farm'] || row['farmId'] || row['farm_id'] || row['farmName'] || 
+                row['farm_name'] || row['farmCode'] || row['farm_code'] || row['location'] || ''
+              ).trim();
+              let resolvedFarm = findFarmMatch(rawFarm, allFarms);
+
+              // 2. Active Page Farm Filter or User Assigned Farm
+              if (!resolvedFarm && pageFarmFilterId) {
+                resolvedFarm = findFarmMatch(pageFarmFilterId, allFarms);
               }
 
-              const activeFarmCode = rowFarmObj
-                ? (rowFarmObj.code || rowFarmObj.name || String(rowFarmObj._id || rowFarmObj.id))
-                : (moduleConfig?.farmCode || router.query.code || '');
-              
-              // Find matching shed object from rawShedsList
-              let matchedShedObj = null;
-              const matchedShed = resolveShedNumber(rawShed, rawShedsList, activeFarmCode, farmsList);
-              if (matchedShed) {
-                const activeFarmObj = rowFarmObj || farmsList.find(f => 
-                  String(f.code || '').toUpperCase() === String(activeFarmCode).toUpperCase() ||
-                  String(f.name || '').toUpperCase() === String(activeFarmCode).toUpperCase() ||
-                  String(f._id || f.id) === String(activeFarmCode)
-                );
-                const activeFarmId = activeFarmObj ? String(activeFarmObj._id || activeFarmObj.id) : '';
-
-                const matches = (rawShedsList || []).filter(s => String(s.code || '').trim() === matchedShed);
-                if (matches.length > 0) {
-                  if (activeFarmId) {
-                    matchedShedObj = matches.find(s => 
-                      String(s.farmId?._id || s.farmId?.id || s.farmId || '').toUpperCase() === activeFarmId.toUpperCase()
-                    );
-                  }
-                  if (!matchedShedObj) {
-                    matchedShedObj = matches[0];
+              // 3. Inference from Shed name if present (e.g. "TKP - Shed 1", "TDR - 2")
+              if (!resolvedFarm && rawShed && rawShed !== '-') {
+                resolvedFarm = findFarmMatch(rawShed, allFarms);
+                if (!resolvedFarm) {
+                  const sObj = allSheds.find(s => {
+                    const sName = String(s.name || '').toUpperCase();
+                    const sCode = String(s.code || '').toUpperCase();
+                    const rShedUpper = rawShed.toUpperCase();
+                    return sName.includes(rShedUpper) || sCode === rShedUpper;
+                  });
+                  if (sObj?.farmId) {
+                    const sfId = sObj.farmId?._id || sObj.farmId?.id || sObj.farmId;
+                    resolvedFarm = findFarmMatch(sfId, allFarms);
                   }
                 }
               }
+
+              // 4. Fallback to first farm in system
+              if (!resolvedFarm && allFarms.length > 0) {
+                resolvedFarm = allFarms[0];
+              }
+
+              const resolvedFarmId = resolvedFarm ? (resolvedFarm._id || resolvedFarm.id) : null;
+              const resolvedFarmCode = resolvedFarm ? (resolvedFarm.code || resolvedFarm.name || '') : '';
+
+              // Scope Shed resolution to the resolved farm
+              const farmScopedSheds = allSheds.filter(s => {
+                if (!resolvedFarmId) return true;
+                const sFarmId = s.farmId?._id || s.farmId?.id || s.farmId;
+                if (sFarmId && String(sFarmId).toUpperCase() === String(resolvedFarmId).toUpperCase()) return true;
+                if (s.farmId?.code && resolvedFarmCode && String(s.farmId.code).toUpperCase() === String(resolvedFarmCode).toUpperCase()) return true;
+                if (s.name && resolvedFarmCode && String(s.name).toUpperCase().includes(String(resolvedFarmCode).toUpperCase())) return true;
+                return false;
+              });
+
+              const matchedShed = resolveShedNumber(rawShed, farmScopedSheds.length > 0 ? farmScopedSheds : allSheds, resolvedFarmCode, allFarms);
+              const finalShed = matchedShed || rawShed || '-';
 
               const matchedBreed = findSmartMatch(rawBreed, allowedBreeds);
               
@@ -1309,7 +1420,6 @@ const currentFields = current.fields.map(f => {
               const typeToMatch = resolvedCalf || suffixType || rawCattle;
               const matchedCattle = findSmartMatch(typeToMatch, allowedAnimals);
 
-              const finalShed = matchedShed || rawShed;
               const finalBreed = matchedBreed || rawBreed;
               const finalCattle = matchedCattle || typeToMatch || 'COW';
 
@@ -1322,22 +1432,12 @@ const currentFields = current.fields.map(f => {
               const isDOBValid = rawDOB !== null && rawDOB !== undefined && !isNaN(rawDOB.getTime());
               const isInvalid = !isDeadOrSold && (!isShedValid || !isBreedValid || !isAnimalValid || !isDOBValid);
 
-              let finalFarmId = matchedShedObj 
-                ? (matchedShedObj.farmId?._id || matchedShedObj.farmId?.id || matchedShedObj.farmId)
-                : (rowFarmObj ? (rowFarmObj._id || rowFarmObj.id) : (moduleConfig?.farmCode || router.query.code || null));
-
-              if (!finalFarmId && matchedShed) {
-                const matchingShed = rawShedsList.find(s => String(s.code || '').trim() === String(matchedShed).trim());
-                if (matchingShed) {
-                  finalFarmId = matchingShed.farmId?._id || matchingShed.farmId?.id || matchingShed.farmId || null;
-                }
-              }
-
               const payload = {
                 tag: rawTag,
                 tagId: rawTag,
                 code: `CTL-${Date.now()}-${Math.floor(Math.random()*100000)}`,
-                farmId: finalFarmId,
+                farmId: resolvedFarmId,
+                farmName: resolvedFarm?.name || resolvedFarmCode || undefined,
                 shed: finalShed,
                 shedId: finalShed,
                 cattleType: finalCattle,
@@ -1652,6 +1752,21 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
               log.dateOfBirth = computed.toISOString().split('T')[0];
               log.dob = log.dateOfBirth;
             }
+          }
+        }
+
+        // Dynamically resolve farmId / farmName if missing or empty
+        let currentFarmId = log.farmId && typeof log.farmId === 'object' ? (log.farmId._id || log.farmId.id) : log.farmId;
+        if (!currentFarmId && log.shed && log.shed !== '-') {
+          const matchedFarm = findFarmMatch(log.shed, farmsList);
+          if (matchedFarm) {
+            log.farmId = matchedFarm._id || matchedFarm.id;
+            log.farmName = matchedFarm.name;
+          }
+        } else if (currentFarmId && (!log.farmName || log.farmName === '-')) {
+          const matchedFarm = findFarmMatch(currentFarmId, farmsList);
+          if (matchedFarm) {
+            log.farmName = matchedFarm.name;
           }
         }
       });
