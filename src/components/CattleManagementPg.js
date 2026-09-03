@@ -113,6 +113,15 @@ const cleanShedCode = (val) => {
   return str;
 };
 
+// Normalize boolean / Yes-No input to exact 'Yes' or 'No'
+const normalizeYesNo = (val, defaultVal = 'No') => {
+  if (val === undefined || val === null) return defaultVal;
+  const str = String(val).trim().toLowerCase();
+  if (['yes', 'y', 'true', '1'].includes(str)) return 'Yes';
+  if (['no', 'n', 'false', '0'].includes(str)) return 'No';
+  return defaultVal;
+};
+
 export default function CattleManagementPg({
   moduleConfig,
 }) {
@@ -166,7 +175,8 @@ export default function CattleManagementPg({
         return {
           ...item,
           shed: cleanedShed,
-          shedId: cleanedShed
+          shedId: cleanedShed,
+          farmBorn: normalizeYesNo(item.farmBorn)
         };
       });
       setCattleData(normalized);
@@ -474,12 +484,18 @@ export default function CattleManagementPg({
               recordVal = typeof item.farmId === "object" ? (item.farmId?._id || item.farmId?.id || "") : (item.farmId || "");
             } else if (f.field === "shed" || f.field === "shedId") {
               recordVal = cleanShedCode(item.shed || item.shedId);
+            } else if (f.field === "farmBorn" || f.field === "isFarmBorn") {
+              recordVal = normalizeYesNo(item.farmBorn);
             } else {
               recordVal = item[f.field] || "";
             }
             recordVal = String(recordVal).toLowerCase();
             const optionMatched = selectedValues.some(v => {
-              const valLower = (f.field === "shed" || f.field === "shedId") ? cleanShedCode(v).toLowerCase() : String(v).toLowerCase();
+              const valLower = (f.field === "shed" || f.field === "shedId")
+                ? cleanShedCode(v).toLowerCase()
+                : (f.field === "farmBorn" || f.field === "isFarmBorn")
+                ? normalizeYesNo(v).toLowerCase()
+                : String(v).toLowerCase();
               return valLower === recordVal || recordVal.includes(valLower);
             });
             if (!optionMatched) currentMatch = false;

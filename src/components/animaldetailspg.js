@@ -275,6 +275,15 @@ const cleanShedCode = (val) => {
   return str;
 };
 
+// Normalize boolean / Yes-No input to exact 'Yes' or 'No'
+const normalizeYesNo = (val, defaultVal = 'No') => {
+  if (val === undefined || val === null) return defaultVal;
+  const str = String(val).trim().toLowerCase();
+  if (['yes', 'y', 'true', '1'].includes(str)) return 'Yes';
+  if (['no', 'n', 'false', '0'].includes(str)) return 'No';
+  return defaultVal;
+};
+
 // Helper to extract raw text value from Excel cell (handling strings, formatted richText objects, Date objects, formulas, etc.)
 const getCellStringValue = (cellValue) => {
   if (cellValue === undefined || cellValue === null) return '';
@@ -1346,7 +1355,7 @@ const currentFields = current.fields.map(f => {
               const rawSireBreed = String(row['sire breed'] || '').trim();
               const rawDameId = String(row['dame id'] || '').trim();
               const rawDameBreed = String(row['dame breed'] || '').trim();
-              const rawFarmBorn = String(row['farm born?'] || row['farm born'] || 'No').trim();
+              const rawFarmBorn = normalizeYesNo(row['farm born?'] || row['farm born'] || 'No');
               
               const rawCalvings = Number(row['calving'] || row['calvings']) || 0;
               const rawRemarks = String(row['remarks'] || '').trim();
@@ -1578,6 +1587,10 @@ const currentFields = current.fields.map(f => {
 
   const getFieldOptions = (fieldName) => {
     const isShedField = ['shed', 'shedId', 'oldShed', 'newShed'].includes(fieldName);
+    const isYesNoField = ['farmBorn', 'isFarmBorn'].includes(fieldName);
+    if (isYesNoField) {
+      return ['Yes', 'No'];
+    }
     const fieldConfig = currentFields.find(f => f.name === fieldName);
     const optionsSet = new Set();
     
@@ -1813,6 +1826,9 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
           log.shed = '-';
           log.shedId = '-';
         }
+
+        // Normalize Farm Born to 'Yes' or 'No'
+        log.farmBorn = normalizeYesNo(log.farmBorn);
       });
 
       const isPending = (log) => {
@@ -2111,9 +2127,18 @@ if (!moduleConfig) {
           const selectedValues = Array.isArray(f.value) ? f.value : (f.value ? String(f.value).split(',').map(v => v.trim()).filter(Boolean) : []);
           if (selectedValues.length > 0) {
             const isShedField = ['shed', 'shedId', 'oldShed', 'newShed'].includes(f.field);
-            const recordVal = isShedField ? cleanShedCode(log[f.field]).toLowerCase() : String(log[f.field] || "").toLowerCase();
+            const isYesNoField = ['farmBorn', 'isFarmBorn'].includes(f.field);
+            const recordVal = isShedField
+              ? cleanShedCode(log[f.field]).toLowerCase()
+              : isYesNoField
+              ? normalizeYesNo(log[f.field]).toLowerCase()
+              : String(log[f.field] || "").toLowerCase();
             const optionMatched = selectedValues.some(v => {
-              const valLower = isShedField ? cleanShedCode(v).toLowerCase() : String(v).toLowerCase();
+              const valLower = isShedField
+                ? cleanShedCode(v).toLowerCase()
+                : isYesNoField
+                ? normalizeYesNo(v).toLowerCase()
+                : String(v).toLowerCase();
               if (isCustomFilterModule) {
                 return valLower === recordVal;
               }
@@ -2126,9 +2151,18 @@ if (!moduleConfig) {
           // 🔁 NORMAL FILTER
           if (f.value) {
             const isShedField = ['shed', 'shedId', 'oldShed', 'newShed'].includes(f.field);
-            const filterValues = String(f.value).split(',').map(v => (isShedField ? cleanShedCode(v) : v).trim().toLowerCase()).filter(Boolean);
+            const isYesNoField = ['farmBorn', 'isFarmBorn'].includes(f.field);
+            const filterValues = String(f.value).split(',').map(v => {
+              if (isShedField) return cleanShedCode(v);
+              if (isYesNoField) return normalizeYesNo(v);
+              return v;
+            }).map(v => v.trim().toLowerCase()).filter(Boolean);
             if (filterValues.length > 0) {
-              const recordVal = isShedField ? cleanShedCode(log[f.field]).toLowerCase() : String(log[f.field] || "").toLowerCase();
+              const recordVal = isShedField
+                ? cleanShedCode(log[f.field]).toLowerCase()
+                : isYesNoField
+                ? normalizeYesNo(log[f.field]).toLowerCase()
+                : String(log[f.field] || "").toLowerCase();
               currentMatch = filterValues.some(v => recordVal === v || recordVal.includes(v));
             }
           }
