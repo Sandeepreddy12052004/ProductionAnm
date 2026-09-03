@@ -1112,7 +1112,7 @@ export default function CattleManagementPg({
                                 setHistoryModalAnimal(item);
                               }}
                               className="group/tag inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#16223F]/5 hover:bg-[#16223F] text-[#16223F] hover:text-white font-mono text-xs font-black transition-all border border-[#16223F]/10 hover:border-[#16223F] shadow-2xs cursor-pointer"
-                              title={`Click to view 360° log history for Animal [${tagVal}]`}
+                              title={`Click to view history for Animal [${tagVal}]`}
                             >
                               <span>{tagVal || '-'}</span>
                               <span className="text-[10px] text-slate-400 group-hover/tag:text-amber-300 transition-colors">📜</span>
@@ -1281,7 +1281,7 @@ export default function CattleManagementPg({
                 }}
                 className="w-full flex items-center justify-center gap-2 bg-[#16223F] text-white py-3 rounded-xl font-bold hover:bg-[#16223F]/90 shadow-md transition-all text-xs"
               >
-                📜 View All Logs & 360° History
+                📜 View All Logs 
               </button>
 
               <button
