@@ -139,26 +139,22 @@ export default function FarmOverview({ farmCode }) {
         const isCurrentFarm = (item) => {
           if (!farmCode || !item) return false;
           const searchCode = searchFarmCode;
-
-          // 1. Check Shed Ground Truth first if animal has a shed
           const shedVal = String(item?.shed || item?.shedId || '').trim().toUpperCase();
-          if (shedVal && shedVal !== '-') {
-            const cleanNum = shedVal.replace(/[^0-9]/g, '');
-            const num = cleanNum ? parseInt(cleanNum, 10) : null;
+          const cleanNum = shedVal !== '-' ? shedVal.replace(/[^0-9]/g, '') : '';
+          const num = cleanNum ? parseInt(cleanNum, 10) : null;
 
-            // Strict numeric shed allocation:
-            // Talakondapally (TKP): Sheds 1, 2, 3, 4, 7
-            // Tandur (TDR): Sheds 5, 6
-            if (num !== null) {
-              if ([1, 2, 3, 4, 7].includes(num)) {
-                return searchCode === 'TKP' || currentFarmName.toUpperCase().includes('TALAKONDAPALL') || currentFarmName.toUpperCase().includes('TANAKONDAPALL');
-              }
-              if ([5, 6].includes(num)) {
-                return searchCode === 'TDR' || currentFarmName.toUpperCase().includes('TANDUR');
-              }
+          // 1. Strict numeric shed check if shed number exists
+          if (num !== null && !isNaN(num)) {
+            if ([1, 2, 3, 4, 7].includes(num)) {
+              return searchCode === 'TKP' || currentFarmName.toUpperCase().includes('TALAKONDAPALL') || currentFarmName.toUpperCase().includes('TANAKONDAPALL');
             }
+            if ([5, 6].includes(num)) {
+              return searchCode === 'TDR' || currentFarmName.toUpperCase().includes('TANDUR');
+            }
+          }
 
-            // Check if this shed matches any shed in shedsArray
+          // 2. Check matching shed in shedsArray
+          if (shedVal && shedVal !== '-') {
             const matchingShed = shedsArray.find(s => {
               const sCode = String(s.code || '').trim().toUpperCase();
               const sName = String(s.name || '').trim().toUpperCase();
@@ -169,40 +165,42 @@ export default function FarmOverview({ farmCode }) {
             if (matchingShed) {
               const sFarmId = matchingShed.farmId?._id ? String(matchingShed.farmId._id) : (matchingShed.farmId?.id ? String(matchingShed.farmId.id) : String(matchingShed.farmId || ''));
               const sFarmCode = String(matchingShed.farmId?.code || '').toUpperCase();
-              const isFarmMatch = (currentFarmId && sFarmId.toUpperCase() === currentFarmId.toUpperCase()) || sFarmCode === searchCode;
-              return isFarmMatch;
+              return (currentFarmId && sFarmId.toUpperCase() === currentFarmId.toUpperCase()) || sFarmCode === searchCode;
             }
 
             if (searchCode === 'TKP' && (shedVal.includes('TALAKONDAPALLY') || shedVal.includes('TANAKONDAPALLI') || shedVal.includes('TKP'))) return true;
             if (searchCode === 'TDR' && (shedVal.includes('TANDUR') || shedVal.includes('TDR'))) return true;
           }
 
-          // 2. Check object farmId
-          if (item?.farmId && typeof item.farmId === 'object') {
-            const fId = item.farmId._id ? String(item.farmId._id) : (item.farmId.id ? String(item.farmId.id) : '');
-            if (currentFarmId && fId && fId.toUpperCase() === currentFarmId.toUpperCase()) return true;
-            const fCode = String(item.farmId.code || item.farmId.name || '').toUpperCase();
-            if (fCode && (fCode.includes(searchCode) || searchCode.includes(fCode))) return true;
-          }
+          // 3. Fallback for non-shed entities or unhoused records
+          if (!shedVal || shedVal === '-') {
+            // Check object farmId
+            if (item?.farmId && typeof item.farmId === 'object') {
+              const fId = item.farmId._id ? String(item.farmId._id) : (item.farmId.id ? String(item.farmId.id) : '');
+              if (currentFarmId && fId && fId.toUpperCase() === currentFarmId.toUpperCase()) return true;
+              const fCode = String(item.farmId.code || item.farmId.name || '').toUpperCase();
+              if (fCode && (fCode.includes(searchCode) || searchCode.includes(fCode))) return true;
+            }
 
-          // 3. Check string/primitive farmId
-          const rawId = item?.farmId ? String(item.farmId).trim() : (item?.farm ? String(item.farm).trim() : null);
-          if (rawId) {
-            const rawIdUpper = rawId.toUpperCase();
-            if (currentFarmId && rawIdUpper === currentFarmId.toUpperCase()) return true;
-            if (rawIdUpper === searchCode) return true;
-            if (currentFarmCode && rawIdUpper === currentFarmCode.toUpperCase()) return true;
-            if (searchCode === 'TKP' && (rawIdUpper.includes('TANAKONDAPALLI') || rawIdUpper.includes('TALAKONDAPALLY'))) return true;
-            if (searchCode === 'TDR' && rawIdUpper.includes('TANDUR')) return true;
-          }
+            // Check string/primitive farmId
+            const rawId = item?.farmId ? String(item.farmId).trim() : (item?.farm ? String(item.farm).trim() : null);
+            if (rawId) {
+              const rawIdUpper = rawId.toUpperCase();
+              if (currentFarmId && rawIdUpper === currentFarmId.toUpperCase()) return true;
+              if (rawIdUpper === searchCode) return true;
+              if (currentFarmCode && rawIdUpper === currentFarmCode.toUpperCase()) return true;
+              if (searchCode === 'TKP' && (rawIdUpper.includes('TANAKONDAPALLI') || rawIdUpper.includes('TALAKONDAPALLY'))) return true;
+              if (searchCode === 'TDR' && rawIdUpper.includes('TANDUR')) return true;
+            }
 
-          // 4. Check farmName
-          const fName = String(item?.farmName || item?.farm_name || '').toUpperCase();
-          if (fName && fName !== '-') {
-            if (currentFarmName && (fName.includes(currentFarmName.toUpperCase()) || currentFarmName.toUpperCase().includes(fName))) return true;
-            if (fName.includes(searchCode)) return true;
-            if (searchCode === 'TKP' && (fName.includes('TANAKONDAPALLI') || fName.includes('TALAKONDAPALLY'))) return true;
-            if (searchCode === 'TDR' && fName.includes('TANDUR')) return true;
+            // Check farmName
+            const fName = String(item?.farmName || item?.farm_name || '').toUpperCase();
+            if (fName && fName !== '-') {
+              if (currentFarmName && (fName.includes(currentFarmName.toUpperCase()) || currentFarmName.toUpperCase().includes(fName))) return true;
+              if (fName.includes(searchCode)) return true;
+              if (searchCode === 'TKP' && (fName.includes('TANAKONDAPALLI') || fName.includes('TALAKONDAPALLY'))) return true;
+              if (searchCode === 'TDR' && fName.includes('TANDUR')) return true;
+            }
           }
 
           return false;
@@ -210,7 +208,8 @@ export default function FarmOverview({ farmCode }) {
 
         const isActiveAnimal = (item) => {
           const status = String(item?.status || 'ACTIVE').trim().toUpperCase();
-          return status !== 'SOLD' && status !== 'DECEASED' && status !== 'DEAD';
+          const shed = String(item?.shed || item?.shedId || '').trim();
+          return status !== 'SOLD' && status !== 'DECEASED' && status !== 'DEAD' && shed !== '' && shed !== '-';
         };
 
         const totalCattle = cattleArray.filter(item => 
