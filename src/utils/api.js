@@ -34,6 +34,9 @@ export function clearAuthSession(redirectToLogin = true) {
     localStorage.removeItem('user');
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('__active_farm_id__');
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
     document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
   } catch (e) {

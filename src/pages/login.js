@@ -1,15 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { motion } from "framer-motion"; // For that premium smooth entrance
 import { swalError } from "@/utils/swal";
-import { formatApiUrl } from "@/utils/api";
+import { formatApiUrl, clearAuthSession } from "@/utils/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ identifier: "", password: "" });
+
+  useEffect(() => {
+    // Clear any residual session data from localStorage/cookies when login page is visited
+    clearAuthSession(false);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -70,11 +75,14 @@ export default function LoginPage() {
         
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("token", token);
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("isLoggedIn", "true");
+        }
 
-        // Set cookies so that Next.js Edge Middleware can inspect route permissions
+        // Set session cookies (no max-age, so the cookie is deleted automatically when the browser is closed)
         try {
-          document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
-          document.cookie = `user=${encodeURIComponent(JSON.stringify(userObj || { role: 'SUPER_ADMIN' }))}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `token=${token}; path=/; SameSite=Lax`;
+          document.cookie = `user=${encodeURIComponent(JSON.stringify(userObj || { role: 'SUPER_ADMIN' }))}; path=/; SameSite=Lax`;
         } catch (cookieErr) {
           console.error("Failed to set authentication cookies:", cookieErr);
         }
