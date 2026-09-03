@@ -584,6 +584,9 @@ useEffect(() => {
     if (isMounted) {
       setRawCattleList(Array.isArray(cattle) ? cattle : (cattle?.data ?? []));
       setRawShedsList(sheds || []);
+      try {
+        sessionStorage.setItem('__cached_sheds_list__', JSON.stringify(sheds || []));
+      } catch (e) {}
       const shedSet = new Set();
       (sheds || []).forEach(s => {
         if (s.name) shedSet.add(String(s.name).trim().toUpperCase());
@@ -1799,13 +1802,30 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
           }
         }
 
-        // Dynamically resolve farmId / farmName if missing or empty
+        // Dynamically resolve farmId / farmName from rawShedsList / farmsList if missing or empty
         let currentFarmId = log.farmId && typeof log.farmId === 'object' ? (log.farmId._id || log.farmId.id) : log.farmId;
         if (!currentFarmId && log.shed && log.shed !== '-') {
-          const matchedFarm = findFarmMatch(log.shed, farmsList);
-          if (matchedFarm) {
-            log.farmId = matchedFarm._id || matchedFarm.id;
-            log.farmName = matchedFarm.name;
+          const cleanCode = cleanShedCode(log.shed);
+          const matchedShed = rawShedsList.find(s => {
+            const sCode = cleanShedCode(s.code || s.name);
+            return sCode === cleanCode || String(s.code).trim() === String(log.shed).trim() || String(s.name).trim().toUpperCase() === String(log.shed).trim().toUpperCase();
+          });
+          if (matchedShed) {
+            const sFarmId = matchedShed.farmId?._id || matchedShed.farmId?.id || matchedShed.farmId;
+            if (sFarmId) {
+              log.farmId = sFarmId;
+              const matchedFarm = farmsList.find(f => (f._id || f.id) === sFarmId || f.code === sFarmId || f.name === sFarmId);
+              if (matchedFarm) {
+                log.farmName = matchedFarm.name;
+              }
+            }
+          }
+          if (!log.farmId) {
+            const matchedFarm = findFarmMatch(log.shed, farmsList);
+            if (matchedFarm) {
+              log.farmId = matchedFarm._id || matchedFarm.id;
+              log.farmName = matchedFarm.name;
+            }
           }
         } else if (currentFarmId && (!log.farmName || log.farmName === '-')) {
           const matchedFarm = findFarmMatch(currentFarmId, farmsList);

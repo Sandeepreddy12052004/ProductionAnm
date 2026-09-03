@@ -510,6 +510,13 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
           } catch (e) {}
         }
 
+        // Cache sheds list for client-side farm matching
+        if (cleanPath === '/api/sheds' && Array.isArray(finalData)) {
+          try {
+            sessionStorage.setItem('__cached_sheds_list__', JSON.stringify(finalData));
+          } catch (e) {}
+        }
+
         if (restrictedFarmId && !isBypassedEndpoint) {
           // Helper to check if item matches the restricted farm
           const matchesRestrictedFarm = (item) => {
@@ -547,41 +554,74 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
               }
             } catch (e) {}
 
-            if (targetFarmObj) {
-              const targetId = String(targetFarmObj._id || targetFarmObj.id || '').toUpperCase();
-              const targetCode = String(targetFarmObj.code || '').toUpperCase();
-              const targetName = String(targetFarmObj.name || '').toUpperCase();
+            const targetId = targetFarmObj ? String(targetFarmObj._id || targetFarmObj.id || '').toUpperCase() : strRestrictedId;
+            const targetCode = targetFarmObj ? String(targetFarmObj.code || '').toUpperCase() : '';
+            const targetName = targetFarmObj ? String(targetFarmObj.name || '').toUpperCase() : '';
 
-              if (strItemFarmId && (strItemFarmId === targetId || strItemFarmId === targetCode || strItemFarmId === targetName)) {
+            // 1. Check direct farmId / farm match
+            if (strItemFarmId) {
+              if (strItemFarmId === targetId || (targetCode && strItemFarmId === targetCode) || (targetName && strItemFarmId === targetName)) {
                 return true;
               }
-              if (strItemFarm && (strItemFarm === targetId || strItemFarm === targetCode || strItemFarm === targetName)) {
+              // Item explicitly has a DIFFERENT farmId
+              return false;
+            }
+
+            if (strItemFarm) {
+              if (strItemFarm === targetId || (targetCode && strItemFarm === targetCode) || (targetName && strItemFarm === targetName)) {
                 return true;
               }
+              // Item explicitly has a DIFFERENT farm
+              return false;
+            }
 
-              const itemFarmName = String(item.farmName || item.farm_name || '').toUpperCase();
-              if (itemFarmName && itemFarmName !== '-') {
-                if (itemFarmName === targetName || itemFarmName === targetCode || itemFarmName.includes(targetCode) || targetName.includes(itemFarmName)) {
-                  return true;
+            // 2. Check item farmName match
+            const itemFarmName = String(item.farmName || item.farm_name || '').toUpperCase();
+            if (itemFarmName && itemFarmName !== '-') {
+              if (itemFarmName === targetName || itemFarmName === targetCode || itemFarmName.includes(targetCode) || targetName.includes(itemFarmName)) {
+                return true;
+              }
+              if (targetCode === 'TKP' && (itemFarmName.includes('TANAKONDAPALLI') || itemFarmName.includes('TALAKONDAPALLY'))) return true;
+              if (targetCode === 'TDR' && itemFarmName.includes('TANDUR')) return true;
+              // Item has an explicit different farmName
+              return false;
+            }
+
+            // 3. Resolve from shed ownership using cached sheds
+            const itemShed = String(item.shed || item.shedId || '').toUpperCase();
+            if (itemShed && itemShed !== '-') {
+              try {
+                const cachedSheds = sessionStorage.getItem('__cached_sheds_list__');
+                if (cachedSheds) {
+                  const sl = JSON.parse(cachedSheds);
+                  if (Array.isArray(sl)) {
+                    const cleanNum = itemShed.replace(/[^0-9]/g, '');
+                    const matchingShed = sl.find(s => {
+                      const sCode = String(s.code || '').trim().toUpperCase();
+                      const sName = String(s.name || '').trim().toUpperCase();
+                      return sCode === itemShed || (cleanNum && sCode === cleanNum) || sName === itemShed || (cleanNum && sName.includes(`SHED ${cleanNum}`));
+                    });
+                    if (matchingShed && matchingShed.farmId) {
+                      const sFarmId = String(matchingShed.farmId._id || matchingShed.farmId.id || matchingShed.farmId).toUpperCase();
+                      if (sFarmId === targetId || (targetCode && sFarmId === targetCode) || (targetName && sFarmId === targetName)) {
+                        return true;
+                      }
+                      // Shed explicitly belongs to a DIFFERENT farm!
+                      return false;
+                    }
+                  }
                 }
-                if (targetCode === 'TKP' && (itemFarmName.includes('TANAKONDAPALLI') || itemFarmName.includes('TALAKONDAPALLY'))) return true;
-                if (targetCode === 'TDR' && itemFarmName.includes('TANDUR')) return true;
-              }
+              } catch (e) {}
 
-              const itemShed = String(item.shed || item.shedId || '').toUpperCase();
-              if (itemShed && targetCode && itemShed !== '-') {
+              // Fallback text check on shed name
+              if (targetCode) {
                 if (itemShed.includes(targetCode)) return true;
                 if (targetCode === 'TKP' && (itemShed.includes('TALAKONDAPALLY') || itemShed.includes('TANAKONDAPALLI'))) return true;
                 if (targetCode === 'TDR' && itemShed.includes('TANDUR')) return true;
+                // If shed has other farm prefix (e.g. TKP while looking for TDR)
+                if (itemShed.includes('TKP') || itemShed.includes('TALAKONDAPALLY')) return false;
+                if (itemShed.includes('TDR') || itemShed.includes('TANDUR')) return false;
               }
-
-              // Item has an explicit different farm
-              if (strItemFarmId || strItemFarm) {
-                return false;
-              }
-            } else {
-              if (strItemFarmId && strItemFarmId !== strRestrictedId) return false;
-              if (strItemFarm && strItemFarm !== strRestrictedId) return false;
             }
 
             // If the item itself is a farm object (returned from /api/farms), check its own ID
@@ -593,7 +633,8 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
               }
             }
 
-            return true;
+            // If we are filtering by a specific farm (not ALL), records with no farm attribution do not belong to this farm
+            return false;
           };
 
           if (Array.isArray(finalData)) {
