@@ -126,11 +126,58 @@ export default function FarmOverview({ farmCode }) {
         const currentFarmName = currentFarm?.name || '';
         const currentFarmCode = currentFarm?.code || farmCode || '';
 
+        const cleanShedCode = (val) => {
+          if (val === undefined || val === null) return "-";
+          const str = String(val).trim();
+          if (str === "" || str === "-" || str.toLowerCase() === "null" || str.toLowerCase() === "undefined") {
+            return "-";
+          }
+          const digits = str.replace(/[^0-9]/g, "");
+          return digits ? digits : str;
+        };
+
         const isCurrentFarm = (item) => {
-          if (!farmCode) return false;
+          if (!farmCode || !item) return false;
           const searchCode = searchFarmCode;
 
-          // 1. Check object farmId
+          // 1. Check Shed Ground Truth first if animal has a shed
+          const shedVal = String(item?.shed || item?.shedId || '').trim().toUpperCase();
+          if (shedVal && shedVal !== '-') {
+            const cleanNum = shedVal.replace(/[^0-9]/g, '');
+            const num = cleanNum ? parseInt(cleanNum, 10) : null;
+
+            // Strict numeric shed allocation:
+            // Talakondapally (TKP): Sheds 1, 2, 3, 4, 7
+            // Tandur (TDR): Sheds 5, 6
+            if (num !== null) {
+              if ([1, 2, 3, 4, 7].includes(num)) {
+                return searchCode === 'TKP' || currentFarmName.toUpperCase().includes('TALAKONDAPALL') || currentFarmName.toUpperCase().includes('TANAKONDAPALL');
+              }
+              if ([5, 6].includes(num)) {
+                return searchCode === 'TDR' || currentFarmName.toUpperCase().includes('TANDUR');
+              }
+            }
+
+            // Check if this shed matches any shed in shedsArray
+            const matchingShed = shedsArray.find(s => {
+              const sCode = String(s.code || '').trim().toUpperCase();
+              const sName = String(s.name || '').trim().toUpperCase();
+              const sClean = cleanShedCode(s.code || s.name);
+              return sCode === shedVal || sName === shedVal || (cleanNum && (sCode === cleanNum || sClean === cleanNum || sName.includes(`SHED ${cleanNum}`) || sName.includes(`SHED${cleanNum}`)));
+            });
+
+            if (matchingShed) {
+              const sFarmId = matchingShed.farmId?._id ? String(matchingShed.farmId._id) : (matchingShed.farmId?.id ? String(matchingShed.farmId.id) : String(matchingShed.farmId || ''));
+              const sFarmCode = String(matchingShed.farmId?.code || '').toUpperCase();
+              const isFarmMatch = (currentFarmId && sFarmId.toUpperCase() === currentFarmId.toUpperCase()) || sFarmCode === searchCode;
+              return isFarmMatch;
+            }
+
+            if (searchCode === 'TKP' && (shedVal.includes('TALAKONDAPALLY') || shedVal.includes('TANAKONDAPALLI') || shedVal.includes('TKP'))) return true;
+            if (searchCode === 'TDR' && (shedVal.includes('TANDUR') || shedVal.includes('TDR'))) return true;
+          }
+
+          // 2. Check object farmId
           if (item?.farmId && typeof item.farmId === 'object') {
             const fId = item.farmId._id ? String(item.farmId._id) : (item.farmId.id ? String(item.farmId.id) : '');
             if (currentFarmId && fId && fId.toUpperCase() === currentFarmId.toUpperCase()) return true;
@@ -138,7 +185,7 @@ export default function FarmOverview({ farmCode }) {
             if (fCode && (fCode.includes(searchCode) || searchCode.includes(fCode))) return true;
           }
 
-          // 2. Check string/primitive farmId
+          // 3. Check string/primitive farmId
           const rawId = item?.farmId ? String(item.farmId).trim() : (item?.farm ? String(item.farm).trim() : null);
           if (rawId) {
             const rawIdUpper = rawId.toUpperCase();
@@ -149,7 +196,7 @@ export default function FarmOverview({ farmCode }) {
             if (searchCode === 'TDR' && rawIdUpper.includes('TANDUR')) return true;
           }
 
-          // 3. Check farmName
+          // 4. Check farmName
           const fName = String(item?.farmName || item?.farm_name || '').toUpperCase();
           if (fName && fName !== '-') {
             if (currentFarmName && (fName.includes(currentFarmName.toUpperCase()) || currentFarmName.toUpperCase().includes(fName))) return true;
@@ -158,33 +205,16 @@ export default function FarmOverview({ farmCode }) {
             if (searchCode === 'TDR' && fName.includes('TANDUR')) return true;
           }
 
-          // 4. Check shed name or shed code against farm sheds
-          const shedVal = String(item?.shed || item?.shedId || '').trim().toUpperCase();
-          if (shedVal && shedVal !== '-') {
-            if (shedVal.includes(searchCode)) return true;
-            if (searchCode === 'TKP' && (shedVal.includes('TANAKONDAPALLI') || shedVal.includes('TALAKONDAPALLY'))) return true;
-            if (searchCode === 'TDR' && shedVal.includes('TANDUR')) return true;
-
-            // Check if this shed matches any shed belonging to this farm in shedsArray
-            const matchingShed = shedsArray.find(s => {
-              const sFarmId = s.farmId?._id ? String(s.farmId._id) : (s.farmId?.id ? String(s.farmId.id) : String(s.farmId || ''));
-              const sFarmCode = String(s.farmId?.code || '').toUpperCase();
-              const isFarmMatch = (currentFarmId && sFarmId.toUpperCase() === currentFarmId.toUpperCase()) || sFarmCode === searchCode;
-              if (!isFarmMatch) return false;
-              const sCode = String(s.code || '').trim().toUpperCase();
-              const sName = String(s.name || '').trim().toUpperCase();
-              return sCode === shedVal || sName === shedVal || sName.includes(shedVal);
-            });
-            if (matchingShed) return true;
-          }
-
           return false;
         };
 
+        const isActiveAnimal = (item) => {
+          const status = String(item?.status || 'ACTIVE').trim().toUpperCase();
+          return status !== 'SOLD' && status !== 'DECEASED' && status !== 'DEAD';
+        };
+
         const totalCattle = cattleArray.filter(item => 
-          isCurrentFarm(item) && 
-          item?.status !== 'SOLD' && 
-          item?.status !== 'DECEASED'
+          isCurrentFarm(item) && isActiveAnimal(item)
         ).length;
         const activeSheds = shedsArray.filter(s => isCurrentFarm(s) && s?.status === 'ACTIVE').length;
         const sickAnimals = treatmentsArray.filter(t => isCurrentFarm(t) && t?.healthStatus === 'Pending').length;
@@ -200,23 +230,20 @@ export default function FarmOverview({ farmCode }) {
           .reduce((sum, record) => sum + (Number(record?.quantity) || 0), 0);
 
         const inactiveList = cattleArray.filter(item => 
-          isCurrentFarm(item) && 
-          (item?.status === 'SOLD' || item?.status === 'DECEASED')
+          isCurrentFarm(item) && !isActiveAnimal(item)
         );
 
         const activeCattle = cattleArray.filter(item => 
-          isCurrentFarm(item) && 
-          item?.status !== 'SOLD' && 
-          item?.status !== 'DECEASED'
+          isCurrentFarm(item) && isActiveAnimal(item)
         );
 
         const enrichedSheds = shedsArray.filter(isCurrentFarm).map(shed => {
           const occupancy = activeCattle.filter(c => {
-            const cShed = String(c.shed || c.shedId || '').trim().toLowerCase();
-            const sCode = String(shed.code || '').trim().toLowerCase();
+            const cShed = cleanShedCode(c.shed || c.shedId).toLowerCase();
+            const sCode = cleanShedCode(shed.code || shed.name).toLowerCase();
             const sName = String(shed.name || '').trim().toLowerCase();
             const sId = String(shed._id || shed.id || '').trim().toLowerCase();
-            return cShed === sCode || cShed === sName || cShed === sId;
+            return cShed === sCode || cShed === sName || cShed === sId || String(c.shed || c.shedId || '').trim().toLowerCase() === sCode;
           }).length;
           
           const remainingCapacity = Math.max(0, (Number(shed.capacity) || 0) - occupancy);
