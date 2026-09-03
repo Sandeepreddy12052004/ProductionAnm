@@ -147,7 +147,7 @@ export default function CattleManagementPg({
   ]);
   const [filterSearchQueries, setFilterSearchQueries] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [serverPagination, setServerPagination] = useState(null);
 
   const canCreate = hasActionPermission('CATTLE_MANAGEMENT', 'CATTLE', 'create');
