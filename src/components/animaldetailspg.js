@@ -2202,6 +2202,98 @@ if (!moduleConfig) {
     return isMatched;
   };
 
+  const getActiveFarmId = () => {
+    if (typeof window === 'undefined') return 'ALL';
+    try {
+      const storedUser = localStorage.getItem('user');
+      const userObj = storedUser ? JSON.parse(storedUser) : null;
+      const rawFarmId = userObj?.farmId && typeof userObj.farmId === 'object'
+        ? (userObj.farmId._id || userObj.farmId.id)
+        : userObj?.farmId;
+      const isGlobal = !rawFarmId || rawFarmId === 'ALL' || String(userObj?.role).toUpperCase() === 'SUPER_ADMIN';
+      if (!isGlobal && rawFarmId) {
+        return String(rawFarmId).trim();
+      }
+      const pageKey = '__active_farm_id_' + (window.location.pathname || '/animals').replace(/\//g, '_') + '__';
+      return localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+    } catch (e) {
+      return 'ALL';
+    }
+  };
+
+  const matchesFarmFilter = (log) => {
+    const activeFarmId = getActiveFarmId();
+    if (!activeFarmId || activeFarmId === 'ALL') return true;
+
+    const strActiveId = String(activeFarmId).trim().toUpperCase();
+    const targetFarm = farmsList.find(f => 
+      String(f._id || f.id).toUpperCase() === strActiveId ||
+      String(f.code || '').toUpperCase() === strActiveId ||
+      String(f.name || '').toUpperCase() === strActiveId
+    );
+
+    const targetId = targetFarm ? String(targetFarm._id || targetFarm.id || '').toUpperCase() : strActiveId;
+    const targetCode = targetFarm ? String(targetFarm.code || '').toUpperCase() : '';
+    const targetName = targetFarm ? String(targetFarm.name || '').toUpperCase() : '';
+
+    // 1. Direct log.farmId / log.farm match
+    const logFarmId = log.farmId && typeof log.farmId === 'object' ? (log.farmId._id || log.farmId.id) : log.farmId;
+    const strLogFarmId = logFarmId ? String(logFarmId).trim().toUpperCase() : '';
+    if (strLogFarmId) {
+      return strLogFarmId === targetId || (targetCode && strLogFarmId === targetCode) || (targetName && strLogFarmId === targetName);
+    }
+
+    // 2. Direct log.farmName match
+    const strFarmName = String(log.farmName || '').trim().toUpperCase();
+    if (strFarmName && strFarmName !== '-') {
+      if (strFarmName === targetName || (targetCode && strFarmName === targetCode) || strFarmName.includes(targetName) || targetName.includes(strFarmName)) {
+        return true;
+      }
+      if (targetCode === 'TKP' && (strFarmName.includes('TALAKONDAPALLY') || strFarmName.includes('TANAKONDAPALLI'))) return true;
+      if (targetCode === 'TDR' && strFarmName.includes('TANDUR')) return true;
+      return false;
+    }
+
+    // 3. Shed-based resolution from rawShedsList
+    const logShed = String(log.shed || log.shedId || '').trim().toUpperCase();
+    if (logShed && logShed !== '-') {
+      const cleanNum = logShed.replace(/[^0-9]/g, '');
+      const matchedShed = rawShedsList.find(s => {
+        const sCode = String(s.code || '').trim().toUpperCase();
+        const sName = String(s.name || '').trim().toUpperCase();
+        const sCleanCode = cleanShedCode(s.code || s.name);
+        return sCode === logShed || (cleanNum && sCode === cleanNum) || (cleanNum && sCleanCode === cleanNum) || sName === logShed;
+      });
+
+      if (matchedShed && matchedShed.farmId) {
+        const sFarmId = String(matchedShed.farmId._id || matchedShed.farmId.id || matchedShed.farmId).toUpperCase();
+        return sFarmId === targetId || (targetCode && sFarmId === targetCode) || (targetName && sFarmId === targetName);
+      }
+
+      // Hardcoded fallback by shed numbers:
+      // Talakondapally: 1, 2, 3, 4, 7
+      // Tandur: 5, 6
+      if (cleanNum) {
+        const num = parseInt(cleanNum, 10);
+        if ([1, 2, 3, 4, 7].includes(num)) {
+          return targetCode === 'TKP' || targetName.includes('TALAKONDAPALL') || targetName.includes('TANAKONDAPALL');
+        }
+        if ([5, 6].includes(num)) {
+          return targetCode === 'TDR' || targetName.includes('TANDUR');
+        }
+      }
+
+      // Fallback text check on shed string
+      if (targetCode) {
+        if (logShed.includes(targetCode)) return true;
+        if (targetCode === 'TKP' && (logShed.includes('TALAKONDAPALLY') || logShed.includes('TANAKONDAPALLI'))) return true;
+        if (targetCode === 'TDR' && logShed.includes('TANDUR')) return true;
+      }
+    }
+
+    return false;
+  };
+
   const matchesCategory = (log) => {
     if (selectedCategory === 'ALL') return true;
     const type = String(log.cattleType || log.animalType || '').trim().toUpperCase();
@@ -2211,35 +2303,36 @@ if (!moduleConfig) {
   const activeCount = logs.filter(log => {
     const statusUpper = String(log.status || '').toUpperCase();
     const isTabMatch = statusUpper !== 'SOLD' && statusUpper !== 'DECEASED' && statusUpper !== 'DEAD';
-    return isTabMatch && matchesAppliedFilters(log) && matchesCategory(log);
+    return isTabMatch && matchesFarmFilter(log) && matchesAppliedFilters(log) && matchesCategory(log);
   }).length;
   const soldCount = logs.filter(log => {
     const isTabMatch = String(log.status || '').toUpperCase() === 'SOLD';
-    return isTabMatch && matchesAppliedFilters(log) && matchesCategory(log);
+    return isTabMatch && matchesFarmFilter(log) && matchesAppliedFilters(log) && matchesCategory(log);
   }).length;
   const deceasedCount = logs.filter(log => {
     const statusUpper = String(log.status || '').toUpperCase();
     const isTabMatch = statusUpper === 'DECEASED' || statusUpper === 'DEAD';
-    return isTabMatch && matchesAppliedFilters(log) && matchesCategory(log);
+    return isTabMatch && matchesFarmFilter(log) && matchesAppliedFilters(log) && matchesCategory(log);
   }).length;
 
   const crossingPendingCount = logs.filter(log => {
     const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
     const isTabMatch = pregStatus === 'PENDING' || pregStatus === '' || !pregStatus;
-    return isTabMatch && matchesAppliedFilters(log);
+    return isTabMatch && matchesFarmFilter(log) && matchesAppliedFilters(log);
   }).length;
   const crossingPositiveCount = logs.filter(log => {
     const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
     const isTabMatch = pregStatus === 'POSITIVE';
-    return isTabMatch && matchesAppliedFilters(log);
+    return isTabMatch && matchesFarmFilter(log) && matchesAppliedFilters(log);
   }).length;
   const crossingNegativeCount = logs.filter(log => {
     const pregStatus = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
     const isTabMatch = pregStatus === 'NEGATIVE';
-    return isTabMatch && matchesAppliedFilters(log);
+    return isTabMatch && matchesFarmFilter(log) && matchesAppliedFilters(log);
   }).length;
 
   const filteredLogs = logs.filter(log => {
+    if (!matchesFarmFilter(log)) return false;
     if (current.id === 'livestock') {
       const statusUpper = String(log.status || '').toUpperCase();
       if (livestockSubTab === 'ACTIVE') {
