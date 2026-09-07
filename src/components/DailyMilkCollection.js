@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/router";
 import { api } from "../utils/api";
-import { swalSuccess, swalError } from "../utils/swal";
+import { swalSuccess, swalError, swalConfirm } from "../utils/swal";
 import LivestockTagInput from "./LivestockTagInput";
 import SkeletonLoader from "./SkeletonLoader";
 import ModulePageHeader from "./ModulePageHeader";
@@ -18,7 +18,8 @@ import {
   ArrowUpDown,
   TrendingUp,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from "lucide-react";
 
 export default function DailyMilkCollection() {
@@ -581,6 +582,143 @@ export default function DailyMilkCollection() {
     }
   };
 
+  // Clear single animal milk volume
+  const handleClearSingleAnimalMilk = async (tag) => {
+    const cleanTag = String(tag).trim().toUpperCase();
+    const updatedQuantities = { ...quantities };
+    delete updatedQuantities[cleanTag];
+    setQuantities(updatedQuantities);
+
+    if (selectedFarmId && selectedDate && session) {
+      try {
+        await api.milk.collections.bulkDelete({
+          farmId: selectedFarmId,
+          date: selectedDate,
+          session,
+          tag: cleanTag,
+        });
+        collectionsInitKey.current = "";
+        await fetchCollectionsAndAnimals();
+      } catch (err) {
+        console.warn("Non-blocking single milk delete:", err);
+      }
+    }
+  };
+
+  // Delete / Clear milk collection records for active shed and session
+  const handleDeleteSessionData = async () => {
+    if (!selectedFarmId) {
+      swalError("Error", "Please select a farm first.");
+      return;
+    }
+    if (!activeShedId) {
+      swalError("Error", "Please select an active shed first.");
+      return;
+    }
+
+    const confirm = await swalConfirm(
+      "Delete Milk Data?",
+      `Are you sure you want to delete milk collection records for ${activeShedId === 'PREGNANT_WORKFLOW' ? 'Pregnant Animals' : `Shed ${activeShedId}`} on ${selectedDate} (${session})? This will reset recorded milk quantities for this shed.`
+    );
+    if (!confirm) return;
+
+    setIsSaving(true);
+    try {
+      const shedTags = activeShedAnimals.map((a) => String(a.tag || a.tag_id).toUpperCase());
+      await api.milk.collections.bulkDelete({
+        farmId: selectedFarmId,
+        shedId: activeShedId === 'PREGNANT_WORKFLOW' ? 'ALL' : activeShedId,
+        date: selectedDate,
+        session,
+        tags: shedTags,
+      });
+
+      // Clear local state quantities for this shed's animals
+      const updatedQuantities = { ...quantities };
+      shedTags.forEach((tag) => {
+        delete updatedQuantities[tag];
+      });
+      setQuantities(updatedQuantities);
+
+      const updatedSelf = { ...selfConsumptions };
+      delete updatedSelf[activeShedId];
+      setSelfConsumptions(updatedSelf);
+
+      swalSuccess("Deleted", `Milk collection records for ${activeShedId} (${session}) deleted successfully.`);
+      collectionsInitKey.current = "";
+      await fetchCollectionsAndAnimals();
+    } catch (err) {
+      console.error("Failed to delete milk collection records:", err);
+      swalError("Error", err?.message || "Failed to delete milk collection records.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete all recorded milk collection records for this date and session across all sheds
+  const handleDeleteAllSessionData = async () => {
+    if (!selectedFarmId) {
+      swalError("Error", "Please select a farm first.");
+      return;
+    }
+
+    const confirm = await swalConfirm(
+      "Clear All Sheds Milk?",
+      `Are you sure you want to delete all recorded milk collection data for ${session} on ${selectedDate}? All sheds' recorded volumes will be reset to zero.`
+    );
+    if (!confirm) return;
+
+    setIsSaving(true);
+    try {
+      await api.milk.collections.bulkDelete({
+        farmId: selectedFarmId,
+        shedId: 'ALL',
+        date: selectedDate,
+        session,
+      });
+
+      setQuantities({});
+      setSelfConsumptions({});
+
+      swalSuccess("Deleted", `All milk collection records for ${session} on ${selectedDate} cleared successfully.`);
+      collectionsInitKey.current = "";
+      await fetchCollectionsAndAnimals();
+    } catch (err) {
+      console.error("Failed to clear all session milk:", err);
+      swalError("Error", err?.message || "Failed to clear milk collection records.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete all imported test cattle and records from backend database
+  const handleDeleteImportedData = async () => {
+    const confirm = await swalConfirm(
+      "Delete Imported Test Data?",
+      "Are you sure you want to delete all imported cattle and records from the backend database? This will clean imported test data so you can test on a completely fresh slate. Farms, sheds, and settings remain untouched."
+    );
+    if (!confirm) return;
+
+    setIsSaving(true);
+    try {
+      const res = await api.cattle.clearImported({ module: 'all' });
+      const total = res?.data?.totalDeleted ?? res?.totalDeleted ?? 0;
+
+      // Reset local inputs
+      setQuantities({});
+      setSelfConsumptions({});
+
+      swalSuccess("Imported Data Cleared", `Successfully deleted ${total} imported test record(s) from backend.`);
+      collectionsInitKey.current = "";
+      await fetchCollectionsAndAnimals();
+    } catch (err) {
+      console.error("Failed to clear imported data:", err);
+      swalError("Error", err?.message || "Failed to delete imported data.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Open settings to reorder farms
   const openSettings = () => {
     setTempFarmsOrder([...farms]);
@@ -1011,9 +1149,21 @@ export default function DailyMilkCollection() {
                                 <span className="text-[9px] font-extrabold text-slate-300">
                                   #{animalIndex}
                                 </span>
-                                <span className="text-[10px] font-black text-slate-700 font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm max-w-[70%] truncate" title={tag}>
-                                  {tag}
-                                </span>
+                                <div className="flex items-center gap-1 max-w-[75%] justify-end">
+                                  <span className="text-[10px] font-black text-slate-700 font-mono bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-sm truncate" title={tag}>
+                                    {tag}
+                                  </span>
+                                  {quantity !== "" && Number(quantity) > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleClearSingleAnimalMilk(tag)}
+                                      className="p-1 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded transition-colors"
+                                      title={`Reset milk yield for ${tag}`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               {((String(animal.status).toUpperCase() === 'PREGNANT') ||
                                 (activeShedObj?.lineManagement === "Yes" && (!animal.lineNo || Number(animal.lineNo) === 0))) && (
@@ -1109,18 +1259,30 @@ export default function DailyMilkCollection() {
                       </div>
                     )}
 
-                    {/* Save this specific shed */}
-                    <button
-                      onClick={handleSaveActiveShed}
-                      disabled={isSaving}
-                      className={`px-6 h-12 text-white font-extrabold rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 ml-auto lg:ml-0 ${activeShedId === "PREGNANT_WORKFLOW"
-                          ? "bg-violet-600 hover:bg-violet-700 shadow-violet-600/10 hover:shadow-violet-600/20"
-                          : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 hover:shadow-emerald-600/20"
-                        }`}
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{isSaving ? "Saving..." : `Save ${activeShedId === "PREGNANT_WORKFLOW" ? "Pregnant Animals" : activeShedId}`}</span>
-                    </button>
+                    {/* Save or Clear this specific shed */}
+                    <div className="flex items-center gap-2 ml-auto lg:ml-0">
+                      <button
+                        onClick={handleDeleteSessionData}
+                        disabled={isSaving || !activeShedId}
+                        className="px-4 h-12 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                        title="Delete recorded milk collections for this shed"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600" />
+                        <span>Clear Shed</span>
+                      </button>
+
+                      <button
+                        onClick={handleSaveActiveShed}
+                        disabled={isSaving}
+                        className={`px-6 h-12 text-white font-extrabold rounded-2xl shadow-lg active:scale-[0.98] transition-all duration-300 text-xs flex items-center justify-center gap-2 ${activeShedId === "PREGNANT_WORKFLOW"
+                            ? "bg-violet-600 hover:bg-violet-700 shadow-violet-600/10 hover:shadow-violet-600/20"
+                            : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10 hover:shadow-emerald-600/20"
+                          }`}
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{isSaving ? "Saving..." : `Save ${activeShedId === "PREGNANT_WORKFLOW" ? "Pregnant Animals" : activeShedId}`}</span>
+                      </button>
+                    </div>
                   </div>
 
                 </div>
@@ -1202,6 +1364,41 @@ export default function DailyMilkCollection() {
                 <RefreshCw className="w-4 h-4 text-slate-400" />
                 <span>Switch to {session === "MORNING" ? "Evening" : "Morning"} Session</span>
               </button>
+
+              {/* Delete / Clear Action Panel */}
+              <div className="pt-2 border-t border-slate-150 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDeleteSessionData}
+                    disabled={isSaving || !activeShedId}
+                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    title="Clear recorded milk for current active shed"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Clear Shed Milk</span>
+                  </button>
+
+                  <button
+                    onClick={handleDeleteAllSessionData}
+                    disabled={isSaving}
+                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    title="Clear recorded milk across ALL sheds for this session"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Clear All Milk</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleDeleteImportedData}
+                  disabled={isSaving}
+                  className="w-full py-3 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-700 font-black rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                  title="Delete imported cattle and test data from backend database to start on fresh slate"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Delete Imported Test Data</span>
+                </button>
+              </div>
             </div>
 
           </div>

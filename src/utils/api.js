@@ -777,6 +777,7 @@ export const api = {
       update:            (id, data) => apiRequest(`/api/milk/collections/${id}`, 'PUT', data),
       delete:            (id)       => apiRequest(`/api/milk/collections/${id}`, 'DELETE'),
       bulkCreate:        (data)     => apiRequest('/api/milk/collections/bulk', 'POST', data),
+      bulkDelete:        (data)     => apiRequest('/api/milk/collections/bulk', 'DELETE', data),
     },
     procurement: {
       getAll:            ()         => apiRequest('/api/milk/procurement'),
