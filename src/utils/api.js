@@ -702,6 +702,8 @@ export const api = {
     create:              (data)     => apiRequest('/api/cattle', 'POST', data),
     update:              (id, data) => apiRequest(`/api/cattle/${id}`, 'PUT', data),
     delete:              (id)       => apiRequest(`/api/cattle/${id}`, 'DELETE'),
+    clearImported:       (data)     => apiRequest('/api/cattle/clear-imported', 'POST', data),
+    getImportedCounts:   ()         => apiRequest('/api/cattle/clear-imported', 'GET'),
   },
 
   // Crossing Log

@@ -1542,6 +1542,30 @@ const currentFields = current.fields.map(f => {
     e.target.value = '';
   };
 
+  const handleClearImportedData = async () => {
+    try {
+      const confirm = await swalConfirm(
+        "Delete Imported Test Data?",
+        `Are you sure you want to permanently delete imported records? This only deletes records imported via Excel so you can test on fresh data. Farms, sheds, breeds, and settings will remain untouched.`
+      );
+      if (!confirm) return;
+
+      setIsLoading(true);
+      const res = await api.cattle.clearImported({
+        module: current.id === 'livestock' ? 'all' : current.id
+      });
+      
+      const total = res?.data?.totalDeleted ?? res?.totalDeleted ?? 0;
+      swalSuccess("Imported Data Cleared", `Successfully deleted ${total} imported test record(s) from backend.`);
+      await fetchLogs();
+    } catch (err) {
+      console.error("Failed to clear imported data:", err);
+      swalError("Error", err?.message || "Failed to delete imported data from backend.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isCustomFilterModule = ['vaccine', 'health', 'livestock', 'shed', 'crossing', 'purchase', 'sale'].includes(current.id);
 
   const [allLivestockTags, setAllLivestockTags] = useState([]);
@@ -3267,6 +3291,13 @@ const getShedFromLivestock = (tagValue) => {
                   className="h-9 px-4 bg-[#16223F] text-white rounded-lg font-bold shadow-md hover:bg-[#16223F]/90 transition-all flex items-center justify-center gap-1.5 text-xs"
                 >
                   📥 Import Excel
+                </button>
+                <button 
+                  onClick={handleClearImportedData} 
+                  className="h-9 px-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shadow-md transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                  title="Delete data imported via Excel to test on fresh data"
+                >
+                  🗑️ Delete Imported
                 </button>
               </>
             )}
