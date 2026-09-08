@@ -28,7 +28,15 @@ const parseDateString = (dateVal) => {
   const valStr = String(dateVal).trim();
   if (!valStr || valStr === '-' || valStr.toLowerCase() === 'null' || valStr.toLowerCase() === 'undefined') return null;
 
-  // Handle DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, YYYY-MM-DD
+  // 1. If it's an ISO timestamp string with time component (e.g. "2024-03-14T18:30:00.000Z"),
+  // parse it directly so JavaScript evaluates it in the local timezone (e.g. IST +05:30 -> March 15 00:00:00).
+  // DO NOT split by '-' which would discard the time and subtract a day!
+  if (valStr.includes('T')) {
+    const parsed = new Date(valStr);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  // 2. Handle DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, YYYY-MM-DD calendar date strings
   if (valStr.includes('/') || valStr.includes('-') || valStr.includes('.')) {
     const sep = valStr.includes('/') ? '/' : (valStr.includes('-') ? '-' : '.');
     const parts = valStr.split(sep);
@@ -38,17 +46,17 @@ const parseDateString = (dateVal) => {
       const p2 = parseInt(parts[2], 10);
       if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
         if (parts[0].length === 4) {
-          // YYYY-MM-DD
-          const d = new Date(p0, p1 - 1, p2);
+          // YYYY-MM-DD -> construct at noon 12:00:00 so toISOString() stays on same day
+          const d = new Date(p0, p1 - 1, p2, 12, 0, 0);
           if (!isNaN(d.getTime())) return d;
         } else if (parts[2].length === 4) {
-          // DD-MM-YYYY
-          const d = new Date(p2, p1 - 1, p0);
+          // DD-MM-YYYY -> construct at noon 12:00:00
+          const d = new Date(p2, p1 - 1, p0, 12, 0, 0);
           if (!isNaN(d.getTime())) return d;
         } else {
           // Two-digit year e.g. DD-MM-YY
           const year = p2 < 100 ? (p2 > 50 ? 1900 + p2 : 2000 + p2) : p2;
-          const d = new Date(year, p1 - 1, p0);
+          const d = new Date(year, p1 - 1, p0, 12, 0, 0);
           if (!isNaN(d.getTime())) return d;
         }
       }
@@ -64,6 +72,12 @@ const formatDateToDDMMYYYY = (dateVal) => {
   const d = parseDateString(dateVal);
   if (!d) return "-";
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
+const formatDateToYYYYMMDD = (dateVal) => {
+  const d = parseDateString(dateVal);
+  if (!d) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const getLiveAge = (dob, storedAge, endDate, type) => {
@@ -519,9 +533,11 @@ const getCellStringValue = (cellValue) => {
   if (cellValue === undefined || cellValue === null) return '';
   if (cellValue instanceof Date) {
     if (isNaN(cellValue.getTime())) return '';
-    const y = cellValue.getFullYear();
-    const m = String(cellValue.getMonth() + 1).padStart(2, '0');
-    const d = String(cellValue.getDate()).padStart(2, '0');
+    // ExcelJS parses dates as UTC midnight (e.g. 2021-03-01T00:00:00.000Z).
+    // Using UTC getters ensures we extract the exact year, month, date as entered in Excel.
+    const y = cellValue.getUTCFullYear();
+    const m = String(cellValue.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(cellValue.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
   if (typeof cellValue === 'object') {
@@ -531,9 +547,10 @@ const getCellStringValue = (cellValue) => {
       return String(cellValue.text).trim();
     } else if (cellValue.result !== undefined && cellValue.result !== null) {
       if (cellValue.result instanceof Date) {
-        const y = cellValue.result.getFullYear();
-        const m = String(cellValue.result.getMonth() + 1).padStart(2, '0');
-        const d = String(cellValue.result.getDate()).padStart(2, '0');
+        if (isNaN(cellValue.result.getTime())) return '';
+        const y = cellValue.result.getUTCFullYear();
+        const m = String(cellValue.result.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(cellValue.result.getUTCDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
       }
       return String(cellValue.result).trim();
@@ -2421,12 +2438,12 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
         if (!log.dateOfBirth || log.dateOfBirth === '-' || String(log.dateOfBirth).trim() === '') {
           const extracted = extractDOBFromTag(tagVal);
           if (extracted) {
-            log.dateOfBirth = extracted.toISOString().split('T')[0];
+            log.dateOfBirth = formatDateToYYYYMMDD(extracted);
             log.dob = log.dateOfBirth;
           } else if (log.age) {
             const computed = calculateDOBFromAge(log.age);
             if (computed) {
-              log.dateOfBirth = computed.toISOString().split('T')[0];
+              log.dateOfBirth = formatDateToYYYYMMDD(computed);
               log.dob = log.dateOfBirth;
             }
           }
@@ -3110,6 +3127,7 @@ const calculateDOBFromAge = (ageStr) => {
   }
 
   const d = new Date();
+  d.setHours(12, 0, 0, 0);
   d.setFullYear(d.getFullYear() - years);
   d.setMonth(d.getMonth() - months);
   d.setDate(d.getDate() - days);
@@ -3128,7 +3146,7 @@ const extractDOBFromTag = (tag) => {
     const day = parseInt(dateStr.substring(6, 8), 10);
     
     if (year >= 1900 && year <= new Date().getFullYear() && month >= 0 && month < 12 && day > 0 && day <= 31) {
-      const d = new Date(year, month, day);
+      const d = new Date(year, month, day, 12, 0, 0);
       if (!isNaN(d.getTime())) return d;
     }
   }

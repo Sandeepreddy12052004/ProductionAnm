@@ -24,15 +24,36 @@ const toCamelCase = (str) => {
 
 const parseDateString = (dateVal) => {
   if (!dateVal) return null;
-  if (dateVal instanceof Date) return dateVal;
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
   const valStr = String(dateVal).trim();
+  if (!valStr || valStr === '-' || valStr.toLowerCase() === 'null') return null;
+
+  if (valStr.includes('T')) {
+    const parsed = new Date(valStr);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
   if (valStr.includes('/')) {
     const parts = valStr.split('/');
     if (parts.length === 3) {
-      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), 12, 0, 0);
       if (!isNaN(d.getTime())) return d;
     }
   }
+
+  if (valStr.includes('-')) {
+    const parts = valStr.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0);
+        if (!isNaN(d.getTime())) return d;
+      } else if (parts[2].length === 4) {
+        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), 12, 0, 0);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+  }
+
   const parsed = new Date(valStr);
   if (!isNaN(parsed.getTime())) return parsed;
   return null;

@@ -6,18 +6,43 @@
 
   const parseDateString = (dateVal) => {
     if (!dateVal) return null;
-    if (dateVal instanceof Date) return dateVal;
+    if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
     const valStr = String(dateVal).trim();
+    if (!valStr || valStr === '-' || valStr.toLowerCase() === 'null') return null;
+
+    if (valStr.includes('T')) {
+      const parsed = new Date(valStr);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+
     if (valStr.includes("/")) {
       const parts = valStr.split("/");
       if (parts.length === 3) {
-        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), 12, 0, 0);
         if (!isNaN(d.getTime())) return d;
+      }
+    }
+    if (valStr.includes("-")) {
+      const parts = valStr.split("-");
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0);
+          if (!isNaN(d.getTime())) return d;
+        } else if (parts[2].length === 4) {
+          const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), 12, 0, 0);
+          if (!isNaN(d.getTime())) return d;
+        }
       }
     }
     const parsed = new Date(valStr);
     if (!isNaN(parsed.getTime())) return parsed;
     return null;
+  };
+
+  const formatDateToYYYYMMDD = (dateVal) => {
+    const d = parseDateString(dateVal);
+    if (!d) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const calculateDOBFromAge = (ageStr) => {
@@ -56,6 +81,7 @@
     }
 
     const d = new Date();
+    d.setHours(12, 0, 0, 0);
     d.setFullYear(d.getFullYear() - years);
     d.setMonth(d.getMonth() - months);
     d.setDate(d.getDate() - days);
@@ -74,7 +100,7 @@
       const day = parseInt(dateStr.substring(6, 8), 10);
       
       if (year >= 1900 && year <= new Date().getFullYear() && month >= 0 && month < 12 && day > 0 && day <= 31) {
-        const d = new Date(year, month, day);
+        const d = new Date(year, month, day, 12, 0, 0);
         if (!isNaN(d.getTime())) return d;
       }
     }
@@ -476,7 +502,7 @@
           try {
             const d = parseDateString(rawVal);
             if (d && !isNaN(d.getTime())) {
-              formatted[fieldName] = d.toISOString().split('T')[0];
+              formatted[fieldName] = formatDateToYYYYMMDD(d);
             }
           } catch (e) {
             console.error(e);
@@ -491,14 +517,14 @@
       if (tagVal && !resolvedDob) {
         const extracted = extractDOBFromTag(tagVal);
         if (extracted) {
-          resolvedDob = extracted.toISOString().split('T')[0];
+          resolvedDob = formatDateToYYYYMMDD(extracted);
         }
       }
 
       if (!resolvedDob && formatted.age) {
         const computed = calculateDOBFromAge(formatted.age);
         if (computed && !isNaN(computed.getTime())) {
-          resolvedDob = computed.toISOString().split('T')[0];
+          resolvedDob = formatDateToYYYYMMDD(computed);
         }
       }
 
@@ -549,7 +575,7 @@
     const [formData, setFormData] = useState(() => {
       const formatted = formatInitialData(initialData, fields);
       if (fields.some(f => f.name === 'date') && (!formatted.date || formatted.date === '')) {
-        formatted.date = new Date().toISOString().split('T')[0];
+        formatted.date = formatDateToYYYYMMDD(new Date());
       }
       if (formatted.dameBreed && (!formatted.breed || formatted.breed === '' || formatted.breed === '-')) {
         formatted.breed = formatted.dameBreed;
@@ -974,7 +1000,7 @@
       if (cleanTag) {
         const extractedDob = extractDOBFromTag(cleanTag);
         if (extractedDob) {
-          const formattedDob = extractedDob.toISOString().split('T')[0];
+          const formattedDob = formatDateToYYYYMMDD(extractedDob);
           const today = new Date();
           let years = today.getFullYear() - extractedDob.getFullYear();
           let months = today.getMonth() - extractedDob.getMonth();
@@ -1129,12 +1155,12 @@
             // --- PD Date (3 Months) ---
             const pdDate = new Date(baseDate);
             pdDate.setMonth(pdDate.getMonth() + 3);
-            updated["pdDate"] = pdDate.toISOString().split('T')[0];
+            updated["pdDate"] = formatDateToYYYYMMDD(pdDate);
 
             // --- Estimated Calving Date (10 Months) ---
             const estCalving = new Date(baseDate);
             estCalving.setMonth(estCalving.getMonth() + 10);
-            updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
+            updated["estimatedCalvingDate"] = formatDateToYYYYMMDD(estCalving);
           }
         } else {
           updated["pdDate"] = "";
@@ -1180,7 +1206,7 @@
         if (value) {
           const computed = calculateDOBFromAge(value);
           if (computed && !isNaN(computed.getTime())) {
-            const formatted = computed.toISOString().split('T')[0];
+            const formatted = formatDateToYYYYMMDD(computed);
             updated.dateOfBirth = formatted;
             updated.dob = formatted;
           }
@@ -1201,7 +1227,7 @@
           // Add 45 days
           calvingDate.setDate(calvingDate.getDate() + 45);
           
-          const heatDateFormatted = calvingDate.toISOString().split('T')[0];
+          const heatDateFormatted = formatDateToYYYYMMDD(calvingDate);
           updated["heatMonitoring1stNotification"] = heatDateFormatted;
         }
       }
@@ -1214,7 +1240,7 @@
       if (baseDate) {
         const estCalving = new Date(baseDate);
         estCalving.setMonth(estCalving.getMonth() + 10);
-        updated["estimatedCalvingDate"] = estCalving.toISOString().split('T')[0];
+        updated["estimatedCalvingDate"] = formatDateToYYYYMMDD(estCalving);
       }
     }
   }
@@ -1233,7 +1259,7 @@
           const hDate = parseDateString(pdDateValue);
           if (hDate) {
             hDate.setDate(hDate.getDate() + 21);
-            updated["heatMonitoring1stNotification"] = hDate.toISOString().split('T')[0];
+            updated["heatMonitoring1stNotification"] = formatDateToYYYYMMDD(hDate);
           }
       }
   }
@@ -1311,7 +1337,7 @@
           try {
             const parsed = parseDateString(prevRecord.expiryDate);
             if (parsed && !isNaN(parsed.getTime())) {
-              updated.expiryDate = parsed.toISOString().split('T')[0];
+              updated.expiryDate = formatDateToYYYYMMDD(parsed);
             }
           } catch (e) {
             console.error("Failed to parse previous expiryDate:", e);
@@ -1325,10 +1351,10 @@
           const match = matches[0];
           updated["batchNo"] = match.batchNo || "";
           if (match.manufactureDate) {
-            updated["manufactureDate"] = new Date(match.manufactureDate).toISOString().split('T')[0];
+            updated["manufactureDate"] = formatDateToYYYYMMDD(match.manufactureDate);
           }
           if (match.expiryDate) {
-            updated["expiryDate"] = new Date(match.expiryDate).toISOString().split('T')[0];
+            updated["expiryDate"] = formatDateToYYYYMMDD(match.expiryDate);
           }
         } else {
           updated["batchNo"] = "";
@@ -1348,10 +1374,10 @@
             updated["vaccinationName"] = match.vaccinationName || "";
           }
           if (match.manufactureDate) {
-            updated["manufactureDate"] = new Date(match.manufactureDate).toISOString().split('T')[0];
+            updated["manufactureDate"] = formatDateToYYYYMMDD(match.manufactureDate);
           }
           if (match.expiryDate) {
-            updated["expiryDate"] = new Date(match.expiryDate).toISOString().split('T')[0];
+            updated["expiryDate"] = formatDateToYYYYMMDD(match.expiryDate);
           }
         }
       }
@@ -1664,14 +1690,14 @@
                 const filtered = formData.vaccinationName 
                   ? vaccinesList.filter(v => v.vaccinationName === formData.vaccinationName) 
                   : vaccinesList;
-                field.options = Array.from(new Set(filtered.map(v => v.manufactureDate ? new Date(v.manufactureDate).toISOString().split('T')[0] : '').filter(Boolean)));
+                field.options = Array.from(new Set(filtered.map(v => v.manufactureDate ? formatDateToYYYYMMDD(v.manufactureDate) : '').filter(Boolean)));
               }
               if (field.name === 'expiryDate' && fields.some(f => f.name === 'vaccinationName')) {
                 field.type = 'select';
                 const filtered = formData.vaccinationName 
                   ? vaccinesList.filter(v => v.vaccinationName === formData.vaccinationName) 
                   : vaccinesList;
-                field.options = Array.from(new Set(filtered.map(v => v.expiryDate ? new Date(v.expiryDate).toISOString().split('T')[0] : '').filter(Boolean)));
+                field.options = Array.from(new Set(filtered.map(v => v.expiryDate ? formatDateToYYYYMMDD(v.expiryDate) : '').filter(Boolean)));
               }
               // Dynamic conditional fields for Crossing Log (Natural vs Artificial)
               const cType = formData.crossingType || 'Natural';
@@ -2307,7 +2333,7 @@
     // max={field.name === "dob" ? new Date().toISOString().split("T")[0] : undefined}
     max={
     field.type === "date" && noFutureDates.includes(field.name)
-      ? new Date().toISOString().split("T")[0]
+      ? formatDateToYYYYMMDD(new Date())
       : undefined
   }
 
@@ -2321,15 +2347,15 @@
           (field.name === "purchaseDate" && (title?.toLowerCase().includes("feed") || fields.some(f => f.name === 'feedType')) && !Number(formData.bought)) ||
           (field.name === "purchaseDate" && (title?.toLowerCase().includes("medicine") || fields.some(f => f.name === 'medicineName')) && !Number(formData.bought))
         ? "-" 
-        : (field.name === "dateOfBirth" || field.name === "dob")
+        : (field.type === "date" || field.name === "dateOfBirth" || field.name === "dob" || field.name.toLowerCase().includes("date"))
         ? (() => {
-            const raw = formData.dateOfBirth || formData.dob || "";
+            const raw = formData[field.name];
             if (!raw || raw === '-') return "";
-            if (typeof raw === 'string' && raw.includes("-") && raw.split("-")[0].length === 4) return raw; // already YYYY-MM-DD
+            if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) return raw.trim();
             try {
               const d = parseDateString(raw);
               if (d && !isNaN(d.getTime())) {
-                return d.toISOString().split('T')[0];
+                return formatDateToYYYYMMDD(d);
               }
             } catch(e){}
             return "";
