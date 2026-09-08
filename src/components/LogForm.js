@@ -1357,22 +1357,32 @@
       }
 
 
-    // NEW: AUTO-CALCULATE PREGNANT AGE (Y M D Format)
-      if ((name === "pregnancyStatus" && value === "Positive") || (name === "crossingDate" && updated["pregnancyStatus"] === "Positive")) {
+    // AUTO-CALCULATE PREGNANT AGE (Months & Days / Years Format)
+      if (
+        (name === "pregnancyStatus" && value === "Positive") ||
+        (name === "pregnancyConfirmedDate" && value) ||
+        (name === "crossingDate" && (updated["pregnancyStatus"] === "Positive" || updated["pregnancyConfirmedDate"])) ||
+        (name === "actualCalvingDate" && (updated["pregnancyStatus"] === "Positive" || updated["pregnancyConfirmedDate"]))
+      ) {
+        if (name === "pregnancyConfirmedDate" && value && !updated["pregnancyStatus"]) {
+          updated["pregnancyStatus"] = "Positive";
+        }
+
         const cDateVal = name === "crossingDate" ? value : updated["crossingDate"];
+        const calvDateVal = name === "actualCalvingDate" ? value : updated["actualCalvingDate"];
         
         if (cDateVal) {
           const start = parseDateString(cDateVal);
-          const today = new Date();
+          const endDate = calvDateVal ? parseDateString(calvDateVal) : new Date();
           
-          if (start && start <= today) {
-            let years = today.getFullYear() - start.getFullYear();
-            let months = today.getMonth() - start.getMonth();
-            let days = today.getDate() - start.getDate();
+          if (start && endDate && start <= endDate) {
+            let years = endDate.getFullYear() - start.getFullYear();
+            let months = endDate.getMonth() - start.getMonth();
+            let days = endDate.getDate() - start.getDate();
 
             if (days < 0) {
               months -= 1;
-              const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+              const prevMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 0);
               days += prevMonth.getDate();
             }
             if (months < 0) {
@@ -1380,19 +1390,20 @@
               months += 12;
             }
 
-            let pAgeText = `${years} Y`;
-            if (months > 0) pAgeText += ` ${months} M`;
-            if (days > 0) pAgeText += ` ${days} D`;
+            let pAgeText = "";
+            if (years > 0) pAgeText += `${years} Y `;
+            if (months > 0 || years > 0) pAgeText += `${months} M `;
+            pAgeText += `${days} D`;
             
-            updated["pregnantAge"] = pAgeText;
-          } else {
+            updated["pregnantAge"] = pAgeText.trim();
+          } else if (start && endDate && start > endDate) {
             updated["pregnantAge"] = "Invalid Date";
           }
         }
       }
 
-      // NEW: Clear Pregnant Age if status is no longer Positive
-      if (name === "pregnancyStatus" && value !== "Positive") {
+      // Clear Pregnant Age if status is no longer Positive and no confirmed date
+      if (name === "pregnancyStatus" && value !== "Positive" && !updated["pregnancyConfirmedDate"]) {
         updated["pregnantAge"] = "";
       }
 
