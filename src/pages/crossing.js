@@ -82,7 +82,7 @@ export default function CrossingLogPage() {
       { name: 'pregnancyStatus', label: 'Pregnancy Status', type: 'select', options: ['Positive', 'Negative', 'Pending'] },
       { name: 'pregnancyConfirmedDate', label: 'Pregnancy Confirmed Date', type: 'date' },
       { name: 'estimatedCalvingDate', label: 'Estimated Calving Date', type: 'date' },
-      { name: 'pregnantAge', label: 'Pregnant Age', type: 'number' },
+      { name: 'pregnantAge', label: 'Pregnant Age' },
       { name: 'actualCalvingDate', label: 'Actual Calving Date', type: 'date' },
       { name: 'calvingStatus', label: 'Calving Status', type: 'select', options: ['pending', 'normal', 'abortion', 'premature', 'calving', 'force termination', 'false pd'] },
       { name: 'calfTag', label: 'Calf Tag ID' },
