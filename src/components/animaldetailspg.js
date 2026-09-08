@@ -811,13 +811,14 @@ const currentFields = current.fields.map(f => {
         const seenTags = new Set();
         for (const row of rows) {
           const tag = String(row['tag'] || '').trim();
-          if (['shed', 'crossing', 'purchase', 'sale'].includes(current.id)) {
+          if (['shed', 'crossing', 'purchase'].includes(current.id)) {
             if (tag) {
               uniqueParsed.push(row);
             }
           } else {
-            if (tag && !seenTags.has(tag)) {
-              seenTags.add(tag);
+            const cleanTag = tag.toUpperCase();
+            if (cleanTag && !seenTags.has(cleanTag)) {
+              seenTags.add(cleanTag);
               uniqueParsed.push(row);
             }
           }
@@ -852,7 +853,40 @@ const currentFields = current.fields.map(f => {
           const cattleList = await api.cattle.getAll();
           const activeCattle = Array.isArray(cattleList) ? cattleList : (cattleList?.data ?? []);
 
-          await processInBatches(uniqueParsed, 20, async (row) => {
+          // Fetch existing sale logs to prevent duplicate imports against database
+          let existingSaleLogs = [];
+          try {
+            const saleRes = await api.sale.getAll();
+            existingSaleLogs = Array.isArray(saleRes) ? saleRes : (saleRes?.data ?? []);
+          } catch (err) {
+            console.warn("Could not prefetch existing sales:", err);
+            existingSaleLogs = logs || [];
+          }
+
+          const existingSoldTags = new Set(
+            existingSaleLogs.map(s => String(s.tag || s.tagId || s.tag_id || '').trim().toUpperCase()).filter(Boolean)
+          );
+
+          let duplicateSkipCount = 0;
+          const rowsToImport = [];
+
+          for (const row of uniqueParsed) {
+            const rawTag = String(row['tag'] || '').trim().toUpperCase();
+            if (existingSoldTags.has(rawTag)) {
+              duplicateSkipCount++;
+            } else {
+              rowsToImport.push(row);
+              existingSoldTags.add(rawTag);
+            }
+          }
+
+          if (rowsToImport.length === 0) {
+            swalError("Duplicate Sale Records", `All ${uniqueParsed.length} records in this Excel file already have existing sale logs in the database. No duplicates were imported.`);
+            setIsLoading(false);
+            return;
+          }
+
+          await processInBatches(rowsToImport, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || '').trim();
               const rawBuyer = String(row['buyerName'] || '').trim();
@@ -896,6 +930,12 @@ const currentFields = current.fields.map(f => {
               errorCount++;
             }
           });
+
+          if (duplicateSkipCount > 0) {
+            swalSuccess("Import Completed", `Successfully imported ${successCount} sale record(s). ${duplicateSkipCount} duplicate animal tag(s) were skipped because sale logs already exist for them.`);
+          } else {
+            swalSuccess("Import Completed", `Successfully imported ${successCount} sale record(s).`);
+          }
         } else if (current.id === 'shed') {
           // --- SHED LOG IMPORT PIPELINE ---
           const cattleList = await api.cattle.getAll();
@@ -2849,6 +2889,17 @@ const handleSave = async (data) => {
           await api.purchase.update(entryId, data);
           swalSuccess("Success", "Purchase log updated successfully!");
         } else if (current.id === 'sale') {
+          const targetTag = String(data.tag || data.tagId || data.tag_id || '').trim().toUpperCase();
+          const isDuplicate = (logs || []).some(l => {
+            const lId = l.id || l._id;
+            if (lId && (lId === entryId || lId === selectedEntry?.id || lId === selectedEntry?._id)) return false;
+            const lTag = String(l.tag || l.tagId || l.tag_id || '').trim().toUpperCase();
+            return lTag && lTag === targetTag;
+          });
+          if (isDuplicate) {
+            swalError("Duplicate Sale Log", `Another sale log already exists for animal tag "${targetTag}". Duplicate sales are not permitted.`);
+            return;
+          }
           await api.sale.update(entryId, data);
           swalSuccess("Success", "Sale log updated successfully!");
         // } else if (current.id === 'health') {
@@ -2984,6 +3035,15 @@ const handleSave = async (data) => {
             }
           }, 1000);
         } else if (current.id === 'sale') {
+          const targetTag = String(data.tag || data.tagId || data.tag_id || '').trim().toUpperCase();
+          const isDuplicate = (logs || []).some(l => {
+            const lTag = String(l.tag || l.tagId || l.tag_id || '').trim().toUpperCase();
+            return lTag && lTag === targetTag;
+          });
+          if (isDuplicate) {
+            swalError("Duplicate Sale Log", `A sale log already exists for animal tag "${targetTag}". Duplicate sales are not permitted.`);
+            return;
+          }
           await api.sale.create(data);
           swalSuccess("Success", "Sale log created successfully!");
         // } else if (current.id === 'health') {

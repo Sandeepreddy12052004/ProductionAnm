@@ -1500,6 +1500,22 @@
               e.preventDefault(); 
               if (tagError || dobError || userIdError || isSubmitting) return;
 
+              if (title?.toLowerCase().includes('sale')) {
+                const saleTag = String(formData.tag || formData.tagId || formData.tag_id || '').trim().toUpperCase();
+                if (saleTag) {
+                  const isDup = (existingRecords || []).some(r => {
+                    const rTag = String(r.tag || r.tag_id || r.tagId || '').trim().toUpperCase();
+                    if (initialData?.id && (r.id === initialData.id || r._id === initialData.id)) return false;
+                    if (initialData?._id && (r.id === initialData._id || r._id === initialData._id)) return false;
+                    return rTag === saleTag;
+                  });
+                  if (isDup) {
+                    swalError("Validation Error", `A sale log already exists for animal tag "${saleTag}". Duplicate sales are not allowed.`);
+                    return;
+                  }
+                }
+              }
+
               // Custom validations for Grass Sourcing Collection fields
               const loadsVal = Number(formData.noOfLoads);
               const weightVal = Number(formData.weight);
@@ -2188,6 +2204,18 @@
     filterFn={
       title?.toLowerCase().includes('crossing')
         ? (field.name === 'maleTag' ? (animal) => animal.gender === 'male' : (animal) => animal.gender === 'female')
+        : title?.toLowerCase().includes('sale')
+        ? (animal) => {
+            if (['SOLD', 'DECEASED', 'DEAD'].includes(animal.status)) return false;
+            const animalTag = String(animal.tag_id || animal.tag || '').trim().toUpperCase();
+            const alreadySold = (existingRecords || []).some(r => {
+              const rTag = String(r.tag || r.tag_id || r.tagId || '').trim().toUpperCase();
+              if (initialData?.id && (r.id === initialData.id || r._id === initialData.id)) return false;
+              if (initialData?._id && (r.id === initialData._id || r._id === initialData._id)) return false;
+              return rTag === animalTag;
+            });
+            return !alreadySold;
+          }
         : null
     }
     onChange={(fieldName, tagValue, animalRecord) => {
@@ -2229,9 +2257,44 @@
       });
       if (fieldName === 'tagId' || fieldName === 'tag' || fieldName === 'animalId') {
         autoPrefillCrossingAttempt(tagValue);
+        if (title?.toLowerCase().includes('sale')) {
+          const val = String(tagValue || '').trim().toUpperCase();
+          const oldTag = String(initialData?.tag || initialData?.tag_id || initialData?.tagId || '').trim().toUpperCase();
+          if (val && val !== oldTag) {
+            const isDup = (existingRecords || []).some(r => {
+              const rTag = String(r.tag || r.tag_id || r.tagId || '').trim().toUpperCase();
+              if (initialData?.id && (r.id === initialData.id || r._id === initialData.id)) return false;
+              if (initialData?._id && (r.id === initialData._id || r._id === initialData._id)) return false;
+              return rTag === val;
+            });
+            if (isDup) {
+              setTagError("A sale log already exists for this animal tag. Duplicate sales are not allowed.");
+            } else {
+              setTagError("");
+            }
+          } else {
+            setTagError("");
+          }
+        }
       }
     }}
     onValidation={(isValid, message) => {
+      if (isValid && title?.toLowerCase().includes('sale')) {
+        const val = String(formData[field.name] || '').trim().toUpperCase();
+        const oldTag = String(initialData?.tag || initialData?.tag_id || initialData?.tagId || '').trim().toUpperCase();
+        if (val && val !== oldTag) {
+          const isDup = (existingRecords || []).some(r => {
+            const rTag = String(r.tag || r.tag_id || r.tagId || '').trim().toUpperCase();
+            if (initialData?.id && (r.id === initialData.id || r._id === initialData.id)) return false;
+            if (initialData?._id && (r.id === initialData._id || r._id === initialData._id)) return false;
+            return rTag === val;
+          });
+          if (isDup) {
+            setTagError("A sale log already exists for this animal tag. Duplicate sales are not allowed.");
+            return;
+          }
+        }
+      }
       setTagError(isValid ? '' : message);
     }}
   />
@@ -2364,6 +2427,33 @@
             const exists = checkTagExistsInLivestock(val);
             if (exists) {
               setTagError("Tag ID already exists");
+            } else {
+              setTagError("");
+            }
+          }
+        } else {
+          setTagError("");
+        }
+      }
+
+      // Check tag uniqueness for Sale module registration (Real-time duplicate check)
+      if (title?.toLowerCase().includes('sale') && (field.name === 'tag' || field.name === 'tagId' || field.name === 'tag_id')) {
+        const val = e.target.value;
+        if (val && val.trim() !== "") {
+          const cleanVal = val.trim().toUpperCase();
+          const oldTag = String(initialData?.tag || initialData?.tag_id || initialData?.tagId || '').trim().toUpperCase();
+          if (cleanVal === oldTag) {
+            setTagError("");
+          } else {
+            const exists = (existingRecords || []).some(r => {
+              const rTag = String(r.tag || r.tag_id || r.tagId || '').trim().toUpperCase();
+              if (!rTag) return false;
+              if (initialData?.id && (r.id === initialData.id || r._id === initialData.id)) return false;
+              if (initialData?._id && (r.id === initialData._id || r._id === initialData._id)) return false;
+              return rTag === cleanVal;
+            });
+            if (exists) {
+              setTagError("A sale log already exists for this animal tag. Duplicate sales are not allowed.");
             } else {
               setTagError("");
             }
