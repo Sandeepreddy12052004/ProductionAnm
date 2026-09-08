@@ -1252,7 +1252,9 @@ const currentFields = current.fields.map(f => {
                 breedType: rawBreedType || undefined,
                 heatMonitoring1stNotification: rawHeat1 || undefined,
                 heatMonitoring2ndNotification: rawHeat2 || undefined,
-                remarks: rawRemarks || 'Excel Import Crossing Log'
+                remarks: rawRemarks || 'Excel Import Crossing Log',
+                isImported: true,
+                onboardingType: 'IMPORT'
               };
 
               await api.crossing.create(payload);
@@ -1663,8 +1665,15 @@ const currentFields = current.fields.map(f => {
         module: current.id === 'livestock' ? 'all' : current.id
       });
       
-      const total = res?.data?.totalDeleted ?? res?.totalDeleted ?? 0;
+      const total = res?.data?.totalDeleted ?? res?.totalDeleted ?? (res?.data?.deleted?.crossingLogs || 0);
       swalSuccess("Imported Data Cleared", `Successfully deleted ${total} imported test record(s) from backend.`);
+
+      try {
+        localStorage.removeItem(`global_${current.id}_logs`);
+        sessionStorage.removeItem('__livestock_tag_cache__');
+      } catch (_) {}
+
+      setLogs([]);
       await fetchLogs();
     } catch (err) {
       console.error("Failed to clear imported data:", err);
