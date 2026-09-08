@@ -64,6 +64,12 @@ export default function FarmOverview({ farmCode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const isDeadCalf = (item) => {
+    const t = String(item?.tag || item?.tag_id || item?.tagId || '').toUpperCase();
+    const r = String(item?.remarks || '').toUpperCase();
+    return t.startsWith('DEADCALF') || (t.includes('DEAD') && t.includes('CALF')) || r.includes('BORN DEAD');
+  };
+
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
@@ -207,6 +213,7 @@ export default function FarmOverview({ farmCode }) {
         };
 
         const isActiveAnimal = (item) => {
+          if (isDeadCalf(item)) return false;
           const status = String(item?.status || 'ACTIVE').trim().toUpperCase();
           const shed = String(item?.shed || item?.shedId || '').trim();
           return status !== 'SOLD' && status !== 'DECEASED' && status !== 'DEAD' && shed !== '' && shed !== '-';
@@ -475,7 +482,7 @@ export default function FarmOverview({ farmCode }) {
                 <span className="text-[10px] font-black px-2.5 py-1 rounded-full text-rose-600 bg-rose-100/50 border border-rose-200/50">DECEASED</span>
               </div>
               <h3 className="text-3xl font-black text-[#16223F] tracking-tight">
-                {inactiveAnimals.filter(a => a.status === 'DECEASED' || a.status === 'DEAD').length}
+                {inactiveAnimals.filter(a => a.status === 'DECEASED' || a.status === 'DEAD' || isDeadCalf(a)).length}
               </h3>
               <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-1">Deceased / Dead</p>
             </div>

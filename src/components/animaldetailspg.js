@@ -502,6 +502,11 @@ const getStandardHeaderKey = (headerValue) => {
   return clean; // Fallback to raw normalized if no alias matched
 };
 
+const isDeadCalfTag = (t) => {
+  const norm = String(t || '').trim().toUpperCase().replace(/[\s\-_]/g, '');
+  return norm.startsWith('DEADCALF') || (norm.includes('DEAD') && norm.includes('CALF'));
+};
+
 const parseAgeStringToDays = (ageStr) => {
   if (!ageStr) return 0;
   if (/^\d+$/.test(String(ageStr).trim())) {
@@ -815,6 +820,10 @@ const currentFields = current.fields.map(f => {
             if (tag) {
               uniqueParsed.push(row);
             }
+          } else if (current.id === 'livestock' && isDeadCalfTag(tag)) {
+            // Dead calves represent individual stillborn birth events.
+            // Every stillborn calf must be preserved and not dropped by tag deduplication.
+            uniqueParsed.push(row);
           } else {
             const cleanTag = tag.toUpperCase();
             if (cleanTag && !seenTags.has(cleanTag)) {
@@ -1479,9 +1488,21 @@ const currentFields = current.fields.map(f => {
             pageFarmFilterId = moduleConfig?.farmCode || router.query.code || null;
           }
 
+          let deadCalfSeq = 1;
           await processInBatches(uniqueParsed, 20, async (row) => {
             try {
               const rawTag = String(row['tag'] || '').trim();
+              const isDeadCalf = isDeadCalfTag(rawTag);
+              const cleanDameId = String(row['dame id'] || '').trim().replace(/^-$/, '');
+
+              let processedTag = rawTag;
+              if (isDeadCalf) {
+                const normTag = rawTag.toUpperCase().replace(/[\s\-_]/g, '');
+                if (normTag === 'DEADCALF') {
+                  processedTag = cleanDameId ? `DEADCALF-${cleanDameId}-${deadCalfSeq++}` : `DEADCALF-${deadCalfSeq++}`;
+                }
+              }
+
               const rawShed = String(row['shed'] || '-').trim();
               
               let rawCattle = String(row['cattle'] || '').trim().toUpperCase();
@@ -1508,10 +1529,17 @@ const currentFields = current.fields.map(f => {
               const rawSireBreed = String(row['sire breed'] || '').trim();
               const rawDameId = String(row['dame id'] || '').trim();
               const rawDameBreed = String(row['dame breed'] || '').trim();
-              const rawFarmBorn = normalizeYesNo(row['farm born?'] || row['farm born'] || 'No');
+              const rawFarmBorn = isDeadCalf ? 'Yes' : normalizeYesNo(row['farm born?'] || row['farm born'] || 'No');
               
-              const rawCalvings = Number(row['calving'] || row['calvings']) || 0;
-              const rawRemarks = String(row['remarks'] || '').trim();
+              const rawCalvings = isDeadCalf ? 0 : (Number(row['calving'] || row['calvings']) || 0);
+              let finalRemarks = String(row['remarks'] || '').trim();
+              if (isDeadCalf) {
+                if (!finalRemarks || finalRemarks === '-') {
+                  finalRemarks = 'Born Dead';
+                } else if (!/born\s*dead/i.test(finalRemarks) && !/dead\s*calf/i.test(finalRemarks)) {
+                  finalRemarks = `${finalRemarks} (Born Dead)`;
+                }
+              }
               const rawAge = String(row['age'] || '').trim();
 
               if (!rawDOB) {
@@ -1574,7 +1602,7 @@ const currentFields = current.fields.map(f => {
                 return false;
               });
 
-              const finalStatus = resolveStatusFromInfo(rawTag, rawRemarks, row['status'] || 'ACTIVE');
+              const finalStatus = isDeadCalf ? 'DECEASED' : resolveStatusFromInfo(rawTag, finalRemarks, row['status'] || 'ACTIVE');
               const isDeadOrSold = finalStatus === 'DECEASED' || finalStatus === 'SOLD';
 
               let finalShed = '-';
@@ -1610,7 +1638,11 @@ const currentFields = current.fields.map(f => {
               const matchedCattle = findSmartMatch(typeToMatch, allowedAnimals);
 
               const finalBreed = matchedBreed || rawBreed;
-              const finalCattle = matchedCattle || typeToMatch || 'COW';
+              let finalCattle = matchedCattle || typeToMatch || 'COW';
+              if (isDeadCalf && (!matchedCattle || finalCattle === 'COW' || finalCattle === 'PENDING')) {
+                const breedCombo = (rawBreed + ' ' + rawDameBreed + ' ' + rawSireBreed).toUpperCase();
+                finalCattle = breedCombo.includes('BUFFALO') ? 'BUFFALO CALF' : 'COW CALF';
+              }
 
               const isBreedValid = matchedBreed !== null;
               const isAnimalValid = matchedCattle !== null;
@@ -1618,8 +1650,8 @@ const currentFields = current.fields.map(f => {
               const isInvalid = !isDeadOrSold && (!isShedValid || !isBreedValid || !isAnimalValid || !isDOBValid);
 
               const payload = {
-                tag: rawTag,
-                tagId: rawTag,
+                tag: processedTag,
+                tagId: processedTag,
                 code: `CTL-${Date.now()}-${Math.floor(Math.random()*100000)}`,
                 farmId: resolvedFarmId,
                 farmName: resolvedFarm?.name || resolvedFarmCode || undefined,
@@ -1636,11 +1668,11 @@ const currentFields = current.fields.map(f => {
                 dameBreed: rawDameBreed === '-' ? '' : rawDameBreed,
                 farmBorn: rawFarmBorn,
                 calvings: rawCalvings,
-                remarks: rawRemarks,
+                remarks: finalRemarks,
                 age: rawAge,
                 status: finalStatus,
-                isPendingDetails: isInvalid,
-                onboardingType: isInvalid ? 'IMPORT' : undefined
+                isPendingDetails: isDeadCalf ? false : isInvalid,
+                onboardingType: isDeadCalf ? undefined : (isInvalid ? 'IMPORT' : undefined)
               };
 
               // If it's classified as Deceased / Dead during Excel import, register it
@@ -1964,9 +1996,26 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
       normalizedData.forEach(log => {
         const tagVal = log.tag || log.tagId || '';
         const remarksVal = log.remarks || '';
-        const resolvedStatus = resolveStatusFromInfo(tagVal, remarksVal, log.status);
-        if (resolvedStatus !== log.status) {
-          log.status = resolvedStatus;
+        const isDeadCalf = isDeadCalfTag(tagVal);
+
+        if (isDeadCalf) {
+          log.status = 'DECEASED';
+          log.shed = '-';
+          log.shedId = '-';
+          log.farmBorn = 'Yes';
+          log.calvings = 0;
+          log.isPendingDetails = false;
+          const currentRemarks = String(log.remarks || '').trim();
+          if (!currentRemarks || currentRemarks === '-') {
+            log.remarks = 'Born Dead';
+          } else if (!/born\s*dead/i.test(currentRemarks) && !/dead\s*calf/i.test(currentRemarks)) {
+            log.remarks = `${currentRemarks} (Born Dead)`;
+          }
+        } else {
+          const resolvedStatus = resolveStatusFromInfo(tagVal, remarksVal, log.status);
+          if (resolvedStatus !== log.status) {
+            log.status = resolvedStatus;
+          }
         }
 
         if (!log.dateOfBirth || log.dateOfBirth === '-' || String(log.dateOfBirth).trim() === '') {
@@ -2758,13 +2807,16 @@ const resolveCalfType = (tag, cattle, breed, sireBreed, dameBreed, motherTag, ac
 };
 
 const resolveStatusFromInfo = (tagId, remarks, currentStatus = 'ACTIVE') => {
+  if (isDeadCalfTag(tagId)) {
+    return 'DECEASED';
+  }
   const cleanTag = String(tagId || '').toUpperCase();
   const cleanRemarks = String(remarks || '').toUpperCase();
 
   const deadKeywords = [
     'DEAD', 'DECEASED', 'DIED', 'EXPIRED', 'DEATH', 'MORTALITY', 
     'PASSED AWAY', 'PASSED-AWAY', 'KILLED', 'SLAUGHTERED', 
-    'SACRIFICED', 'EXPIRY', 'CASUALTY'
+    'SACRIFICED', 'EXPIRY', 'CASUALTY', 'STILLBORN', 'BORN DEAD', 'BORN-DEAD'
   ];
   const soldKeywords = [
     'SOLD', 'SALE', 'DISPOSED', 'MARKETED', 'AUCTIONED', 
