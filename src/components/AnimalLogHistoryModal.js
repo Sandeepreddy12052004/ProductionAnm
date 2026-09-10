@@ -31,6 +31,8 @@ import {
 } from '../utils/animalLogsHelper';
 import SkeletonLoader from './SkeletonLoader';
 
+const generateDossierFilename = (tag) => `Animal_Dossier_${tag}_${Date.now()}.pdf`;
+
 const TABS = [
   { id: 'timeline', label: 'Lifecycle Timeline', icon: Clock, color: 'text-indigo-600' },
   { id: 'shed', label: 'Shed Movements', icon: Home, color: 'text-sky-600' },
@@ -65,6 +67,7 @@ export default function AnimalLogHistoryModal({
     if (!isOpen || !animalTag) return;
 
     let isMounted = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
     fetchAnimalLogsByTag(animalTag)
@@ -200,7 +203,7 @@ export default function AnimalLogHistoryModal({
       }
 
       // Save PDF
-      doc.save(`Animal_Dossier_${primaryTag}_${Date.now()}.pdf`);
+      doc.save(generateDossierFilename(primaryTag));
     } catch (err) {
       console.error('Failed to generate PDF:', err);
     }

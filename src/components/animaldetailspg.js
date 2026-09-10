@@ -854,6 +854,8 @@ useEffect(() => {
   }
 }, []);
 
+const isSuperAdmin = String(userObj?.role || '').trim().toUpperCase() === 'SUPER_ADMIN';
+
 const hasCRUD = (action) => {
   if (!userObj) return false;
   const role = String(userObj.role || '').trim().toUpperCase();
@@ -2002,6 +2004,10 @@ const currentFields = current.fields.map(f => {
   };
 
   const handleClearImportedData = async () => {
+    if (!isSuperAdmin) {
+      swalError("Unauthorized", "Only Super Admin is authorized to delete imported data.");
+      return;
+    }
     try {
       const confirm = await swalConfirm(
         "Delete Imported Test Data?",
@@ -2689,15 +2695,6 @@ useEffect(() => {
     }
   }
 }, [appliedFilters, logs, current.id]);
-
-if (!moduleConfig) {
-  return (
-    <div className="p-20 text-center bg-white min-h-screen">
-      <h1 className="text-2xl font-bold text-red-600">Configuration Error</h1>
-      <p className="text-gray-500">The moduleConfig prop is missing in the page file.</p>
-    </div>
-  );
-}
 
  
   const matchesAppliedFilters = (log) => {
@@ -3881,6 +3878,14 @@ const getShedFromLivestock = (tagValue) => {
   return "";
 };
 
+  if (!moduleConfig) {
+    return (
+      <div className="p-20 text-center bg-white min-h-screen">
+        <h1 className="text-2xl font-bold text-red-600">Configuration Error</h1>
+        <p className="text-gray-500">The moduleConfig prop is missing in the page file.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col text-black bg-white px-0 md:px-0">
@@ -3906,13 +3911,15 @@ const getShedFromLivestock = (tagValue) => {
                 >
                   📥 Import Excel
                 </button>
-                <button 
-                  onClick={handleClearImportedData} 
-                  className="h-9 px-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shadow-md transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer"
-                  title="Delete data imported via Excel to test on fresh data"
-                >
-                  🗑️ Delete Imported
-                </button>
+                {isSuperAdmin && (
+                  <button 
+                    onClick={handleClearImportedData} 
+                    className="h-9 px-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shadow-md transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                    title="Delete data imported via Excel to test on fresh data"
+                  >
+                    🗑️ Delete Imported
+                  </button>
+                )}
               </>
             )}
 

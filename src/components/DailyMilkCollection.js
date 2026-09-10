@@ -56,6 +56,20 @@ export default function DailyMilkCollection() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [userObj, setUserObj] = useState(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) setUserObj(JSON.parse(raw));
+      } catch (e) {
+        console.error("Failed to parse user session in DailyMilkCollection:", e);
+      }
+    }
+  }, []);
+
+  const isSuperAdmin = String(userObj?.role || '').trim().toUpperCase() === 'SUPER_ADMIN';
+
   // User input states
   const [quantities, setQuantities] = useState({}); // tag -> quantity
   const [selfConsumptions, setSelfConsumptions] = useState({}); // shedId -> selfConsumption
@@ -693,6 +707,10 @@ export default function DailyMilkCollection() {
 
   // Delete all imported test cattle and records from backend database
   const handleDeleteImportedData = async () => {
+    if (!isSuperAdmin) {
+      swalError("Unauthorized", "Only Super Admin is authorized to delete imported data.");
+      return;
+    }
     const confirm = await swalConfirm(
       "Delete Imported Test Data?",
       "Are you sure you want to delete all imported cattle and records from the backend database? This will clean imported test data so you can test on a completely fresh slate. Farms, sheds, and settings remain untouched."
@@ -1364,41 +1382,6 @@ export default function DailyMilkCollection() {
                 <RefreshCw className="w-4 h-4 text-slate-400" />
                 <span>Switch to {session === "MORNING" ? "Evening" : "Morning"} Session</span>
               </button>
-
-              {/* Delete / Clear Action Panel */}
-              <div className="pt-2 border-t border-slate-150 flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleDeleteSessionData}
-                    disabled={isSaving || !activeShedId}
-                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
-                    title="Clear recorded milk for current active shed"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Clear Shed Milk</span>
-                  </button>
-
-                  <button
-                    onClick={handleDeleteAllSessionData}
-                    disabled={isSaving}
-                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
-                    title="Clear recorded milk across ALL sheds for this session"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Clear All Milk</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={handleDeleteImportedData}
-                  disabled={isSaving}
-                  className="w-full py-3 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 hover:text-rose-700 font-black rounded-2xl transition-all duration-300 text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
-                  title="Delete imported cattle and test data from backend database to start on fresh slate"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Delete Imported Test Data</span>
-                </button>
-              </div>
             </div>
 
           </div>
