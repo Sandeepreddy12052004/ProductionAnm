@@ -172,16 +172,14 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
       if (!p) return false;
       // Case 1: permission is an object with a module_key
       if (typeof p === 'object') {
-        return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+        const mod = String(p.module_key || p.module || p.name || p.prefix || '').trim().toLowerCase();
+        const target = moduleKey.trim().toLowerCase();
+        return mod === target || mod.startsWith(target + '_') || mod.includes(target);
       }
       // Case 2: permission is a string (e.g. 'USERS', 'USER_MANAGEMENT_VIEW')
       if (typeof p === 'string') {
         const upperP = p.trim().toUpperCase();
         const upperModKey = moduleKey.trim().toUpperCase();
-        
-        if (exact) {
-          return upperP === upperModKey;
-        }
         
         const getBaseModule = (perm) => {
           const upper = perm.toUpperCase();
@@ -195,7 +193,10 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
         };
 
         const userModule = getBaseModule(upperP);
-        return userModule === upperModKey;
+        if (exact) {
+          return upperP === upperModKey || userModule === upperModKey;
+        }
+        return userModule === upperModKey || userModule.startsWith(upperModKey + '_') || userModule.includes(upperModKey) || upperModKey.includes(userModule);
       }
       return false;
     });
@@ -206,7 +207,8 @@ const Sidebar = ({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) => {
 
     // If it's an object, return can_view. If it's a string, it matched, so return true
     if (typeof permission === 'object') {
-      return !!permission.can_view;
+      const canView = permission.can_view ?? permission.view ?? permission.allowed;
+      return canView !== undefined ? !!canView : true;
     }
     return true;
   };

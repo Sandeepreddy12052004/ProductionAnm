@@ -60,16 +60,14 @@ export function middleware(request) {
     const permission = permissions.find((p) => {
       if (!p) return false;
       if (typeof p === 'object') {
-        return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+        const mod = String(p.module_key || p.module || p.name || p.prefix || '').trim().toLowerCase();
+        const target = moduleKey.trim().toLowerCase();
+        return mod === target || mod.startsWith(target + '_') || mod.includes(target);
       }
       if (typeof p === 'string') {
         const upperP = p.trim().toUpperCase();
         const upperModKey = moduleKey.trim().toUpperCase();
         
-        if (exact) {
-          return upperP === upperModKey;
-        }
-
         const getBaseModule = (perm) => {
           const upper = perm.toUpperCase();
           const suffixes = ['_VIEW', '_CREATE', '_EDIT', '_DELETE'];
@@ -82,13 +80,19 @@ export function middleware(request) {
         };
 
         const userModule = getBaseModule(upperP);
-        return userModule === upperModKey;
+        if (exact) {
+          return upperP === upperModKey || userModule === upperModKey;
+        }
+        return userModule === upperModKey || userModule.startsWith(upperModKey + '_') || userModule.includes(upperModKey) || upperModKey.includes(userModule);
       }
       return false;
     });
 
     if (!permission) return false;
-    if (typeof permission === 'object') return !!permission.can_view;
+    if (typeof permission === 'object') {
+      const canView = permission.can_view ?? permission.view ?? permission.allowed;
+      return canView !== undefined ? !!canView : true;
+    }
     return true;
   };
 

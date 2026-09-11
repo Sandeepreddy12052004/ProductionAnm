@@ -242,17 +242,19 @@ const FarmsPg = () => {
             Create, view, and monitor live capacity across all farms.
           </p>
         </div>
-        <button
-          id="create-farm-btn"
-          onClick={() => {
-            setFormData({ name: "", code: "", address: "", location: "" });
-            setEditingId(null);
-            setShowForm(true);
-          }}
-          className="bg-[#071437] hover:bg-[#0d1f4d] text-white px-5 py-2.5 rounded-2xl font-bold text-lg shadow-lg transition-all duration-200 hover:scale-[1.02]"
-        >
-          + Create New Farm
-        </button>
+        {canCreate && (
+          <button
+            id="create-farm-btn"
+            onClick={() => {
+              setFormData({ name: "", code: "", address: "", location: "" });
+              setEditingId(null);
+              setShowForm(true);
+            }}
+            className="bg-[#071437] hover:bg-[#0d1f4d] text-white px-5 py-2.5 rounded-2xl font-bold text-lg shadow-lg transition-all duration-200 hover:scale-[1.02]"
+          >
+            + Create New Farm
+          </button>
+        )}
       </div>
 
       {/* ── FARM CARDS GRID ─────────────────────────────────────────────────── */}

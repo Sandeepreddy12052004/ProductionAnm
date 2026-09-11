@@ -112,7 +112,9 @@ export default function LoginPage() {
             const permission = permissions.find((p) => {
               if (!p) return false;
               if (typeof p === 'object') {
-                return String(p.module_key || '').trim().toLowerCase() === moduleKey.trim().toLowerCase();
+                const mod = String(p.module_key || p.module || p.name || p.prefix || '').trim().toLowerCase();
+                const target = moduleKey.trim().toLowerCase();
+                return mod === target || mod.startsWith(target + '_') || mod.includes(target);
               }
               if (typeof p === 'string') {
                 const lowerP = p.trim().toLowerCase();
@@ -126,7 +128,10 @@ export default function LoginPage() {
             });
 
             if (!permission) return false;
-            if (typeof permission === 'object') return !!permission.can_view;
+            if (typeof permission === 'object') {
+              const canView = permission.can_view ?? permission.view ?? permission.allowed;
+              return canView !== undefined ? !!canView : true;
+            }
             return true;
           };
 

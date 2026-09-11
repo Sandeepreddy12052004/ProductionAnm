@@ -60,36 +60,36 @@ export function clearAuthSession(redirectToLogin = true) {
 // Any match grants access — mirrors the backend withAuth() logic.
 /** @type {Record<string, string | string[]>} */
 const ROUTE_PERMISSION_MAP = {
-  '/api/farms':                        ['FARM_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/farms':                        ['FARM_MANAGEMENT', 'FARMS', 'FARM_ADMIN'],
   '/api/roles':                        ['ROLES', 'ROLE_MANAGEMENT'],
-  '/api/users':                        ['USER_MANAGEMENT', 'FARM_ADMIN'],
-  '/api/departments':                  ['DEPARTMENT', 'FARM_ADMIN'],
-  '/api/sheds':                        ['SHED_MANAGEMENT', 'SHED', 'FARM_ADMIN', 'INCHARGE'],
+  '/api/users':                        ['USER_MANAGEMENT', 'USERS', 'FARM_ADMIN'],
+  '/api/departments':                  ['DEPARTMENT', 'DEPARTMENTS', 'FARM_ADMIN'],
+  '/api/sheds':                        ['SHED_MANAGEMENT', 'SHEDS', 'SHED', 'FARM_ADMIN', 'INCHARGE'],
   '/api/cattle':                       ['CATTLE_MANAGEMENT', 'CATTLE', 'LIVESTOCK', 'FARM_ADMIN'],
-  '/api/crossing':                     ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
-  '/api/health/treatments':            ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/treatments':                   ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/health/vaccinations':          ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/health/vaccines':              ['HEALTH', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/inventory/medicines':          ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/inventory/feed':               ['INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/crossing':                     ['CROSSING_LOG', 'CROSSING', 'INSEMINATION_MANAGEMENT', 'FARM_ADMIN'],
+  '/api/health/treatments':            ['HEALTH', 'HEALTH_MANAGEMENT', 'TREATMENT_LOG', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/treatments':                   ['HEALTH', 'HEALTH_MANAGEMENT', 'TREATMENT_LOG', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/health/vaccinations':          ['HEALTH', 'HEALTH_MANAGEMENT', 'VACCINATION_LOG', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/health/vaccines':              ['HEALTH', 'HEALTH_MANAGEMENT', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/inventory/medicines':          ['INVENTORY', 'MEDICINE_INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/inventory/feed':               ['INVENTORY', 'FEED_INVENTORY', 'INCHARGE', 'FARM_ADMIN'],
   '/api/operations/grass-collection':  ['GRASS', 'INCHARGE', 'FARM_ADMIN'],
   '/api/operations/daily-feeding':     ['FEEDING', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/milk/collections':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/milk/procurement':             ['MILK', 'INCHARGE', 'FARM_ADMIN'],
-  '/api/milk/quality':                 ['MILK', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/milk/collections':             ['MILK', 'MILK_COLLECTION', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/milk/procurement':             ['MILK', 'MILK_PROCUREMENT', 'INCHARGE', 'FARM_ADMIN'],
+  '/api/milk/quality':                 ['MILK', 'MILK_QA', 'INCHARGE', 'FARM_ADMIN'],
   '/api/tags':                         ['CATTLE_MANAGEMENT', 'CATTLE', 'TAG_MANAGEMENT', 'FARM_ADMIN'],
-  '/api/feed-items':                   ['FEED_ITEMS', 'FARM_ADMIN'],
-  '/api/medicines':                    ['HEALTH', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
-  '/api/breeds':                       ['BREED_MANAGEMENT', 'FARM_ADMIN'],
-  '/api/animals':                      ['ANIMAL_MANAGEMENT', 'FARM_ADMIN', 'CATTLE'],
+  '/api/feed-items':                   ['FEED_ITEMS', 'INVENTORY', 'FARM_ADMIN'],
+  '/api/medicines':                    ['HEALTH', 'HEALTH_MANAGEMENT', 'MEDICINE_INVENTORY', 'FARM_ADMIN', 'INCHARGE', 'INVENTORY'],
+  '/api/breeds':                       ['BREED_MANAGEMENT', 'CATTLE', 'FARM_ADMIN'],
+  '/api/animals':                      ['ANIMAL_MANAGEMENT', 'CATTLE', 'ANIMALS', 'FARM_ADMIN'],
   '/api/lands':                        ['LAND', 'LAND_MANAGEMENT', 'FARM_ADMIN', 'INCHARGE', 'GRASS_COLLECTION', 'GRASS'],
-  '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
+  '/api/logs/crossing':                ['CROSSING_LOG', 'CROSSING', 'INSEMINATION_MANAGEMENT', 'FARM_ADMIN'],
   '/api/logs/sale':                    ['SALE_LOG', 'SALE', 'FARM_ADMIN'],
   '/api/logs/shed':                    ['SHED_LOG', 'SHED', 'FARM_ADMIN'],
   '/api/logs/purchase':                ['PURCHASE_LOG', 'PURCHASE', 'FARM_ADMIN'],
-  '/api/bmcs':                         ['BMC', 'FARM_ADMIN', 'INCHARGE'],
-  '/api/semen-straws':                 ['CROSSING_LOG', 'CROSSING', 'FARM_ADMIN'],
+  '/api/bmcs':                         ['BMC', 'BMC_MANAGEMENT', 'FARM_ADMIN', 'INCHARGE'],
+  '/api/semen-straws':                 ['CROSSING_LOG', 'CROSSING', 'INSEMINATION_MANAGEMENT', 'FARM_ADMIN'],
   '/api/procurement-sources':          ['PROCUREMENT_MANAGEMENT', 'FARM_ADMIN'],
   '/api/procurement-resources':        ['PROCUREMENT_MANAGEMENT', 'FARM_ADMIN'],
 };
@@ -135,7 +135,7 @@ function sessionHasAccess(userObj, moduleKeyOrKeys) {
 
   // Global wildcard
   const hasAll = permissions.some(
-    (p) => typeof p === 'string' && p.trim().toUpperCase() === 'ALL'
+    (p) => (typeof p === 'string' ? p.trim().toUpperCase() : String(p?.name || p?.module_key || '').toUpperCase()) === 'ALL'
   );
   if (hasAll) return true;
 
@@ -153,7 +153,8 @@ function sessionHasAccess(userObj, moduleKeyOrKeys) {
 
       // Object schema: { module_key: 'FARM_MANAGEMENT', can_view: true, ... }
       if (typeof p === 'object') {
-        return String(p.module_key || '').trim().toLowerCase() === lowerKey;
+        const mod = String(p.module_key || p.module || p.name || p.prefix || '').trim().toLowerCase();
+        return mod === lowerKey || mod.startsWith(lowerKey + '_') || mod.includes(lowerKey);
       }
 
       // String schema: 'FARM_MANAGEMENT' or 'FARM_MANAGEMENT_VIEW'
@@ -172,7 +173,12 @@ function sessionHasAccess(userObj, moduleKeyOrKeys) {
     if (matched) {
       // Object form: honour can_view explicitly
       if (typeof matched === 'object') {
-        if (!!matched.can_view) return true;
+        const canView = matched.can_view ?? matched.view ?? matched.allowed;
+        if (canView !== undefined) {
+          if (!!canView) return true;
+        } else {
+          return true;
+        }
       } else {
         // String form: presence means access granted
         return true;
@@ -208,6 +214,9 @@ function evaluateFirewall(endpoint) {
     cleanPath === '/api/animals' || cleanPath.startsWith('/api/animals/') ||
     cleanPath === '/api/bmcs' || cleanPath.startsWith('/api/bmcs/') ||
     cleanPath === '/api/procurement-sources' || cleanPath.startsWith('/api/procurement-sources/') ||
+    cleanPath === '/api/procurement-resources' || cleanPath.startsWith('/api/procurement-resources/') ||
+    cleanPath === '/api/semen-straws' || cleanPath.startsWith('/api/semen-straws/') ||
+    cleanPath === '/api/lands' || cleanPath.startsWith('/api/lands/') ||
     cleanPath === '/api/tags' || cleanPath.startsWith('/api/tags/');
 
   if (isLookupPath) {
@@ -430,22 +439,71 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
           isBypassedEndpoint = true;
         }
 
+        // ── Shared Master Catalog Endpoints ───────────────────────────────
+        // These collections are system-wide definitions and never belong to
+        // a specific farm. They MUST be visible to any user with module access.
+        const isMasterCatalog =
+          cleanPath.startsWith('/api/auth') ||
+          cleanPath === '/api/animals' ||
+          cleanPath.startsWith('/api/animals/') ||
+          cleanPath === '/api/breeds' ||
+          cleanPath.startsWith('/api/breeds/') ||
+          cleanPath === '/api/medicines' ||
+          cleanPath.startsWith('/api/medicines/') ||
+          cleanPath === '/api/tags' ||
+          cleanPath.startsWith('/api/tags/') ||
+          cleanPath === '/api/feed-items' ||
+          cleanPath.startsWith('/api/feed-items/') ||
+          cleanPath === '/api/users' ||
+          cleanPath.startsWith('/api/users/') ||
+          cleanPath === '/api/roles' ||
+          cleanPath.startsWith('/api/roles/') ||
+          cleanPath === '/api/departments' ||
+          cleanPath.startsWith('/api/departments/') ||
+          cleanPath === '/api/labors' ||
+          cleanPath.startsWith('/api/labors/') ||
+          cleanPath === '/api/designations' ||
+          cleanPath.startsWith('/api/designations/') ||
+          cleanPath === '/api/bmcs' ||
+          cleanPath.startsWith('/api/bmcs/') ||
+          cleanPath === '/api/semen-straws' ||
+          cleanPath.startsWith('/api/semen-straws/') ||
+          cleanPath === '/api/procurement-sources' ||
+          cleanPath.startsWith('/api/procurement-sources/') ||
+          cleanPath === '/api/procurement-resources' ||
+          cleanPath.startsWith('/api/procurement-resources/');
+
+        if (isMasterCatalog) {
+          isBypassedEndpoint = true;
+        }
+
+        // ── Farm Management Bypass ─────────────────────────────────────────
+        // If user has permission to view Farm Management, or is currently on
+        // the /farms / /farm-management route, do not filter down /api/farms.
+        let isOnFarmPage = false;
+        try {
+          if (typeof window !== 'undefined' && window.location && window.location.pathname) {
+            const p = window.location.pathname;
+            isOnFarmPage = p === '/farms' || p.startsWith('/farm-management');
+          }
+        } catch (e) {}
+
+        const hasFarmManagementAccess = sessionHasAccess(userObj, ['FARM_MANAGEMENT', 'FARMS']);
+        const isFarmRoute = cleanPath === '/api/farms' || cleanPath.startsWith('/api/farms/');
+
+        if (isFarmRoute && (hasFarmManagementAccess || isOnFarmPage || isGlobal)) {
+          isBypassedEndpoint = true;
+        }
+
+        // Land management bypass if user has land access
+        const isLandRoute = cleanPath === '/api/lands' || cleanPath.startsWith('/api/lands/');
+        if (isLandRoute && (sessionHasAccess(userObj, ['LAND_MANAGEMENT', 'LAND']) || isGlobal)) {
+          isBypassedEndpoint = true;
+        }
+
         if (!isGlobal) {
           // Restricted user: locked to their assigned farm
           restrictedFarmId = rawFarmId ? String(rawFarmId).trim() : null;
-          isBypassedEndpoint = isBypassedEndpoint ||
-            cleanPath === '/api/users' ||
-            cleanPath.startsWith('/api/users/') ||
-            cleanPath === '/api/roles' ||
-            cleanPath.startsWith('/api/roles/') ||
-            cleanPath === '/api/departments' ||
-            cleanPath.startsWith('/api/departments/') ||
-            cleanPath === '/api/feed-items' ||
-            cleanPath.startsWith('/api/feed-items/') ||
-            cleanPath === '/api/labors' ||
-            cleanPath.startsWith('/api/labors/') ||
-            cleanPath === '/api/designations' ||
-            cleanPath.startsWith('/api/designations/');
         } else {
           // Global user: filter by the selected active farm if set (and not 'ALL')
           let activeFarmId = 'ALL';
@@ -470,43 +528,13 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
           if (activeFarmId && activeFarmId !== 'ALL') {
             restrictedFarmId = String(activeFarmId).trim();
           }
-          // Global user must NOT have administrative, auth, or global catalog endpoints filtered
-          isBypassedEndpoint = isBypassedEndpoint ||
-            cleanPath === '/api/farms' ||
-            cleanPath.startsWith('/api/farms/') ||
-            cleanPath.startsWith('/api/auth') ||
-            cleanPath === '/api/feed-items' ||
-            cleanPath.startsWith('/api/feed-items/') ||
-            cleanPath === '/api/users' ||
-            cleanPath.startsWith('/api/users/') ||
-            cleanPath === '/api/roles' ||
-            cleanPath.startsWith('/api/roles/') ||
-            cleanPath === '/api/departments' ||
-            cleanPath.startsWith('/api/departments/') ||
-            cleanPath === '/api/breeds' ||
-            cleanPath.startsWith('/api/breeds/') ||
-            cleanPath === '/api/animals' ||
-            cleanPath.startsWith('/api/animals/') ||
-            cleanPath === '/api/medicines' ||
-            cleanPath.startsWith('/api/medicines/') ||
-            cleanPath === '/api/tags' ||
-            cleanPath.startsWith('/api/tags/') ||
-            cleanPath === '/api/labors' ||
-            cleanPath.startsWith('/api/labors/') ||
-            cleanPath === '/api/designations' ||
-            cleanPath.startsWith('/api/designations/') ||
-            cleanPath === '/api/lands' ||
-            cleanPath.startsWith('/api/lands/') ||
-            cleanPath === '/api/bmcs' ||
-            cleanPath.startsWith('/api/bmcs/') ||
-            cleanPath === '/api/semen-straws' ||
-            cleanPath.startsWith('/api/semen-straws/');
         }
 
         // Cache farms list for client-side farm matching
         if (cleanPath === '/api/farms' && Array.isArray(finalData)) {
           try {
             sessionStorage.setItem('__cached_farms_list__', JSON.stringify(finalData));
+            localStorage.setItem('__cached_farms_list__', JSON.stringify(finalData));
           } catch (e) {}
         }
 
@@ -514,6 +542,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
         if (cleanPath === '/api/sheds' && Array.isArray(finalData)) {
           try {
             sessionStorage.setItem('__cached_sheds_list__', JSON.stringify(finalData));
+            localStorage.setItem('__cached_sheds_list__', JSON.stringify(finalData));
           } catch (e) {}
         }
 
@@ -541,7 +570,7 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
             // Attempt to resolve target farm details from cached farms
             let targetFarmObj = null;
             try {
-              const cached = sessionStorage.getItem('__cached_farms_list__');
+              const cached = sessionStorage.getItem('__cached_farms_list__') || localStorage.getItem('__cached_farms_list__');
               if (cached) {
                 const fl = JSON.parse(cached);
                 if (Array.isArray(fl)) {
@@ -624,13 +653,24 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
               }
             }
 
-            // If the item itself is a farm object (returned from /api/farms), check its own ID
-            const isFarm = cleanPath.startsWith('/api/farms');
+            // If the item itself is a farm object (returned from /api/farms), check its own ID, code, and name
+            const isFarm = cleanPath === '/api/farms' || cleanPath.startsWith('/api/farms/');
             if (isFarm) {
-              const farmId = item._id || item.id;
-              if (String(farmId).trim().toUpperCase() !== strRestrictedId) {
-                return false;
+              const farmId = String(item._id || item.id || '').trim().toUpperCase();
+              const farmCode = String(item.code || '').trim().toUpperCase();
+              const farmName = String(item.name || '').trim().toUpperCase();
+
+              if (
+                farmId === strRestrictedId ||
+                farmCode === strRestrictedId ||
+                farmName === strRestrictedId ||
+                (targetId && farmId === targetId) ||
+                (targetCode && (farmCode === targetCode || farmId === targetCode)) ||
+                (targetName && (farmName === targetName || farmName.includes(targetName) || targetName.includes(farmName)))
+              ) {
+                return true;
               }
+              return false;
             }
 
             // If we are filtering by a specific farm (not ALL), records with no farm attribution do not belong to this farm
