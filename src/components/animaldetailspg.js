@@ -1183,7 +1183,9 @@ const currentFields = current.fields.map(f => {
                 buyerPhone: rawPhone || '0000000000',
                 salePrice: rawPrice,
                 remarks: rawRemarks || 'Excel Import Sale Log',
-                date: finalDate
+                date: finalDate,
+                isImported: true,
+                onboardingType: 'IMPORT'
               };
 
               // 1. Write the entry in Sale Log
@@ -1247,7 +1249,9 @@ const currentFields = current.fields.map(f => {
                 oldShed: oldShedVal,
                 newShed: rawNewShed,
                 reason: rawReason || 'Excel Import Shed Log',
-                farmId: matchedAnimal ? (matchedAnimal.farmId?._id || matchedAnimal.farmId?.id || matchedAnimal.farmId) : null
+                farmId: matchedAnimal ? (matchedAnimal.farmId?._id || matchedAnimal.farmId?.id || matchedAnimal.farmId) : null,
+                isImported: true,
+                onboardingType: 'IMPORT'
               };
 
               await api.shed.create(payload);
@@ -1776,6 +1780,9 @@ const currentFields = current.fields.map(f => {
                 purchaseDate: finalPurchaseDate,
                 date: finalPurchaseDate,
                 farmId: finalFarmId || null,
+                remarks: String(row['remarks'] || row['remark'] || 'Excel Import Purchase Log').trim(),
+                isImported: true,
+                onboardingType: 'IMPORT'
               };
 
               await api.purchase.create(payload);
@@ -2057,7 +2064,8 @@ const currentFields = current.fields.map(f => {
                 age: rawAge,
                 status: finalStatus,
                 isPendingDetails: isDeadCalf ? false : isInvalid,
-                onboardingType: isDeadCalf ? undefined : (isInvalid ? 'IMPORT' : undefined)
+                onboardingType: 'IMPORT',
+                isImported: true
               };
 
               // If it's classified as Deceased / Dead during Excel import, register it
@@ -2115,20 +2123,148 @@ const currentFields = current.fields.map(f => {
       return;
     }
     try {
+      const moduleDisplayName = current.name || current.id || "Current Module";
       const confirm = await swalConfirm(
-        "Delete Imported Test Data?",
-        `Are you sure you want to permanently delete imported records? This only deletes records imported via Excel so you can test on fresh data. Farms, sheds, breeds, and settings will remain untouched.`
+        `Delete Imported ${moduleDisplayName} Data?`,
+        `Are you sure you want to permanently delete records imported via Excel for ${moduleDisplayName}? ONLY imported records in this opened module will be deleted. All other modules, farms, sheds, and settings will remain untouched.`
       );
       if (!confirm) return;
 
       setIsLoading(true);
-      const res = await api.cattle.clearImported({
-        module: current.id === 'livestock' ? 'all' : current.id
-      });
-      
-      const total = res?.data?.totalDeleted ?? res?.totalDeleted ?? (res?.data?.deleted?.crossingLogs || 0);
-      swalSuccess("Imported Data Cleared", `Successfully deleted ${total} imported test record(s) from backend.`);
 
+      // 1. Fetch all records for the opened module from the backend
+      let allModuleRecords = [];
+      try {
+        if (current.id === 'livestock') {
+          const res = await api.cattle.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else if (current.id === 'crossing') {
+          const res = await api.crossing.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else if (current.id === 'shed') {
+          const res = await api.shed.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else if (current.id === 'purchase') {
+          const res = await api.purchase.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else if (current.id === 'sale') {
+          const res = await api.sale.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else if (current.id === 'health') {
+          const res = await api.health.treatments.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else if (current.id === 'vaccine') {
+          const res = await api.health.vaccinations.getAll();
+          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+        } else {
+          const savedData = localStorage.getItem(`global_${current.id}_logs`);
+          allModuleRecords = savedData ? JSON.parse(savedData) : [];
+        }
+      } catch (fetchErr) {
+        console.warn(`Could not fetch fresh records for ${current.id}, falling back to current logs:`, fetchErr);
+        allModuleRecords = logs || [];
+      }
+
+      // Merge with logs currently in state to ensure we capture all records
+      const recordsMap = new Map();
+      (Array.isArray(allModuleRecords) ? allModuleRecords : []).forEach((r) => {
+        const id = r?._id || r?.id;
+        if (id) recordsMap.set(String(id), r);
+      });
+      (Array.isArray(logs) ? logs : []).forEach((r) => {
+        const id = r?._id || r?.id;
+        if (id && !recordsMap.has(String(id))) recordsMap.set(String(id), r);
+      });
+      const combinedRecords = Array.from(recordsMap.values());
+
+      // 2. Filter ONLY imported records for this opened module
+      const isImportedRecord = (log) => {
+        if (!log) return false;
+        if (log.isImported === true || String(log.isImported) === 'true') return true;
+        if (String(log.onboardingType || '').toUpperCase() === 'IMPORT') return true;
+        if (current.id === 'livestock' && (log.isPendingDetails === true || String(log.isPendingDetails) === 'true')) {
+          return true;
+        }
+        const rem = String(
+          log.remarks || log.remark || log.comments || log.comment ||
+          log.notes || log.note || log.reason || log.pdRemarks || ''
+        ).toLowerCase();
+        if (
+          rem.includes('excel import') ||
+          rem.includes('imported via excel') ||
+          rem.includes('excel import crossing log') ||
+          rem.includes('excel import shed log') ||
+          rem.includes('excel import purchase log') ||
+          rem.includes('excel import sale log') ||
+          rem.includes('excel import treatment log') ||
+          rem.includes('excel import vaccination log') ||
+          rem.includes('excel import auto sale log') ||
+          rem.includes('excel') ||
+          /\bimported\b/i.test(rem) ||
+          /\bimport\b/i.test(rem)
+        ) {
+          return true;
+        }
+        return false;
+      };
+
+      const importedRecords = combinedRecords.filter(isImportedRecord);
+      let targetRecordsToDelete = importedRecords;
+
+      if (targetRecordsToDelete.length === 0 && combinedRecords.length > 0) {
+        const confirmAll = await swalConfirm(
+          `No Tagged Import Records Found`,
+          `No records with an explicit "imported" tag were found in ${moduleDisplayName}. Would you like to clear the ${combinedRecords.length} record(s) currently in this ${moduleDisplayName} module? ONLY ${moduleDisplayName} records will be deleted. All other modules remain untouched.`
+        );
+        if (confirmAll) {
+          targetRecordsToDelete = combinedRecords;
+        } else {
+          setIsLoading(false);
+          return;
+        }
+      } else if (targetRecordsToDelete.length === 0) {
+        swalSuccess("No Records", `No records found in ${moduleDisplayName} to delete.`);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Delete ONLY the records belonging to this opened module
+      let deletedCount = 0;
+      let failedCount = 0;
+      const batchSize = 20;
+
+      for (let i = 0; i < targetRecordsToDelete.length; i += batchSize) {
+        const batch = targetRecordsToDelete.slice(i, i + batchSize);
+        await Promise.allSettled(
+          batch.map(async (rec) => {
+            const entryId = rec._id || rec.id;
+            if (!entryId) return;
+            try {
+              if (current.id === 'livestock') {
+                await api.cattle.delete(entryId);
+              } else if (current.id === 'crossing') {
+                await api.crossing.delete(entryId);
+              } else if (current.id === 'shed') {
+                await api.shed.delete(entryId);
+              } else if (current.id === 'purchase') {
+                await api.purchase.delete(entryId);
+              } else if (current.id === 'sale') {
+                await api.sale.delete(entryId);
+              } else if (current.id === 'health') {
+                await api.health.treatments.delete(entryId);
+              } else if (current.id === 'vaccine') {
+                await api.health.vaccinations.delete(entryId);
+              }
+              deletedCount++;
+            } catch (err) {
+              console.error(`Failed to delete imported ${current.id} record ${entryId}:`, err);
+              failedCount++;
+            }
+          })
+        );
+      }
+
+      // 4. Clear ONLY the local cache/storage for the opened module
       try {
         localStorage.removeItem(`global_${current.id}_logs`);
         sessionStorage.removeItem('__livestock_tag_cache__');
@@ -2136,8 +2272,17 @@ const currentFields = current.fields.map(f => {
 
       setLogs([]);
       await fetchLogs();
+
+      if (deletedCount > 0) {
+        swalSuccess(
+          "Imported Data Cleared",
+          `Successfully deleted ${deletedCount} imported record(s) from ${moduleDisplayName}.${failedCount > 0 ? ` (${failedCount} failed)` : ''} Other modules were not touched.`
+        );
+      } else {
+        swalError("Error", "Could not delete imported records. Please check your network or permissions.");
+      }
     } catch (err) {
-      console.error("Failed to clear imported data:", err);
+      console.error(`Failed to clear imported data for ${current.id}:`, err);
       swalError("Error", err?.message || "Failed to delete imported data from backend.");
     } finally {
       setIsLoading(false);
