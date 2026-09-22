@@ -485,6 +485,11 @@
 
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
+      const initAnimalType = formatted.cattleType || formatted.animalType || '';
+      if (initAnimalType) {
+        formatted.cattleType = initAnimalType;
+        formatted.animalType = initAnimalType;
+      }
       (fields || []).forEach(field => {
         const fieldName = field.name;
         if (formatted[fieldName] && typeof formatted[fieldName] === 'object' && !Array.isArray(formatted[fieldName])) {
@@ -1047,10 +1052,19 @@
                     );
                   }
                   if (resolved) {
-                    setFormData(prev => ({
-                      ...prev,
-                      [animalTypeField.name]: resolved
-                    }));
+                    setFormData(prev => {
+                      // CRITICAL: Do NOT overwrite user's selected or pre-filled animal type!
+                      const existingVal = prev[animalTypeField.name] || prev.cattleType || prev.animalType;
+                      if (existingVal && existingVal !== '' && existingVal !== '-' && String(existingVal).toUpperCase() !== 'PENDING') {
+                        return prev;
+                      }
+                      return {
+                        ...prev,
+                        [animalTypeField.name]: resolved,
+                        cattleType: resolved,
+                        animalType: resolved
+                      };
+                    });
                     break;
                   }
                 }
@@ -1090,6 +1104,11 @@
 
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+
+      if (name === "cattleType" || name === "animalType") {
+        updated["cattleType"] = value;
+        updated["animalType"] = value;
+      }
 
       if (name === "gender" && String(value).toUpperCase() === "MALE") {
         updated["calvings"] = 0;
@@ -1633,6 +1652,11 @@
                   await onSubmit(finalData);
                 } else {
                    const finalData = { ...formData };
+                  if (finalData.cattleType && !finalData.animalType) {
+                    finalData.animalType = finalData.cattleType;
+                  } else if (finalData.animalType && !finalData.cattleType) {
+                    finalData.cattleType = finalData.animalType;
+                  }
                   const isFeed = title?.toLowerCase().includes("feed") || fields.some(f => f.name === 'feedType');
                   const isMedicine = title?.toLowerCase().includes("medicine") || fields.some(f => f.name === 'medicineName');
                   if ((isFeed || isMedicine) && !Number(finalData.bought)) {
@@ -2155,9 +2179,9 @@
                             name={field.name}
                             value={
                               ((field.name === "shed" || field.name === "shedId") && formData[field.name] === "-") ||
-                              ((field.name === "cattleType" || field.name === "animalType") && String(formData[field.name]).toUpperCase() === "PENDING")
+                              ((field.name === "cattleType" || field.name === "animalType") && String(formData[field.name] || formData.cattleType || formData.animalType).toUpperCase() === "PENDING")
                                 ? ""
-                                : (formData[field.name] || "")
+                                : (formData[field.name] || (field.name === "cattleType" ? formData.animalType : field.name === "animalType" ? formData.cattleType : "") || "")
                             }
                             required={isFieldRequired(field)}
                             disabled={field.name === "oldShed" || field.disabled}
@@ -2258,6 +2282,7 @@
             const typeVal = animalRecord.animalType || animalRecord.cattleType || "";
             if (typeVal) {
               if (fields.some(f => f.name === 'animalType')) updated.animalType = typeVal;
+              if (fields.some(f => f.name === 'cattleType')) updated.cattleType = typeVal;
               if (fields.some(f => f.name === 'animalId')) updated.animalId = typeVal;
             }
             if (animalRecord.farmId) {
@@ -2275,6 +2300,7 @@
             const cachedType = getAnimalTypeFromLivestock(tagValue);
             if (cachedType) {
               if (fields.some(f => f.name === 'animalType')) updated.animalType = cachedType;
+              if (fields.some(f => f.name === 'cattleType')) updated.cattleType = cachedType;
               if (fields.some(f => f.name === 'animalId')) updated.animalId = cachedType;
             }
           }

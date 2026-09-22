@@ -1897,14 +1897,11 @@ const currentFields = current.fields.map(f => {
 
               const rawShed = String(row['shed'] || '-').trim();
               
-              let rawCattle = String(row['cattle'] || '').trim().toUpperCase();
-              if (rawCattle === 'B.CALF') {
-                rawCattle = 'BUFFALO CALF';
-              } else if (rawCattle === 'C.CALF') {
-                rawCattle = 'COW CALF';
-              } else if (rawCattle === 'CATTLE') {
-                rawCattle = 'COW';
-              }
+              const rawCattleInput = String(
+                row['cattle'] || row['cattleType'] || row['cattletype'] || row['cattle type'] || row['cattle_type'] ||
+                row['animalType'] || row['animaltype'] || row['animal type'] || row['animal_type'] ||
+                row['animal'] || row['type'] || ''
+              ).trim();
 
               const rawGender = String(row['gender'] || '').trim();
               const rawBreed = String(row['breed'] || '').trim();
@@ -2013,31 +2010,56 @@ const currentFields = current.fields.map(f => {
 
               const matchedBreed = findSmartMatch(rawBreed, allowedBreeds);
               
-              // 1. Resolve Calf Type first if tag contains "calf"
-              const resolvedCalf = resolveCalfType(rawTag, rawCattle, rawBreed, rawSireBreed, rawDameBreed, rawDameId, activeCattle, suffixRules);
+              let finalCattle = '';
+              let isAnimalValid = false;
 
-              // 2. Dynamic auto-detect animal type from suffix rules based on tag suffix
-              let suffixType = null;
-              const cleanTag = rawTag.toUpperCase();
-              for (const r of suffixRules) {
-                const suff = String(r.suffix).toUpperCase();
-                if (cleanTag.endsWith(suff)) {
-                  suffixType = r.animalType;
-                  break;
+              if (rawCattleInput && rawCattleInput !== '-' && rawCattleInput.toLowerCase() !== 'null' && rawCattleInput.toLowerCase() !== 'undefined') {
+                // User explicitly provided an Animal Type in Excel - ALWAYS respect it!
+                const upper = rawCattleInput.toUpperCase().replace(/\s+/g, ' ').trim();
+                if (upper === 'B.CALF' || upper === 'B. CALF' || upper === 'B CALF' || upper === 'BUFFALO CALF') {
+                  finalCattle = 'Buffalo Calf';
+                } else if (upper === 'C.CALF' || upper === 'C. CALF' || upper === 'C CALF' || upper === 'COW CALF') {
+                  finalCattle = 'Cow Calf';
+                } else if (upper === 'COW' || upper === 'CATTLE') {
+                  finalCattle = 'Cow';
+                } else if (upper === 'BUFFALO' || upper === 'BUFF') {
+                  finalCattle = 'Buffalo';
+                } else {
+                  const matched = findSmartMatch(rawCattleInput, allowedAnimals);
+                  finalCattle = matched || rawCattleInput;
                 }
+                const canonicalMatch = findSmartMatch(finalCattle, allowedAnimals);
+                if (canonicalMatch) {
+                  finalCattle = canonicalMatch;
+                  isAnimalValid = true;
+                } else {
+                  isAnimalValid = allowedAnimals.has(finalCattle.toUpperCase());
+                }
+              } else {
+                // Fallback ONLY when Excel animal type column is missing or empty
+                if (isDeadCalf) {
+                  const breedCombo = (rawBreed + ' ' + rawDameBreed + ' ' + rawSireBreed).toUpperCase();
+                  finalCattle = breedCombo.includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                } else {
+                  const resolvedCalf = resolveCalfType(rawTag, '', rawBreed, rawSireBreed, rawDameBreed, rawDameId, activeCattle, suffixRules);
+                  let suffixType = null;
+                  const cleanTag = rawTag.toUpperCase();
+                  for (const r of suffixRules) {
+                    const suff = String(r.suffix).toUpperCase();
+                    if (cleanTag.endsWith(suff)) {
+                      suffixType = r.animalType;
+                      break;
+                    }
+                  }
+                  const fallbackCandidate = resolvedCalf || suffixType || 'Cow';
+                  const matchedFallback = findSmartMatch(fallbackCandidate, allowedAnimals);
+                  finalCattle = matchedFallback || fallbackCandidate;
+                }
+                isAnimalValid = allowedAnimals.has(finalCattle.toUpperCase()) || findSmartMatch(finalCattle, allowedAnimals) !== null;
               }
-              const typeToMatch = resolvedCalf || suffixType || rawCattle;
-              const matchedCattle = findSmartMatch(typeToMatch, allowedAnimals);
 
               const finalBreed = matchedBreed || rawBreed;
-              let finalCattle = matchedCattle || typeToMatch || 'COW';
-              if (isDeadCalf && (!matchedCattle || finalCattle === 'COW' || finalCattle === 'PENDING')) {
-                const breedCombo = (rawBreed + ' ' + rawDameBreed + ' ' + rawSireBreed).toUpperCase();
-                finalCattle = breedCombo.includes('BUFFALO') ? 'BUFFALO CALF' : 'COW CALF';
-              }
-
               const isBreedValid = matchedBreed !== null;
-              const isAnimalValid = matchedCattle !== null;
               const isDOBValid = rawDOB !== null && rawDOB !== undefined && !isNaN(rawDOB.getTime());
               const isInvalid = !isDeadOrSold && (!isShedValid || !isBreedValid || !isAnimalValid || !isDOBValid);
 
@@ -2499,8 +2521,12 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
       let initialDob = log.dateOfBirth || log.dob || "";
       if (initialDob === '-' || initialDob === 'null') initialDob = "";
 
+      const resolvedAnimalType = log.cattleType || log.animalType || '';
+
       return {
         ...log,
+        cattleType: resolvedAnimalType,
+        animalType: resolvedAnimalType,
         dateOfBirth: initialDob,
         dob: initialDob,
         calvings: log.calvings !== undefined && log.calvings !== null && log.calvings !== "" && log.calvings !== "-" ? Number(log.calvings) : 0,
@@ -3599,6 +3625,11 @@ const handleSave = async (data) => {
       if (isEditing) {
         if (current.id === 'livestock') {
           const payload = { ...data, tagId: data.tag || data.tagId };
+          const resolvedType = data.cattleType || data.animalType || selectedEntry?.cattleType || selectedEntry?.animalType || '';
+          if (resolvedType) {
+            payload.cattleType = resolvedType;
+            payload.animalType = resolvedType;
+          }
           if (payload.calvings === undefined || payload.calvings === null || String(payload.calvings).trim() === "" || String(payload.calvings).trim() === "-") {
             payload.calvings = 0;
           } else {
@@ -5170,7 +5201,8 @@ const getShedFromLivestock = (tagValue) => {
               {pendingImports.map(animal => {
                 const isShedOk = animal.shed && allowedSheds.has(String(animal.shed).toUpperCase());
                 const isBreedOk = animal.breed && allowedBreeds.has(String(animal.breed).toUpperCase());
-                const isAnimalOk = animal.cattleType && allowedAnimals.has(String(animal.cattleType).toUpperCase());
+                const aType = animal.cattleType || animal.animalType;
+                const isAnimalOk = aType && (allowedAnimals.has(String(aType).toUpperCase()) || findSmartMatch(aType, allowedAnimals) !== null);
                 const isDOBOk = animal.dateOfBirth && animal.dateOfBirth !== '-' && String(animal.dateOfBirth).trim() !== '';
 
                 return (
@@ -5206,7 +5238,7 @@ const getShedFromLivestock = (tagValue) => {
                         <div className="flex justify-between items-center pb-1.5 border-b border-gray-50">
                           <span className="opacity-60">Animal Type:</span>
                           <span className={`font-semibold ${isAnimalOk ? 'text-gray-800' : 'text-red-500 font-bold'}`}>
-                            {animal.cattleType || '-'} {!isAnimalOk && '⚠️'}
+                            {aType || '-'} {!isAnimalOk && '⚠️'}
                           </span>
                         </div>
 
@@ -5590,6 +5622,15 @@ const getShedFromLivestock = (tagValue) => {
                             );
                           }
 
+                          if (f.name === 'cattleType' || f.name === 'animalType') {
+                            const val = log.cattleType || log.animalType || '-';
+                            return (
+                              <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
+                                {val}
+                              </td>
+                            );
+                          }
+
                           return (
                             <td key={f.name} className="p-4 font-semibold text-black whitespace-nowrap">
                               {log[f.name] !== undefined && log[f.name] !== null && String(log[f.name]).trim() !== '' ? log[f.name] : '-'}
@@ -5835,6 +5876,11 @@ const getShedFromLivestock = (tagValue) => {
               initialData={(() => {
                 if (!isEditing || !selectedEntry) return {};
                 let base = { ...selectedEntry };
+                const resolvedInitialType = base.cattleType || base.animalType || '';
+                if (resolvedInitialType) {
+                  base.cattleType = resolvedInitialType;
+                  base.animalType = resolvedInitialType;
+                }
                 if (base.isPendingDetails && base.onboardingType === 'CALVING') {
                   base.farmBorn = base.farmBorn || 'Yes';
                   if (!base.cattleType || base.cattleType === 'PENDING') {
@@ -5847,13 +5893,19 @@ const getShedFromLivestock = (tagValue) => {
                       const motherType = String(mother.cattleType || mother.animalType || '').toUpperCase();
                       if (motherType.includes('BUFFALO')) {
                         base.cattleType = 'Buffalo Calf';
+                        base.animalType = 'Buffalo Calf';
                       } else if (motherType.includes('COW')) {
                         base.cattleType = 'Cow Calf';
+                        base.animalType = 'Cow Calf';
                       } else {
-                        base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                        const fallbackType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                        base.cattleType = fallbackType;
+                        base.animalType = fallbackType;
                       }
                     } else {
-                      base.cattleType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                      const fallbackType = String(base.animalType).toUpperCase().includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
+                      base.cattleType = fallbackType;
+                      base.animalType = fallbackType;
                     }
                   }
                 }
