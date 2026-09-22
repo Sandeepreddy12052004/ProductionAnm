@@ -218,15 +218,37 @@ const getLogFieldValue = (log, field, cattleList = []) => {
 
   // 10. Actual Calving Date
   if (name === 'actualCalvingDate' || name === 'actual calving date') {
-    const val = log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] ||
-                log['birthing date'] || log['birthingdate'] || log['birthing_date'] || log['birthing'] ||
-                log['date of birthing'] || log['birth date'] || log['birth_date'] || log['date of birth'] || log['calving date'];
+    let val = log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] ||
+              log['birthing date / aborted date'] || log['birthing date/aborted date'] ||
+              log['birthing date / abort date'] || log['birthing date/abort date'] ||
+              log['birthingdateaborteddate'] || log['birthingdateabortdate'] ||
+              log['birthing / aborted date'] || log['birthing/aborted date'] ||
+              log['birthing date or aborted date'] || log['birthing date or abort date'] ||
+              log['aborted date'] || log['abort date'] || log['aborteddate'] || log['abortdate'] ||
+              log['birthing date'] || log['birthingdate'] || log['birthing_date'] || log['birthing'] ||
+              log['date of birthing'] || log['birth date'] || log['birth_date'] || log['date of birth'] || log['calving date'];
+    if (!val) {
+      const matchedKey = Object.keys(log).find(k => {
+        const lk = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return (
+          lk.includes('birthing') ||
+          (lk.includes('abort') && lk.includes('date')) ||
+          lk.includes('calving') ||
+          lk.includes('calved') ||
+          lk.includes('parturition')
+        ) && !lk.includes('estimated') && !lk.includes('expected') && !lk.includes('ecd') && !lk.includes('edd');
+      });
+      if (matchedKey) val = log[matchedKey];
+    }
     return val ? formatDateToDDMMYYYY(val) : '-';
   }
 
   // 11. Calving Status
   if (name === 'calvingStatus' || name === 'calving status') {
-    const val = log.calvingStatus || log['calvingStatus'] || log['calving status'] || log['birth status'];
+    let val = log.calvingStatus || log['calvingStatus'] || log['calving status'] || log['birth status'];
+    const remLower = String(log.remarks || log['remarks'] || log.remark || '').toLowerCase();
+    if (/\b(abort|aborted|abortion)\b/i.test(remLower) || remLower.includes('aborted calf')) return 'abortion';
+    if (/\b(premature|pre-mature|pre mature)\b/i.test(remLower) || remLower.includes('premature calf')) return 'premature';
     if (val && val !== '-') return val;
     if (log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] || log['birthing date']) return 'normal';
     const status = String(log.pregnancyStatus || log['pregnancy status'] || '').toUpperCase();
@@ -723,7 +745,11 @@ const getStandardHeaderKey = (headerValue) => {
       'actualcalvingdate', 'birthingdate', 'dateofbirthing', 'birthing', 'birthdate', 'calvingdate', 'dateofcalving',
       'parturitiondate', 'acd', 'actual calving date', 'birthing date', 'date of birthing', 'birth date',
       'calving date', 'calved date', 'calveddate', 'date of calving', 'date of birth', 'parturition date',
-      'actual_calving_date', 'birthing_date', 'deliverydate', 'delivery date'
+      'actual_calving_date', 'birthing_date', 'deliverydate', 'delivery date',
+      'birthingdateaborteddate', 'birthingdateabortdate', 'birthingdateoraborteddate', 'birthingdateorabortdate',
+      'birthing date / aborted date', 'birthing date/aborted date', 'birthing date / abort date', 'birthing date/abort date',
+      'birthing date or aborted date', 'birthing date or abort date', 'birthing / aborted date', 'birthing/aborted date',
+      'aborteddate', 'abortdate', 'aborted date', 'abort date', 'abortiondate', 'dateofabortion', 'abortion date'
     ],
     calfTag: [
       'calftag', 'calftagid', 'calftagno', 'newcalftag', 'borncalftag', 'calfid', 'calf tag',
@@ -1490,10 +1516,18 @@ const currentFields = current.fields.map(f => {
                 rawEstimatedCalvingDate = new Date(finalCrossingDate.getTime() + 282 * 24 * 60 * 60 * 1000);
               }
 
-              // 7. Actual Calving Date: Excel "birthing date" is Actual Calving Date (actualCalvingDate)
-              const rawActualCalvingDate = parseDateString(
+              // 7. Actual Calving Date: Excel "Birthing Date / Aborted Date" is Actual Calving Date (actualCalvingDate)
+              let rawActualCalvingInput = 
                 row['actualCalvingDate'] || row['actualcalvingdate'] || row['actual_calving_date'] ||
                 row['actual calving date'] || row['actualcalving'] || row['actual calving'] ||
+                row['birthing date / aborted date'] || row['birthing date/aborted date'] ||
+                row['birthing date / abort date'] || row['birthing date/abort date'] ||
+                row['birthingdateaborteddate'] || row['birthingdateabortdate'] ||
+                row['birthing / aborted date'] || row['birthing/aborted date'] ||
+                row['birthing date or aborted date'] || row['birthing date or abort date'] ||
+                row['aborted date'] || row['aborteddate'] || row['aborted_date'] ||
+                row['abort date'] || row['abortdate'] || row['abort_date'] ||
+                row['abortion date'] || row['date of abortion'] ||
                 row['birthing date'] || row['birthingdate'] || row['birthing_date'] || row['birthing'] ||
                 row['date of birthing'] || row['dateofbirthing'] ||
                 row['calving date'] || row['calvingdate'] || row['calving_date'] || row['calving'] ||
@@ -1502,8 +1536,24 @@ const currentFields = current.fields.map(f => {
                 row['birth date'] || row['birthdate'] || row['birth_date'] ||
                 row['date of birth'] || row['dateofbirth'] || row['dob'] ||
                 row['parturition date'] || row['parturitiondate'] || row['parturition_date'] ||
-                row['delivery date'] || row['deliverydate'] || row['delivery_date'] || row['acd']
-              );
+                row['delivery date'] || row['deliverydate'] || row['delivery_date'] || row['acd'];
+
+              if (!rawActualCalvingInput) {
+                const matchedKey = Object.keys(row).find(k => {
+                  const lk = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  return (
+                    lk.includes('birthing') ||
+                    (lk.includes('abort') && lk.includes('date')) ||
+                    lk.includes('calving') ||
+                    lk.includes('calved') ||
+                    lk.includes('parturition')
+                  ) && !lk.includes('estimated') && !lk.includes('expected') && !lk.includes('ecd') && !lk.includes('edd');
+                });
+                if (matchedKey) {
+                  rawActualCalvingInput = row[matchedKey];
+                }
+              }
+              const rawActualCalvingDate = parseDateString(rawActualCalvingInput);
 
               // 8. Remarks & Pregnancy Status Analysis:
               // User instruction:
@@ -1625,13 +1675,31 @@ const currentFields = current.fields.map(f => {
                 ? (computedPregnantAge || row['pregnantAge'] || row['pregnantage'] || row['pregnant_age'] || row['pregnant age'] || null)
                 : null;
 
-              // 10. Calving Status
+              // 10. Calving Status:
+              // User instruction:
+              // "in crossing log while importing also analyse remarks if aborted calf is born the set calving status as abortion.if premature calf is present in remarks in calving status as premature."
+              const remarksLower = (rawRemarks || '').toLowerCase();
+              let remarksCalvingStatus = null;
+              if (/\b(abort|aborted|abortion)\b/i.test(remarksLower) || remarksLower.includes('aborted calf') || remarksLower.includes('abortion')) {
+                remarksCalvingStatus = 'abortion';
+              } else if (/\b(premature|pre-mature|pre mature)\b/i.test(remarksLower) || remarksLower.includes('premature calf')) {
+                remarksCalvingStatus = 'premature';
+              }
+
               let rawCalvingStatus = String(
                 row['calvingStatus'] || row['calvingstatus'] || row['calving_status'] || row['calving status'] || row['birth status'] || ''
               ).trim().toLowerCase();
-              if (!rawCalvingStatus) {
+
+              if (remarksCalvingStatus) {
+                rawCalvingStatus = remarksCalvingStatus;
+              } else if (!rawCalvingStatus || rawCalvingStatus === '-') {
                 if (rawActualCalvingDate) {
-                  rawCalvingStatus = 'normal';
+                  // Check if header itself specifically denoted an aborted date
+                  const isAbortedHeader = Object.keys(row).some(k => {
+                    const lk = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    return (lk === 'aborteddate' || lk === 'abortdate' || lk === 'abortiondate') && row[k] === rawActualCalvingInput;
+                  });
+                  rawCalvingStatus = isAbortedHeader ? 'abortion' : 'normal';
                 } else if (rawPregnancyStatus === 'Positive') {
                   rawCalvingStatus = 'pending';
                 }
@@ -2686,9 +2754,29 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
         const pdDate = log.pdDate || log['pdDate'] || log['PD date'] || log['pd date'] || log['pd due'] ||
                        log['pd due date'] || log['pd test date'] || log['pregnancy diagnosis date'] || log['pregnancy check date'] || null;
 
-        const actualCalvingDate = log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] ||
-                                  log['birthing date'] || log['birthingdate'] || log['birthing_date'] || log['birthing'] ||
-                                  log['date of birthing'] || log['birth date'] || log['date of birth'] || log['calving date'] || null;
+        let actualCalvingDate = log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] ||
+                                log['birthing date / aborted date'] || log['birthing date/aborted date'] ||
+                                log['birthing date / abort date'] || log['birthing date/abort date'] ||
+                                log['birthingdateaborteddate'] || log['birthingdateabortdate'] ||
+                                log['birthing / aborted date'] || log['birthing/aborted date'] ||
+                                log['birthing date or aborted date'] || log['birthing date or abort date'] ||
+                                log['aborted date'] || log['abort date'] || log['aborteddate'] || log['abortdate'] ||
+                                log['birthing date'] || log['birthingdate'] || log['birthing_date'] || log['birthing'] ||
+                                log['date of birthing'] || log['birth date'] || log['date of birth'] || log['calving date'] || null;
+
+        if (!actualCalvingDate) {
+          const matchedKey = Object.keys(log).find(k => {
+            const lk = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return (
+              lk.includes('birthing') ||
+              (lk.includes('abort') && lk.includes('date')) ||
+              lk.includes('calving') ||
+              lk.includes('calved') ||
+              lk.includes('parturition')
+            ) && !lk.includes('estimated') && !lk.includes('expected') && !lk.includes('ecd') && !lk.includes('edd');
+          });
+          if (matchedKey) actualCalvingDate = log[matchedKey];
+        }
 
         const pregnancyConfirmedDate = log.pregnancyConfirmedDate || log['pregnancyConfirmedDate'] || log['pregnancy confirmed date'] ||
                                       log['pregnancy conformed date'] || log['pd confirmed date'] || log['confirmation date'] || null;
@@ -2716,7 +2804,12 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
 
         // Resolve calvingStatus
         let calvingStatus = log.calvingStatus || log['calvingStatus'] || log['calving status'] || '';
-        if (!calvingStatus || calvingStatus === '-') {
+        const remLower = String(log.remarks || log['remarks'] || log.remark || '').toLowerCase();
+        if (/\b(abort|aborted|abortion)\b/i.test(remLower) || remLower.includes('aborted calf')) {
+          calvingStatus = 'abortion';
+        } else if (/\b(premature|pre-mature|pre mature)\b/i.test(remLower) || remLower.includes('premature calf')) {
+          calvingStatus = 'premature';
+        } else if (!calvingStatus || calvingStatus === '-') {
           if (actualCalvingDate) calvingStatus = 'normal';
           else if (pregnancyStatus === 'Positive' || pregnancyConfirmedDate) calvingStatus = 'pending';
         }
@@ -5452,6 +5545,14 @@ const getShedFromLivestock = (tagValue) => {
                                   className="hover:bg-[#D1867D]/5 cursor-pointer transition-colors"
                                 >
                                   {currentFields.filter(f => !['tag', 'tagId', 'femaleTag', 'tag_id'].includes(f.name)).map(f => {
+                                    if (current.id === 'crossing') {
+                                      const displayVal = getLogFieldValue(log, f, rawCattleList);
+                                      return (
+                                        <td key={f.name} className="p-3.5 font-semibold whitespace-nowrap">
+                                          {displayVal}
+                                        </td>
+                                      );
+                                    }
                                     let val = log[f.name] !== undefined && log[f.name] !== null && String(log[f.name]).trim() !== '' ? log[f.name] : '-';
                                     if (f.type === 'date' || f.name.toLowerCase().includes('date') || f.name === 'dob') {
                                       val = log[f.name] ? formatDateToDDMMYYYY(log[f.name]) : '-';
