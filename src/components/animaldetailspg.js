@@ -219,7 +219,8 @@ const getLogFieldValue = (log, field, cattleList = []) => {
   // 10. Actual Calving Date
   if (name === 'actualCalvingDate' || name === 'actual calving date') {
     const val = log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] ||
-                log['birthing date'] || log['birthingdate'] || log['birth date'] || log['calving date'];
+                log['birthing date'] || log['birthingdate'] || log['birthing_date'] || log['birthing'] ||
+                log['date of birthing'] || log['birth date'] || log['birth_date'] || log['date of birth'] || log['calving date'];
     return val ? formatDateToDDMMYYYY(val) : '-';
   }
 
@@ -719,10 +720,10 @@ const getStandardHeaderKey = (headerValue) => {
       'delivery date', 'estimated_calving_date', 'expected_delivery_date'
     ],
     actualCalvingDate: [
-      'actualcalvingdate', 'birthingdate', 'birthdate', 'calvingdate', 'dateofcalving',
-      'parturitiondate', 'acd', 'actual calving date', 'birthing date', 'birth date',
+      'actualcalvingdate', 'birthingdate', 'dateofbirthing', 'birthing', 'birthdate', 'calvingdate', 'dateofcalving',
+      'parturitiondate', 'acd', 'actual calving date', 'birthing date', 'date of birthing', 'birth date',
       'calving date', 'calved date', 'calveddate', 'date of calving', 'date of birth', 'parturition date',
-      'actual_calving_date', 'birthing_date'
+      'actual_calving_date', 'birthing_date', 'deliverydate', 'delivery date'
     ],
     calfTag: [
       'calftag', 'calftagid', 'calftagno', 'newcalftag', 'borncalftag', 'calfid', 'calf tag',
@@ -1492,9 +1493,16 @@ const currentFields = current.fields.map(f => {
               // 7. Actual Calving Date: Excel "birthing date" is Actual Calving Date (actualCalvingDate)
               const rawActualCalvingDate = parseDateString(
                 row['actualCalvingDate'] || row['actualcalvingdate'] || row['actual_calving_date'] ||
-                row['actual calving date'] || row['birthing date'] || row['birthingdate'] || row['birthing_date'] ||
-                row['birth date'] || row['birthdate'] || row['calving date'] || row['calvingdate'] ||
-                row['calved date'] || row['calveddate'] || row['calving_date'] || row['date of calving'] || row['parturition date'] || row['acd']
+                row['actual calving date'] || row['actualcalving'] || row['actual calving'] ||
+                row['birthing date'] || row['birthingdate'] || row['birthing_date'] || row['birthing'] ||
+                row['date of birthing'] || row['dateofbirthing'] ||
+                row['calving date'] || row['calvingdate'] || row['calving_date'] || row['calving'] ||
+                row['calved date'] || row['calveddate'] || row['calved_date'] || row['calved'] ||
+                row['date of calving'] || row['dateofcalving'] ||
+                row['birth date'] || row['birthdate'] || row['birth_date'] ||
+                row['date of birth'] || row['dateofbirth'] || row['dob'] ||
+                row['parturition date'] || row['parturitiondate'] || row['parturition_date'] ||
+                row['delivery date'] || row['deliverydate'] || row['delivery_date'] || row['acd']
               );
 
               // 8. Remarks & Pregnancy Status Analysis:
@@ -2679,7 +2687,8 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
                        log['pd due date'] || log['pd test date'] || log['pregnancy diagnosis date'] || log['pregnancy check date'] || null;
 
         const actualCalvingDate = log.actualCalvingDate || log['actualCalvingDate'] || log['actual calving date'] ||
-                                  log['birthing date'] || log['birthingdate'] || log['birth date'] || log['calving date'] || null;
+                                  log['birthing date'] || log['birthingdate'] || log['birthing_date'] || log['birthing'] ||
+                                  log['date of birthing'] || log['birth date'] || log['date of birth'] || log['calving date'] || null;
 
         const pregnancyConfirmedDate = log.pregnancyConfirmedDate || log['pregnancyConfirmedDate'] || log['pregnancy confirmed date'] ||
                                       log['pregnancy conformed date'] || log['pd confirmed date'] || log['confirmation date'] || null;
