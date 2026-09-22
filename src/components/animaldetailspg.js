@@ -2134,10 +2134,26 @@ const currentFields = current.fields.map(f => {
 
       // 1. Fetch all records for the opened module from the backend
       let allModuleRecords = [];
+      let otherModulesSnapshot = null;
+
       try {
         if (current.id === 'livestock') {
-          const res = await api.cattle.getAll();
-          allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
+          // Snapshot other modules to protect against potential backend cascade deletion
+          const [res, crossingRes, shedRes, purchaseRes, saleRes] = await Promise.allSettled([
+            api.cattle.getAll(),
+            api.crossing.getAll(),
+            api.shed.getAll(),
+            api.purchase.getAll(),
+            api.sale.getAll()
+          ]);
+          const unwrap = (r) => (r.status === 'fulfilled' && r.value ? (Array.isArray(r.value) ? r.value : (r.value.data ?? [])) : []);
+          allModuleRecords = unwrap(res);
+          otherModulesSnapshot = {
+            crossing: unwrap(crossingRes),
+            shed: unwrap(shedRes),
+            purchase: unwrap(purchaseRes),
+            sale: unwrap(saleRes)
+          };
         } else if (current.id === 'crossing') {
           const res = await api.crossing.getAll();
           allModuleRecords = Array.isArray(res) ? res : (res?.data ?? []);
@@ -2264,7 +2280,70 @@ const currentFields = current.fields.map(f => {
         );
       }
 
-      // 4. Clear ONLY the local cache/storage for the opened module
+      // 4. If livestock was cleared, verify and restore any side-effect cascade deletions on other modules
+      if (current.id === 'livestock' && otherModulesSnapshot) {
+        try {
+          const [crossingAfterRes, shedAfterRes, purchaseAfterRes, saleAfterRes] = await Promise.allSettled([
+            api.crossing.getAll(),
+            api.shed.getAll(),
+            api.purchase.getAll(),
+            api.sale.getAll()
+          ]);
+          const unwrap = (r) => (r.status === 'fulfilled' && r.value ? (Array.isArray(r.value) ? r.value : (r.value.data ?? [])) : []);
+          const crossingAfter = unwrap(crossingAfterRes);
+          const shedAfter = unwrap(shedAfterRes);
+          const purchaseAfter = unwrap(purchaseAfterRes);
+          const saleAfter = unwrap(saleAfterRes);
+
+          // Restore crossing logs if backend cascade deleted any
+          const existingCrossingIds = new Set(crossingAfter.map(c => String(c._id || c.id)));
+          const missingCrossing = otherModulesSnapshot.crossing.filter(c => {
+            const id = String(c._id || c.id);
+            return id && !existingCrossingIds.has(id);
+          });
+          for (const item of missingCrossing) {
+            const { _id, id, createdAt, updatedAt, __v, ...cleanPayload } = item;
+            await api.crossing.create(cleanPayload).catch(() => {});
+          }
+
+          // Restore shed logs if backend cascade deleted any
+          const existingShedIds = new Set(shedAfter.map(s => String(s._id || s.id)));
+          const missingShed = otherModulesSnapshot.shed.filter(s => {
+            const id = String(s._id || s.id);
+            return id && !existingShedIds.has(id);
+          });
+          for (const item of missingShed) {
+            const { _id, id, createdAt, updatedAt, __v, ...cleanPayload } = item;
+            await api.shed.create(cleanPayload).catch(() => {});
+          }
+
+          // Restore purchase logs if backend cascade deleted any
+          const existingPurchaseIds = new Set(purchaseAfter.map(p => String(p._id || p.id)));
+          const missingPurchase = otherModulesSnapshot.purchase.filter(p => {
+            const id = String(p._id || p.id);
+            return id && !existingPurchaseIds.has(id);
+          });
+          for (const item of missingPurchase) {
+            const { _id, id, createdAt, updatedAt, __v, ...cleanPayload } = item;
+            await api.purchase.create(cleanPayload).catch(() => {});
+          }
+
+          // Restore sale logs if backend cascade deleted any
+          const existingSaleIds = new Set(saleAfter.map(s => String(s._id || s.id)));
+          const missingSale = otherModulesSnapshot.sale.filter(s => {
+            const id = String(s._id || s.id);
+            return id && !existingSaleIds.has(id);
+          });
+          for (const item of missingSale) {
+            const { _id, id, createdAt, updatedAt, __v, ...cleanPayload } = item;
+            await api.sale.create(cleanPayload).catch(() => {});
+          }
+        } catch (cascadeErr) {
+          console.warn("Could not verify/restore other module logs:", cascadeErr);
+        }
+      }
+
+      // 5. Clear ONLY the local cache/storage for the opened module
       try {
         localStorage.removeItem(`global_${current.id}_logs`);
         sessionStorage.removeItem('__livestock_tag_cache__');

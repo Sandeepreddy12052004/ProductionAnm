@@ -719,7 +719,7 @@ export default function DailyMilkCollection() {
 
     setIsSaving(true);
     try {
-      const res = await api.cattle.clearImported({ module: 'all' });
+      const res = await api.cattle.clearImported({ module: 'milk' });
       const total = res?.data?.totalDeleted ?? res?.totalDeleted ?? 0;
 
       // Reset local inputs
