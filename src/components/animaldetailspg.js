@@ -678,6 +678,21 @@ const getStandardHeaderKey = (headerValue) => {
       'bulltag', 'bulltagid', 'bullid', 'bull tag id', 'bull tag', 'bull_tag', 'bull tag no', 'bulltagno',
       'sire', 'bull', 'male'
     ],
+    sireTagOrSemen: [
+      'siretagidsementypeai', 'siretagidsementype', 'siretagsementypeai',
+      'siretagsementype', 'sireidsementypeai', 'sireidsementype',
+      'sire tag id/semen type ai', 'sire tag id / semen type ai',
+      'sire tag id/semen type', 'sire tag id / semen type',
+      'sire tag / semen type ai', 'sire tag/semen type ai',
+      'sire tag / semen type', 'sire tag/semen type',
+      'sire tag id / semen type (ai)', 'sire tag id/semen type(ai)',
+      'sire tag id (semen type ai)', 'sire tag id semen type ai',
+      'sire/semen type ai', 'sire / semen type ai',
+      'sire/semen', 'sire / semen',
+      'sire tag/straw batch', 'sire tag / straw batch',
+      'sire tag id/straw batch', 'sire tag id / straw batch',
+      'sire tag or semen type ai', 'sire tag or semen type'
+    ],
     batchNumber: ['batchnumber', 'batchno', 'batchnum', 'strawbatch', 'strawbatchno', 'semenbatch', 'semenstrawbatch', 'batch number', 'batch no', 'batch no.', 'straw batch', 'straw batch no'],
     crossingAttemptNumber: [
       'crossingattemptnumber', 'crossingattemptno', 'crossingattempt', 'attemptnumber', 'attemptno', 'attempt',
@@ -1347,7 +1362,37 @@ const currentFields = current.fields.map(f => {
               ).trim();
               if (!rawTag) return;
 
-              // 2. Male Tag ID: Excel "Crossing sire tag" is Male Tag ID (maleTag) in application
+              // 2. Sire Tag ID / Semen Type AI / Male Tag / Batch Number / Crossing Type
+              // Support user specification:
+              // "in excel we have sire tag id/semen type ai, now analyze this and if sire tag id/semen type ai Starts with "SWAR"
+              // then fetch crossing type as artificial and sire tag id/semen type ai data as batch number.
+              // if in sire tag id/semen type ai contains male tag id then fetch crossing type as natural and fill the male tag id with sire tag id/semen type ai present."
+              const rawSireOrSemenInput = String(
+                row['sireTagOrSemen'] ||
+                row['sire tag id/semen type ai'] || row['sire tag id / semen type ai'] ||
+                row['sire tag id/semen type (ai)'] || row['sire tag id / semen type (ai)'] ||
+                row['siretagidsementypeai'] || row['sire tag id/semen type'] ||
+                row['sire tag id / semen type'] || row['siretagidsementype'] ||
+                row['sire tag/semen type ai'] || row['sire tag / semen type ai'] ||
+                row['siretagsementypeai'] || row['sire tag/semen type'] ||
+                row['sire tag / semen type'] || row['siretagsementype'] ||
+                row['sire id/semen type ai'] || row['sire id / semen type ai'] ||
+                row['sireidsementypeai'] || row['sireidsementype'] ||
+                row['sire/semen type ai'] || row['sire / semen type ai'] ||
+                row['sire/semen'] || row['sire / semen'] ||
+                row['sire tag / straw batch'] || row['sire tag id / straw batch'] ||
+                row['sire tag/straw batch'] || row['sire tag id/straw batch'] ||
+                row['sire tag or semen type ai'] || row['sire tag or semen type'] ||
+                (Object.keys(row).find(k => {
+                  const lk = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  return lk.includes('sire') && (lk.includes('semen') || lk.includes('straw'));
+                }) ? row[Object.keys(row).find(k => {
+                  const lk = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  return lk.includes('sire') && (lk.includes('semen') || lk.includes('straw'));
+                })] : '') ||
+                ''
+              ).trim();
+
               const rawSireInput = String(
                 row['maleTag'] || row['maletag'] || row['male tag id'] || row['male tag'] || row['male_tag'] ||
                 row['crossingSireTag'] || row['crossingsiretag'] || row['crossing sire tag'] ||
@@ -1363,15 +1408,29 @@ const currentFields = current.fields.map(f => {
                 row['semen batch'] || row['batch'] || ''
               ).trim();
 
-              // Respect user specification: "Crossing sire tag is male tag id"
-              const finalMaleTag = rawSireInput;
-              const finalBatchNumber = rawBatchInput;
-
+              const targetSireOrSemen = rawSireOrSemenInput || rawSireInput;
+              let finalMaleTag = '';
+              let finalBatchNumber = rawBatchInput;
               let finalCrossingType = 'Natural';
-              if (row['crossingType'] || row['crossingtype'] || row['crossing_type'] || row['crossing type']) {
-                finalCrossingType = String(row['crossingType'] || row['crossingtype'] || row['crossing_type'] || row['crossing type']).trim();
-              } else if (finalBatchNumber) {
+
+              if (targetSireOrSemen) {
+                if (targetSireOrSemen.toUpperCase().startsWith('SWAR')) {
+                  // Starts with "SWAR": Artificial crossing, value is batch number
+                  finalCrossingType = 'Artificial';
+                  finalBatchNumber = targetSireOrSemen;
+                  finalMaleTag = '';
+                } else {
+                  // Contains male tag id: Natural crossing, fill male tag id with value
+                  finalCrossingType = 'Natural';
+                  finalMaleTag = targetSireOrSemen;
+                  finalBatchNumber = rawBatchInput && !rawSireOrSemenInput ? rawBatchInput : '';
+                }
+              } else if (rawBatchInput) {
                 finalCrossingType = 'Artificial';
+                finalBatchNumber = rawBatchInput;
+                finalMaleTag = '';
+              } else if (row['crossingType'] || row['crossingtype'] || row['crossing_type'] || row['crossing type']) {
+                finalCrossingType = String(row['crossingType'] || row['crossingtype'] || row['crossing_type'] || row['crossing type']).trim();
               } else {
                 finalCrossingType = 'Natural';
               }
@@ -1434,7 +1493,48 @@ const currentFields = current.fields.map(f => {
                 row['calved date'] || row['calveddate'] || row['calving_date'] || row['date of calving'] || row['parturition date'] || row['acd']
               );
 
-              // 8. Pregnancy Confirmed Date & Status: Excel "pregnancy confirmed date" is Pregnancy Confirmed Date (pregnancyConfirmedDate)
+              // 8. Remarks & Pregnancy Status Analysis:
+              // User instruction:
+              // "in crossing log while importing excel analyze remarks in such a way that if its positive then keep it in positive ,if remarks says negative keep it negative."
+              const rawRemarks = String(
+                row['remarks'] || row['remark'] || row['comments'] || row['notes'] ||
+                row['comment'] || row['note'] || row['pd remarks'] || row['pd remark'] || ''
+              ).trim();
+
+              let remarksPregnancyStatus = null;
+              if (rawRemarks) {
+                const rem = rawRemarks.toLowerCase();
+
+                // Explicit negative checks: "negative", "-ve", "- ve", "non pregnant", "empty"
+                const hasNegative =
+                  /\b(neg|negative|non-?pregnant|not\s+pregnant|empty)\b/i.test(rem) ||
+                  rem.includes('-ve') ||
+                  rem.includes('- ve') ||
+                  /(?:pd|result|status)\s*[:=-]?\s*(-|neg)/i.test(rem);
+
+                // Explicit positive checks: "positive", "+ve", "+ ve", "pregnant"
+                const hasPositive =
+                  /\b(pos|positive)\b/i.test(rem) ||
+                  rem.includes('+ve') ||
+                  rem.includes('+ ve') ||
+                  (/\bpregnant\b/i.test(rem) && !/\b(non-?pregnant|not\s+pregnant)\b/i.test(rem)) ||
+                  /(?:pd|result|status)\s*[:=-]?\s*(\+|pos)/i.test(rem);
+
+                if (hasNegative && !hasPositive) {
+                  remarksPregnancyStatus = 'Negative';
+                } else if (hasPositive && !hasNegative) {
+                  remarksPregnancyStatus = 'Positive';
+                } else if (hasNegative && hasPositive) {
+                  if (rem.includes('false positive') || rem.includes('turned negative') || rem.includes('now negative') || rem.includes('became negative')) {
+                    remarksPregnancyStatus = 'Negative';
+                  } else {
+                    const posIdx = Math.max(rem.lastIndexOf('positive'), rem.lastIndexOf('+ve'), rem.lastIndexOf('pregnant'));
+                    const negIdx = Math.max(rem.lastIndexOf('negative'), rem.lastIndexOf('-ve'), rem.lastIndexOf('empty'));
+                    remarksPregnancyStatus = negIdx > posIdx ? 'Negative' : 'Positive';
+                  }
+                }
+              }
+
               const rawPregnancyConfirmedDate = parseDateString(
                 row['pregnancyConfirmedDate'] || row['pregnancyconfirmeddate'] || row['pregnancy_confirmed_date'] ||
                 row['pregnancy confirmed date'] || row['pregnancy conformed date'] || row['pregnancy confirmed'] ||
@@ -1458,19 +1558,27 @@ const currentFields = current.fields.map(f => {
                 }
               }
 
-              // Auto-mark as Positive if pregnancy confirmed date or actual calving date is entered
-              if (rawPregnancyConfirmedDate || rawActualCalvingDate) {
-                if (!rawPregnancyStatus || rawPregnancyStatus === 'Pending') {
-                  rawPregnancyStatus = 'Positive';
+              // Apply remarks analysis: positive -> Positive, negative -> Negative
+              if (remarksPregnancyStatus === 'Positive') {
+                rawPregnancyStatus = 'Positive';
+              } else if (remarksPregnancyStatus === 'Negative') {
+                rawPregnancyStatus = 'Negative';
+              }
+
+              // Auto-mark as Positive if confirmed date or calving date is entered, UNLESS explicitly Negative!
+              if (rawPregnancyStatus !== 'Negative') {
+                if (rawPregnancyConfirmedDate || rawActualCalvingDate) {
+                  if (!rawPregnancyStatus || rawPregnancyStatus === 'Pending') {
+                    rawPregnancyStatus = 'Positive';
+                  }
+                } else if (!rawPregnancyStatus && finalCrossingDate) {
+                  rawPregnancyStatus = 'Pending';
                 }
-              } else if (!rawPregnancyStatus && finalCrossingDate) {
-                rawPregnancyStatus = 'Pending';
               }
 
               // 9. Pregnant Age:
-              // User instruction: "pregnant age is if pregnancy confirmed date is present then the age from crosssing date to present day till actual cavling date is entered is pregnant age"
               let computedPregnantAge = null;
-              if (rawPregnancyConfirmedDate || rawPregnancyStatus === 'Positive') {
+              if (rawPregnancyStatus === 'Positive' || (rawPregnancyStatus !== 'Negative' && rawPregnancyConfirmedDate)) {
                 if (finalCrossingDate && finalCrossingDate instanceof Date && !isNaN(finalCrossingDate.getTime())) {
                   const endDate = (rawActualCalvingDate && rawActualCalvingDate instanceof Date && !isNaN(rawActualCalvingDate.getTime()))
                     ? rawActualCalvingDate
@@ -1501,7 +1609,7 @@ const currentFields = current.fields.map(f => {
                 }
               }
 
-              const finalPregnantAge = (rawPregnancyConfirmedDate || rawPregnancyStatus === 'Positive')
+              const finalPregnantAge = (rawPregnancyStatus === 'Positive' || (rawPregnancyStatus !== 'Negative' && rawPregnancyConfirmedDate))
                 ? (computedPregnantAge || row['pregnantAge'] || row['pregnantage'] || row['pregnant_age'] || row['pregnant age'] || null)
                 : null;
 
@@ -1535,7 +1643,7 @@ const currentFields = current.fields.map(f => {
                 }
               }
 
-              // 13. Heat Monitoring 1st Notification: Excel "heat monitoring 1st notification" is heat monitoring 1st notification (heatMonitoring1stNotification)
+              // 13. Heat Monitoring 1st Notification
               let rawHeat1 = parseDateString(
                 row['heatMonitoring1stNotification'] || row['heatmonitoring1stnotification'] ||
                 row['heat_monitoring_1st_notification'] || row['heat monitoring 1st notification'] ||
@@ -1546,7 +1654,7 @@ const currentFields = current.fields.map(f => {
                 rawHeat1 = new Date(finalCrossingDate.getTime() + 21 * 24 * 60 * 60 * 1000);
               }
 
-              // 14. Heat Monitoring 2nd Notification: Excel "heat monitoring 2nd notification" is heat monitoring 2nd notification (heatMonitoring2ndNotification)
+              // 14. Heat Monitoring 2nd Notification
               let rawHeat2 = parseDateString(
                 row['heatMonitoring2ndNotification'] || row['heatmonitoring2ndnotification'] ||
                 row['heat_monitoring_2nd_notification'] || row['heat monitoring 2nd notification'] ||
@@ -1557,9 +1665,7 @@ const currentFields = current.fields.map(f => {
                 rawHeat2 = new Date(finalCrossingDate.getTime() + 42 * 24 * 60 * 60 * 1000);
               }
 
-              // 15. Remarks
-              const rawRemarks = String(row['remarks'] || row['remark'] || row['comments'] || row['notes'] || '').trim();
-
+              // 15. Payload assembly
               const payload = {
                 tag: rawTag,
                 tagId: rawTag,
