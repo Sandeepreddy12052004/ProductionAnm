@@ -259,7 +259,7 @@ const UserManagementPg = ({ moduleConfig }) => {
     }
   }, { revalidateOnFocus: false });
 
-  const { data: rolesList } = useSWR('roles_cache', async () => {
+  const { data: rolesList, mutate: mutateRoles } = useSWR('roles_cache', async () => {
     try {
       const data = await api.roles.getAll();
       return Array.isArray(data) ? data : [];
@@ -602,18 +602,20 @@ const UserManagementPg = ({ moduleConfig }) => {
           return rawPermissions.some(p => !baseSet.has(String(p).trim().toUpperCase()));
         })();
 
-        if (isCustomized) {
+        const isCustomRole = baseRoleObj && !baseRoleObj.isSystem && baseRoleObj.name !== 'SUPER_ADMIN';
+
+        if (isCustomized || isCustomRole) {
           try {
             const userIdentifier = String(payload.userId || cleanPhone || cleanName || selectedEntry?.userId || 'USER')
               .trim()
               .replace(/[^a-zA-Z0-9]/g, '')
               .toUpperCase();
             const basePrefix = String(baseRoleObj?.name || effectiveRole).split('_')[0] || 'ROLE';
-            const customRoleName = `${basePrefix}_${userIdentifier}`;
+            const customRoleName = isCustomRole ? baseRoleObj.name : `${basePrefix}_${userIdentifier}`;
 
-            const existingCustomRole = safeRolesList.find(r => r.name === customRoleName);
-            if (existingCustomRole && (existingCustomRole._id || existingCustomRole.id)) {
-              await api.roles.update(existingCustomRole._id || existingCustomRole.id, {
+            const targetRole = isCustomRole ? baseRoleObj : safeRolesList.find(r => r.name === customRoleName);
+            if (targetRole && (targetRole._id || targetRole.id)) {
+              await api.roles.update(targetRole._id || targetRole.id, {
                 name: customRoleName,
                 description: `Custom permissions for user ${cleanName || userIdentifier}`,
                 permissions: rawPermissions
@@ -626,6 +628,9 @@ const UserManagementPg = ({ moduleConfig }) => {
               });
             }
             effectiveRole = customRoleName;
+            if (typeof mutateRoles === 'function') {
+              mutateRoles();
+            }
           } catch (roleErr) {
             console.warn("Could not sync user-level custom role to backend:", roleErr);
           }
@@ -679,6 +684,9 @@ const UserManagementPg = ({ moduleConfig }) => {
       }
 
       mutate();
+      if (typeof mutateRoles === 'function') {
+        mutateRoles();
+      }
       closeAll();
     } catch (err) {
       const errorMsg = typeof err === 'string' 

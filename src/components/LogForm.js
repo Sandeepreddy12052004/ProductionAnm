@@ -708,7 +708,7 @@
           const u = p.trim().toUpperCase();
           return u === mod.prefix || 
                  u.startsWith(`${mod.prefix}_`) ||
-                 (mod.baseToken && (u === mod.baseToken || u.startsWith(`${mod.baseToken}_`)));
+                 (mod.baseToken && u === mod.baseToken);
         }
         if (typeof p === 'object' && p) {
           const k = String(p.module_key || p.module || p.name || p.prefix || '').trim().toUpperCase();
@@ -738,7 +738,9 @@
         currentPerms.forEach(p => {
           if (typeof p !== 'string') return;
           const u = p.trim().toUpperCase();
-          if (modToRemove.baseToken && (u === modToRemove.baseToken || u.startsWith(`${modToRemove.baseToken}_`))) {
+          // If the permission is an exact match for the module's coarse baseToken (e.g. 'MILK' or 'CATTLE'),
+          // expand it into granular permissions for all other modules sharing that baseToken
+          if (modToRemove.baseToken && u === modToRemove.baseToken) {
             ALL_SYSTEM_MODULES.filter(m => m.baseToken === modToRemove.baseToken && m.prefix !== modToRemove.prefix).forEach(other => {
               expanded.push(
                 `${other.prefix}_VIEW`,
@@ -752,9 +754,16 @@
           }
         });
 
+        // Strip out this specific module's tokens AND any parent coarse token
         updatedPerms = expanded.filter(p => {
           const u = p.trim().toUpperCase();
-          return u !== modToRemove.prefix && !u.startsWith(`${modToRemove.prefix}_`);
+          if (u === modToRemove.prefix || u.startsWith(`${modToRemove.prefix}_`)) {
+            return false;
+          }
+          if (modToRemove.baseToken && u === modToRemove.baseToken) {
+            return false;
+          }
+          return true;
         });
       }
 
