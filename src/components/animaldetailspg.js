@@ -3317,7 +3317,7 @@ useEffect(() => {
         return String(rawFarmId).trim();
       }
       const pageKey = '__active_farm_id_' + (window.location.pathname || '/animals').replace(/\//g, '_') + '__';
-      return localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__') || 'ALL';
+      return localStorage.getItem('__active_farm_id__') || localStorage.getItem(pageKey) || 'ALL';
     } catch (e) {
       return 'ALL';
     }

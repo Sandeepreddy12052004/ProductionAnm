@@ -22,6 +22,148 @@ import {
   ArrowUpRight 
 } from "lucide-react";
 
+const cleanShedCode = (val) => {
+  if (val === undefined || val === null) return '-';
+  const str = String(val).trim();
+  if (!str || str === '-' || str.toLowerCase() === 'null' || str.toLowerCase() === 'none') return '-';
+  if (/^\d+$/.test(str)) return str;
+  const match = str.match(/(?:SHED|SHED\s+|SHED-|SHED_|-|\b)0*(\d+)$/i) || str.match(/0*(\d+)$/);
+  if (match) return match[1];
+  return str;
+};
+
+const isDeadCalfTag = (t) => {
+  const norm = String(t || '').trim().toUpperCase().replace(/[\s\-_]/g, '');
+  return norm.startsWith('DEADCALF') || (norm.includes('DEAD') && norm.includes('CALF'));
+};
+
+const resolveStatusFromInfo = (tagId, remarks, currentStatus = 'ACTIVE') => {
+  if (isDeadCalfTag(tagId)) {
+    return 'DECEASED';
+  }
+  const cleanTag = String(tagId || '').toUpperCase();
+  const cleanRemarks = String(remarks || '').toUpperCase();
+
+  const deadKeywords = [
+    'DEAD', 'DECEASED', 'DIED', 'EXPIRED', 'DEATH', 'MORTALITY', 
+    'PASSED AWAY', 'PASSED-AWAY', 'KILLED', 'SLAUGHTERED', 
+    'SACRIFICED', 'EXPIRY', 'CASUALTY', 'STILLBORN', 'BORN DEAD', 'BORN-DEAD'
+  ];
+  const soldKeywords = [
+    'SOLD', 'SALE', 'DISPOSED', 'MARKETED', 'AUCTIONED', 
+    'VEND', 'PURCHASED BY'
+  ];
+
+  const hasDeadKeyword = deadKeywords.some(keyword => cleanTag.includes(keyword) || cleanRemarks.includes(keyword));
+  if (hasDeadKeyword) {
+    return 'DECEASED';
+  }
+
+  const hasSoldKeyword = soldKeywords.some(keyword => cleanTag.includes(keyword) || cleanRemarks.includes(keyword));
+  if (hasSoldKeyword) {
+    return 'SOLD';
+  }
+  
+  const allowedStatuses = ['ACTIVE', 'PREGNANT', 'EMPTY', 'PENDING', 'SOLD', 'DECEASED', 'ONE_TIME_MILKING', 'ONE TIME MILKING'];
+  const cleanCurrent = String(currentStatus).toUpperCase().trim();
+  if (allowedStatuses.includes(cleanCurrent)) {
+    return cleanCurrent;
+  }
+
+  return 'ACTIVE';
+};
+
+const getActiveFarmId = () => {
+  if (typeof window === 'undefined') return 'ALL';
+  try {
+    const storedUser = localStorage.getItem('user');
+    const userObj = storedUser ? JSON.parse(storedUser) : null;
+    const rawFarmId = userObj?.farmId && typeof userObj.farmId === 'object'
+      ? (userObj.farmId._id || userObj.farmId.id)
+      : userObj?.farmId;
+    const isGlobal = !rawFarmId || rawFarmId === 'ALL' || String(userObj?.role).toUpperCase() === 'SUPER_ADMIN';
+    if (!isGlobal && rawFarmId) {
+      return String(rawFarmId).trim();
+    }
+    const pageKey = '__active_farm_id_' + (window.location.pathname || '').replace(/\//g, '_') + '__';
+    return localStorage.getItem('__active_farm_id__') || localStorage.getItem(pageKey) || 'ALL';
+  } catch (e) {
+    return 'ALL';
+  }
+};
+
+const matchesFarmFilter = (log, activeFarmId, farmsList = [], rawShedsList = []) => {
+  if (!activeFarmId || activeFarmId === 'ALL') return true;
+
+  const strActiveId = String(activeFarmId).trim().toUpperCase();
+  const targetFarm = farmsList.find(f => 
+    String(f._id || f.id).toUpperCase() === strActiveId ||
+    String(f.code || '').toUpperCase() === strActiveId ||
+    String(f.name || '').toUpperCase() === strActiveId
+  );
+
+  const targetId = targetFarm ? String(targetFarm._id || targetFarm.id || '').toUpperCase() : strActiveId;
+  const targetCode = targetFarm ? String(targetFarm.code || '').toUpperCase() : '';
+  const targetName = targetFarm ? String(targetFarm.name || '').toUpperCase() : '';
+
+  // 1. Direct log.farmId / log.farm match
+  const logFarmId = log.farmId && typeof log.farmId === 'object' ? (log.farmId._id || log.farmId.id) : log.farmId;
+  const strLogFarmId = logFarmId ? String(logFarmId).trim().toUpperCase() : '';
+  if (strLogFarmId) {
+    return strLogFarmId === targetId || (targetCode && strLogFarmId === targetCode) || (targetName && strLogFarmId === targetName);
+  }
+
+  // 2. Direct log.farmName match
+  const strFarmName = String(log.farmName || log.farm_name || '').trim().toUpperCase();
+  if (strFarmName && strFarmName !== '-') {
+    if (strFarmName === targetName || (targetCode && strFarmName === targetCode) || strFarmName.includes(targetName) || targetName.includes(strFarmName)) {
+      return true;
+    }
+    if (targetCode === 'TKP' && (strFarmName.includes('TALAKONDAPALLY') || strFarmName.includes('TANAKONDAPALLI'))) return true;
+    if (targetCode === 'TDR' && strFarmName.includes('TANDUR')) return true;
+    return false;
+  }
+
+  // 3. Shed-based resolution from rawShedsList
+  const logShed = String(log.shed || log.shedId || '').trim().toUpperCase();
+  if (logShed && logShed !== '-') {
+    const cleanNum = logShed.replace(/[^0-9]/g, '');
+    const matchedShed = rawShedsList.find(s => {
+      const sCode = String(s.code || '').trim().toUpperCase();
+      const sName = String(s.name || '').trim().toUpperCase();
+      const sCleanCode = cleanShedCode(s.code || s.name);
+      return sCode === logShed || (cleanNum && sCode === cleanNum) || (cleanNum && sCleanCode === cleanNum) || sName === logShed;
+    });
+
+    if (matchedShed && matchedShed.farmId) {
+      const sFarmId = String(matchedShed.farmId._id || matchedShed.farmId.id || matchedShed.farmId).toUpperCase();
+      return sFarmId === targetId || (targetCode && sFarmId === targetCode) || (targetName && sFarmId === targetName);
+    }
+
+    // Hardcoded fallback by shed numbers:
+    // Talakondapally: 1, 2, 3, 4, 7
+    // Tandur: 5, 6
+    if (cleanNum) {
+      const num = parseInt(cleanNum, 10);
+      if ([1, 2, 3, 4, 7].includes(num)) {
+        return targetCode === 'TKP' || targetName.includes('TALAKONDAPALL') || targetName.includes('TANAKONDAPALL');
+      }
+      if ([5, 6].includes(num)) {
+        return targetCode === 'TDR' || targetName.includes('TANDUR');
+      }
+    }
+
+    // Fallback text check on shed string
+    if (targetCode) {
+      if (logShed.includes(targetCode)) return true;
+      if (targetCode === 'TKP' && (logShed.includes('TALAKONDAPALLY') || logShed.includes('TANAKONDAPALLI'))) return true;
+      if (targetCode === 'TDR' && logShed.includes('TANDUR')) return true;
+    }
+  }
+
+  return false;
+};
+
 const DashboardContent = () => {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -61,11 +203,10 @@ const DashboardContent = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const activeFarmId = localStorage.getItem('__active_farm_id__');
-      const isAll = !activeFarmId || activeFarmId === 'ALL';
+      const activeFarmId = getActiveFarmId();
 
       // Fetch from backend API
-      const [cattleRes, crossingRes, milkRes, treatmentRes, vaccineRes, bmcsRes, procurementRes, qualityRes] = await Promise.allSettled([
+      const [cattleRes, crossingRes, milkRes, treatmentRes, vaccineRes, bmcsRes, procurementRes, qualityRes, farmsRes, shedsRes] = await Promise.allSettled([
         api.cattle.getAll(),
         api.crossing.getAll(),
         api.milk.collections.getAll(),
@@ -73,15 +214,39 @@ const DashboardContent = () => {
         api.health.vaccinations.getAll(),
         api.bmcs.getAll(),
         api.milk.procurement.getAll(),
-        api.milk.quality.getAll()
+        api.milk.quality.getAll(),
+        api.farms.getAll(),
+        api.shed.getAll()
       ]);
 
-      // Resolve actual data or fallback to local storage
-      let livestock = [];
-      if (cattleRes.status === 'fulfilled' && Array.isArray(cattleRes.value)) {
-        livestock = cattleRes.value;
+      let farmsList = [];
+      if (farmsRes.status === 'fulfilled' && Array.isArray(farmsRes.value)) {
+        farmsList = farmsRes.value;
       } else {
-        livestock = JSON.parse(localStorage.getItem('global_livestock_logs') || '[]');
+        try {
+          const cached = sessionStorage.getItem('__cached_farms_list__') || localStorage.getItem('__cached_farms_list__');
+          if (cached) farmsList = JSON.parse(cached);
+        } catch (_) {}
+      }
+
+      let rawShedsList = [];
+      if (shedsRes.status === 'fulfilled' && Array.isArray(shedsRes.value)) {
+        rawShedsList = shedsRes.value;
+      } else {
+        try {
+          const cached = sessionStorage.getItem('__cached_sheds_list__');
+          if (cached) rawShedsList = JSON.parse(cached);
+        } catch (_) {}
+      }
+
+      // Resolve actual data or fallback to local storage
+      let rawLivestock = [];
+      if (cattleRes.status === 'fulfilled' && Array.isArray(cattleRes.value)) {
+        rawLivestock = cattleRes.value;
+      } else if (cattleRes.status === 'fulfilled' && Array.isArray(cattleRes.value?.data)) {
+        rawLivestock = cattleRes.value.data;
+      } else {
+        rawLivestock = JSON.parse(localStorage.getItem('global_livestock_logs') || '[]');
       }
 
       let crossingLogs = [];
@@ -141,14 +306,13 @@ const DashboardContent = () => {
         qualityLogs = qualityRes.value.data;
       }
 
-      // Filter by farm association
-      livestock = livestock.filter(a => isAll || String(a.farmId?._id || a.farmId?.id || a.farmId) === String(activeFarmId));
-      crossingLogs = crossingLogs.filter(log => isAll || String(log.farmId?._id || log.farmId?.id || log.farmId) === String(activeFarmId));
-      milkLogs = milkLogs.filter(log => isAll || String(log.farmId?._id || log.farmId?.id || log.farmId) === String(activeFarmId));
-      procurementLogs = procurementLogs.filter(log => isAll || String(log.farmId?._id || log.farmId?.id || log.farmId) === String(activeFarmId));
-      healthLogs = healthLogs.filter(h => isAll || String(h.farmId?._id || h.farmId?.id || h.farmId) === String(activeFarmId));
-      vaccineLogs = vaccineLogs.filter(v => isAll || String(v.farmId?._id || v.farmId?.id || v.farmId) === String(activeFarmId));
-      bmcs = bmcs.filter(b => isAll || String(b.farmId?._id || b.farmId?.id || b.farmId) === String(activeFarmId));
+      // Filter other modules by farm association
+      crossingLogs = crossingLogs.filter(log => matchesFarmFilter(log, activeFarmId, farmsList, rawShedsList));
+      milkLogs = milkLogs.filter(log => matchesFarmFilter(log, activeFarmId, farmsList, rawShedsList));
+      procurementLogs = procurementLogs.filter(log => matchesFarmFilter(log, activeFarmId, farmsList, rawShedsList));
+      healthLogs = healthLogs.filter(h => matchesFarmFilter(h, activeFarmId, farmsList, rawShedsList));
+      vaccineLogs = vaccineLogs.filter(v => matchesFarmFilter(v, activeFarmId, farmsList, rawShedsList));
+      bmcs = bmcs.filter(b => matchesFarmFilter(b, activeFarmId, farmsList, rawShedsList));
 
       // Calculations
       const today = new Date();
@@ -233,8 +397,45 @@ const DashboardContent = () => {
         }
       }
 
-      // 2. Livestock metrics
-      const activeLivestock = livestock.filter(a => !['SOLD', 'DECEASED', 'DEAD'].includes(String(a.status).trim().toUpperCase()));
+      // 2. Livestock metrics (exact parity with animaldetailspg.js activeCount calculation)
+      const normalizedLivestock = rawLivestock.map(log => {
+        const tagVal = log.tag || log.tagId || log.tag_id || '';
+        const remarksVal = log.remarks || log.remark || '';
+        const isDeadCalf = isDeadCalfTag(tagVal);
+
+        let status = log.status;
+        if (isDeadCalf) {
+          status = 'DECEASED';
+        } else {
+          status = resolveStatusFromInfo(tagVal, remarksVal, log.status);
+        }
+
+        return {
+          ...log,
+          status,
+          tag: tagVal,
+          tagId: tagVal
+        };
+      });
+
+      // Filter out pending records and soft-deleted records (matching animaldetailspg.js active list)
+      const nonPendingLivestock = normalizedLivestock.filter(log => {
+        const isPending = log.isPendingDetails === true || String(log.isPendingDetails) === 'true';
+        const isDeleted = log.isDeleted === true || String(log.status).toUpperCase() === 'DELETED';
+        return !isPending && !isDeleted;
+      });
+
+      // Scoped by active farm
+      const farmScopedLivestock = nonPendingLivestock.filter(log => 
+        matchesFarmFilter(log, activeFarmId, farmsList, rawShedsList)
+      );
+
+      // Active tab condition: not SOLD, DECEASED, or DEAD (identical to animaldetailspg.js activeCount)
+      const activeLivestock = farmScopedLivestock.filter(log => {
+        const statusUpper = String(log.status || '').toUpperCase();
+        return statusUpper !== 'SOLD' && statusUpper !== 'DECEASED' && statusUpper !== 'DEAD';
+      });
+
       const activeLivestockCount = activeLivestock.length;
       
       const calvesCount = activeLivestock.filter(a => String(a.cattleType || a.animalType || '').toUpperCase().includes('CALF')).length;
@@ -443,7 +644,14 @@ const DashboardContent = () => {
             
             {/* Livestock stockpile */}
             <div 
-              onClick={() => router.push('/animals')}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  const currentActive = getActiveFarmId();
+                  localStorage.setItem('__active_farm_id__', currentActive);
+                  localStorage.setItem('__active_farm_id__animals__', currentActive);
+                }
+                router.push('/animals');
+              }}
               className="bg-gradient-to-br from-emerald-50 to-teal-50/30 border border-emerald-100/70 p-6 rounded-3xl shadow-[0_4px_20px_rgba(16,185,129,0.02)] flex items-center justify-between hover:scale-[1.01] hover:shadow-md transition-all duration-300 cursor-pointer"
             >
               <div className="space-y-1">

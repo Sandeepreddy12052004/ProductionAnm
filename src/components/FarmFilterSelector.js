@@ -35,7 +35,7 @@ export default function FarmFilterSelector({ layout = 'vertical', size = 'md', s
               sessionStorage.setItem('__cached_farms_list__', JSON.stringify(data));
             } catch (e) {}
             const pageKey = '__active_farm_id_' + window.location.pathname.replace(/\//g, '_') + '__';
-            const storedActive = localStorage.getItem(pageKey) || localStorage.getItem('__active_farm_id__');
+            const storedActive = localStorage.getItem('__active_farm_id__') || localStorage.getItem(pageKey);
             let initialActive = storedActive || 'ALL';
             
             if (initialActive === 'ALL' && !showAllOption && data.length > 0) {
