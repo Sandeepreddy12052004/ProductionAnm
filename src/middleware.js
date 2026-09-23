@@ -96,6 +96,11 @@ export function middleware(request) {
     return true;
   };
 
+  // Legacy farm tab redirect: Milk Components tab -> dedicated Milk QA page
+  if (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components') {
+    return NextResponse.redirect(new URL('/milk-quality', request.url));
+  }
+
   // Define route mapping key check based on the requested pathname
   const routesConfig = [
     { key: 'DASHBOARD', match: pathname === '/dashboard' || pathname === '/' },
@@ -123,7 +128,7 @@ export function middleware(request) {
     { key: 'GRASS', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'grass' },
     { key: 'FEEDING', match: pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'feeding' },
     { key: 'MILK_COLLECTION', baseKey: 'MILK', match: pathname === '/milk' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'milk_prod') },
-    { key: 'MILK_QA', baseKey: 'MILK', match: pathname === '/milk-quality' || (pathname.startsWith('/farm') && request.nextUrl.searchParams.get('tab') === 'components') },
+    { key: 'MILK_QA', baseKey: 'MILK', match: pathname === '/milk-quality' },
     { key: 'MILK_PROCUREMENT', baseKey: 'MILK', match: pathname === '/milk-procurement' },
     { key: 'MILK_PERFORMANCE', baseKey: 'MILK_PRODUCTION', match: pathname === '/milking-performance' },
     { key: 'CROSSING_LOG', match: pathname === '/insemination' },
@@ -162,7 +167,7 @@ export function middleware(request) {
       { key: 'GRASS', path: '/grass' },
       { key: 'FEEDING', path: '/feeding' },
       { key: 'MILK_COLLECTION', baseKey: 'MILK', path: '/milk' },
-      { key: 'MILK_QA', baseKey: 'MILK', path: '/farm/tkp?tab=components' },
+      { key: 'MILK_QA', baseKey: 'MILK', path: '/milk-quality' },
       { key: 'MILK_PROCUREMENT', baseKey: 'MILK', path: '/milk-procurement' },
       { key: 'MILK_PERFORMANCE', baseKey: 'MILK_PRODUCTION', path: '/milking-performance' },
       { key: 'CROSSING_LOG', path: '/insemination' },

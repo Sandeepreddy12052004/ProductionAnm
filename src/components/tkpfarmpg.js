@@ -189,21 +189,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       }
     ] : []),
     {
-      id: 'components',
-      name: 'Milk Components',
-      icon: '🔬',
-      fields: [
-        { name: 'date', label: 'Date', type: 'date' },
-        { name: 'bmcs', label: 'BMCs & Liters', type: 'select', options: [] },
-        { name: 'temperature', label: 'Temperature (°C)', type: 'number' },
-        { name: 'fat', label: 'Fat %', type: 'number' },
-        { name: 'snf', label: 'SNF %', type: 'number' },
-        { name: 'density', label: 'CLR / Density', type: 'number' },
-        { name: 'water', label: 'Water %', type: 'number' },
-        { name: 'indentLiters', label: 'No. of Liters Used for Indent', type: 'number' }
-      ]
-    },
-    {
       id: 'pashudhan',
       name: 'Bharat Pashudhan',
       icon: '🇮🇳',
@@ -219,13 +204,11 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   // Tab-to-permission mapping — each tab key maps to the module key guarding it
   const tabPermissionMap = {
     vaccine: 'VACCINATION_LOG',
-    components: 'MILK_QA',
     pashudhan: 'CATTLE_MANAGEMENT',
   };
 
   const tabBaseTokenMap = {
     vaccine: 'HEALTH',
-    components: 'MILK',
     pashudhan: 'CATTLE',
   };
 
@@ -249,8 +232,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         data = await api.health.treatments.getAll();
       } else if (activeTab === 'vaccine') {
         data = await api.health.vaccinations.getAll();
-      } else if (activeTab === 'components') {
-        data = await api.milk.quality.getAll();
       } else {
         const savedData = localStorage.getItem(`tkp_${activeTab}_logs`);
         data = savedData ? JSON.parse(savedData) : [];
@@ -371,6 +352,10 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
   };
 
   useEffect(() => {
+    if (router.query.tab === 'components') {
+      router.replace('/milk-quality');
+      return;
+    }
     if (router.query.tab) {
       const tab = router.query.tab;
       if (modules.find(m => m.id === tab)) {
@@ -379,7 +364,7 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
     } else {
       setActiveTab('overview');
     }
-  }, [router.query.tab, router.query.code]);
+  }, [router.query.tab, router.query.code, router]);
 
   useEffect(() => {
     fetchLogs();
@@ -547,7 +532,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
       if (isEditing) {
         if (activeTab === 'health') await api.health.treatments.update(entryId, payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.update(entryId, payload);
-        else if (activeTab === 'components') await api.milk.quality.update(entryId, payload);
         else {
           const index = logs.findIndex(log => (log.id || log._id) === entryId);
           const newLogs = [...logs];
@@ -563,7 +547,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
 
         if (activeTab === 'health') await api.health.treatments.create(payload);
         else if (activeTab === 'vaccine') await api.health.vaccinations.create(payload);
-        else if (activeTab === 'components') await api.milk.quality.create(payload);
         else {
           const newLogs = [{ ...data, id: Date.now(), entryDate: formattedDate }, ...logs];
           saveToStorage(newLogs);
@@ -587,7 +570,6 @@ const FarmTKP = ({ farmCode = 'TKP' }) => {
         const entryId = selectedEntry.id || selectedEntry._id;
         if (activeTab === 'health') await api.health.treatments.delete(entryId);
         else if (activeTab === 'vaccine') await api.health.vaccinations.delete(entryId);
-        else if (activeTab === 'components') await api.milk.quality.delete(entryId);
         else {
           const filtered = logs.filter(log => (log._id || log.id) !== (selectedEntry._id || selectedEntry.id));
           saveToStorage(filtered);
