@@ -287,7 +287,7 @@ const UserManagementPg = ({ moduleConfig }) => {
     return list;
   }, [farmsData]);
 
-  const safeRolesList = Array.isArray(rolesList) ? rolesList : [];
+  const safeRolesList = React.useMemo(() => (Array.isArray(rolesList) ? rolesList : []), [rolesList]);
 
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -394,6 +394,25 @@ const UserManagementPg = ({ moduleConfig }) => {
     return user.farm || "-";
   };
 
+  const formatRoleDisplay = (role) => {
+    if (!role) return "-";
+    const roleName = typeof role === 'object' && role !== null
+      ? (role.name || role.code || '-')
+      : String(role);
+    if (!roleName || roleName === '-') return "-";
+    
+    // Check if it's a user-specific custom role like ROLE_9948501430 or FARM_ADMIN_9948501430
+    const parts = roleName.split('_');
+    if (parts.length >= 2 && /^\d+$/.test(parts[parts.length - 1])) {
+      const base = parts.slice(0, -1).join(' ');
+      return base === 'ROLE' ? 'Custom Role' : `${base} (Custom)`;
+    }
+    if (roleName.startsWith('CUSTOM_') || roleName.startsWith('ROLE_')) {
+      return 'Custom Role';
+    }
+    return roleName.replace(/_/g, ' ');
+  };
+
   // FILTER LOGIC
   const safeUsers = Array.isArray(users) ? users : [];
   const filteredUsers = safeUsers.filter(user => {
@@ -446,9 +465,11 @@ const UserManagementPg = ({ moduleConfig }) => {
     // 4. Check inline Role filter
     if (selectedRole) {
       const userRoleName = user.role && typeof user.role === 'object'
-        ? user.role.name
+        ? user.role.name || user.role.code
         : user.role;
-      if (String(userRoleName).toLowerCase() !== selectedRole.toLowerCase()) return false;
+      const cleanUserRole = String(userRoleName || '').toLowerCase();
+      const cleanSelectedRole = selectedRole.toLowerCase();
+      if (!cleanUserRole.includes(cleanSelectedRole) && cleanUserRole !== cleanSelectedRole) return false;
     }
 
     // 5. Check inline Status filter
@@ -548,26 +569,74 @@ const UserManagementPg = ({ moduleConfig }) => {
         sanitizedPayload.farmId = (entryFarmId === 'ALL' || !entryFarmId) ? null : entryFarmId;
       }
 
-      // Map role identifier parameter safely (mapping to role and/or role_id variations as appropriate)
-      if (roleNormalized !== undefined) {
-        sanitizedPayload.role = roleNormalized;
-        if (!isEditing) {
-          // Include role_id for creation to be robust (no strict constraint on POST schema)
-          sanitizedPayload.role_id = roleNormalized;
-        }
-      } else if (isEditing) {
+      // 3. Permissions handling & Role Synchronization:
+      // The backend User schema validator strictly disallows 'permissions' on User objects (throwing: Unrecognized key: "permissions").
+      // Permissions are stored and managed at the Role level in this architecture.
+      const rawPermissions = Array.isArray(payload.permissions)
+        ? payload.permissions
+        : (isEditing && Array.isArray(selectedEntry?.permissions) ? selectedEntry.permissions : null);
+
+      let effectiveRole = roleNormalized;
+      if (!effectiveRole && isEditing) {
         const entryRole = typeof selectedEntry.role === 'object' && selectedEntry.role !== null
           ? selectedEntry.role.name || selectedEntry.role.id || selectedEntry.role._id
           : selectedEntry.role;
-        const mappedRole = typeof entryRole === 'string' ? entryRole.trim().toUpperCase() : entryRole;
-        sanitizedPayload.role = mappedRole;
+        effectiveRole = typeof entryRole === 'string' ? entryRole.trim().toUpperCase() : entryRole;
       }
 
-      // Permissions handling: forward user-level modular permissions
-      if (Array.isArray(payload.permissions)) {
-        sanitizedPayload.permissions = payload.permissions;
-      } else if (isEditing && Array.isArray(selectedEntry?.permissions)) {
-        sanitizedPayload.permissions = selectedEntry.permissions;
+      if (Array.isArray(rawPermissions) && rawPermissions.length > 0 && effectiveRole) {
+        // Find selected base role in safeRolesList
+        const baseRoleObj = safeRolesList.find(r => 
+          r.name === effectiveRole || 
+          r._id === effectiveRole ||
+          r.name === String(effectiveRole).split('_')[0]
+        );
+        const basePerms = Array.isArray(baseRoleObj?.permissions) ? baseRoleObj.permissions : [];
+
+        const isCustomized = (() => {
+          if (basePerms.includes('ALL')) {
+            return !rawPermissions.includes('ALL');
+          }
+          if (rawPermissions.length !== basePerms.length) return true;
+          const baseSet = new Set(basePerms.map(p => String(p).trim().toUpperCase()));
+          return rawPermissions.some(p => !baseSet.has(String(p).trim().toUpperCase()));
+        })();
+
+        if (isCustomized) {
+          try {
+            const userIdentifier = String(payload.userId || cleanPhone || cleanName || selectedEntry?.userId || 'USER')
+              .trim()
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .toUpperCase();
+            const basePrefix = String(baseRoleObj?.name || effectiveRole).split('_')[0] || 'ROLE';
+            const customRoleName = `${basePrefix}_${userIdentifier}`;
+
+            const existingCustomRole = safeRolesList.find(r => r.name === customRoleName);
+            if (existingCustomRole && (existingCustomRole._id || existingCustomRole.id)) {
+              await api.roles.update(existingCustomRole._id || existingCustomRole.id, {
+                name: customRoleName,
+                description: `Custom permissions for user ${cleanName || userIdentifier}`,
+                permissions: rawPermissions
+              });
+            } else {
+              await api.roles.create({
+                name: customRoleName,
+                description: `Custom permissions for user ${cleanName || userIdentifier}`,
+                permissions: rawPermissions
+              });
+            }
+            effectiveRole = customRoleName;
+          } catch (roleErr) {
+            console.warn("Could not sync user-level custom role to backend:", roleErr);
+          }
+        }
+      }
+
+      if (effectiveRole !== undefined) {
+        sanitizedPayload.role = effectiveRole;
+        if (!isEditing) {
+          sanitizedPayload.role_id = effectiveRole;
+        }
       }
 
       // Password handling: Drop if unmodified or unchanged to avoid database resets or validator clashes
@@ -578,13 +647,37 @@ const UserManagementPg = ({ moduleConfig }) => {
       }
 
       if (isEditing) {
-        // Dispatch to established backend API route cleanly
+        // Dispatch to established backend API route cleanly (WITHOUT unrecognized permissions key)
         await api.users.update(selectedEntry.id || selectedEntry._id, sanitizedPayload);
         swalSuccess("Success", "User updated successfully");
       } else {
         await api.users.create(sanitizedPayload);
         swalSuccess("Success", "User created successfully");
       }
+
+      // If the edited user is currently logged in, update localStorage session so changes apply immediately
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          const currentId = parsed._id || parsed.id;
+          const currentUserId = parsed.userId;
+          const targetId = isEditing ? (selectedEntry?.id || selectedEntry?._id) : null;
+          const targetUserId = payload.userId || selectedEntry?.userId;
+
+          if ((targetId && currentId && String(targetId) === String(currentId)) ||
+              (targetUserId && currentUserId && String(targetUserId) === String(currentUserId))) {
+            parsed.role = sanitizedPayload.role || parsed.role;
+            if (Array.isArray(rawPermissions)) {
+              parsed.permissions = rawPermissions;
+            }
+            localStorage.setItem('user', JSON.stringify(parsed));
+          }
+        }
+      } catch (e) {
+        console.warn("Could not update local session permissions:", e);
+      }
+
       mutate();
       closeAll();
     } catch (err) {
@@ -651,13 +744,21 @@ const UserManagementPg = ({ moduleConfig }) => {
       formUser.farmId = 'ALL';
     }
     
-    if (user.department && typeof user.department === 'object') {
-      formUser.department = user.department._id || user.department.id;
-    }
+    // Resolve permissions from user or from assigned role
+    const userRoleStr = typeof user.role === 'object' && user.role !== null
+      ? user.role.name || user.role.code || user.role._id
+      : user.role;
 
-    if (Array.isArray(user.permissions)) {
-      formUser.permissions = [...user.permissions];
+    let userPerms = [];
+    if (Array.isArray(user.permissions) && user.permissions.length > 0) {
+      userPerms = [...user.permissions];
+    } else if (userRoleStr && safeRolesList.length > 0) {
+      const matched = safeRolesList.find(r => r.name === userRoleStr || r._id === userRoleStr);
+      if (matched && Array.isArray(matched.permissions)) {
+        userPerms = [...matched.permissions];
+      }
     }
+    formUser.permissions = userPerms;
     
     setSelectedEntry(formUser);
     setIsEditing(true);
@@ -844,7 +945,7 @@ const UserManagementPg = ({ moduleConfig }) => {
                   <td className="p-4 text-sm text-gray-500 font-sans">{user.phone || user.mobile || "-"}</td>
                   <td className="p-4 text-sm font-semibold text-black">{getFarmName(user)}</td>
                   <td className="p-4 text-sm font-semibold text-gray-600">{typeof user.department === 'object' && user.department !== null ? (user.department.name || user.department.code || '-') : (user.department || '-')}</td>
-                  <td className="p-4 text-sm font-semibold text-gray-600">{typeof user.role === 'object' && user.role !== null ? (user.role.name || user.role.code || '-') : (user.role || '-')}</td>
+                  <td className="p-4 text-sm font-semibold text-gray-600">{formatRoleDisplay(user.role)}</td>
 
                   {/* ✅ STATUS CLICKABLE */}
                   <td className="p-4 text-center align-middle">
@@ -951,8 +1052,17 @@ const UserManagementPg = ({ moduleConfig }) => {
                 <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Assigned Modules</span>
                 <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
                   {(() => {
-                    const perms = selectedEntry?.permissions || [];
-                    if (perms.includes('ALL') || String(selectedEntry?.role || '').toUpperCase() === 'SUPER_ADMIN') {
+                    const userRoleStr = typeof selectedEntry?.role === 'object' && selectedEntry?.role !== null
+                      ? selectedEntry.role.name || selectedEntry.role.code
+                      : selectedEntry?.role;
+                    let perms = selectedEntry?.permissions || [];
+                    if ((!perms || perms.length === 0) && userRoleStr && safeRolesList.length > 0) {
+                      const matched = safeRolesList.find(r => r.name === userRoleStr || r._id === userRoleStr);
+                      if (matched && Array.isArray(matched.permissions)) {
+                        perms = matched.permissions;
+                      }
+                    }
+                    if (perms.includes('ALL') || String(userRoleStr || '').toUpperCase() === 'SUPER_ADMIN') {
                       return (
                         <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           🌟 Full Master Control (Super Admin)
