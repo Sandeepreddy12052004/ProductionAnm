@@ -1,8 +1,45 @@
-  import React, { useState } from 'react';
+  import React, { useState, useEffect, useRef } from 'react';
   import LivestockTagInput from './LivestockTagInput';
   import { swalError } from '../utils/swal';
   import Swal from 'sweetalert2';
   import { api } from '../utils/api';
+
+  const ALL_SYSTEM_MODULES = [
+    // Core Modules
+    { prefix: 'USER_MANAGEMENT', baseToken: 'USERS', name: 'User Management', icon: '👥', category: 'Core Modules' },
+    { prefix: 'DEPARTMENT', baseToken: 'DEPARTMENTS', name: 'Department', icon: '🏢', category: 'Core Modules' },
+    { prefix: 'ROLES', baseToken: 'ROLES', name: 'Role & Permissions', icon: '🛡️', category: 'Core Modules' },
+    { prefix: 'FARM_MANAGEMENT', baseToken: 'FARMS', name: 'Farm Management', icon: '🏠', category: 'Core Modules' },
+    { prefix: 'LAND_MANAGEMENT', baseToken: 'LAND', name: 'Land Management', icon: '🗺️', category: 'Core Modules' },
+    { prefix: 'BMC', baseToken: 'BMC', name: 'BMC Management', icon: '❄️', category: 'Core Modules' },
+    { prefix: 'SHED_MANAGEMENT', baseToken: 'SHEDS', name: 'Shed Management', icon: '⚙️', category: 'Core Modules' },
+    { prefix: 'LINE_MANAGEMENT', baseToken: 'SHEDS', name: 'Line Management', icon: '📏', category: 'Core Modules' },
+    { prefix: 'CATTLE_MANAGEMENT', baseToken: 'CATTLE', name: 'Cattle Management', icon: '🐄', category: 'Core Modules' },
+    { prefix: 'HEALTH_MANAGEMENT', baseToken: 'HEALTH', name: 'Health Management', icon: '🩺', category: 'Core Modules' },
+    { prefix: 'FEED_ITEMS', baseToken: 'INVENTORY', name: 'Feed Items', icon: '🌾', category: 'Core Modules' },
+    { prefix: 'TAG_MANAGEMENT', baseToken: 'CATTLE', name: 'Tag Management', icon: '🏷️', category: 'Core Modules' },
+    { prefix: 'BREED_MANAGEMENT', baseToken: 'CATTLE', name: 'Breed Management', icon: '🧬', category: 'Core Modules' },
+    { prefix: 'ANIMAL_MANAGEMENT', baseToken: 'CATTLE', name: 'Animal Management', icon: '🐏', category: 'Core Modules' },
+    { prefix: 'INSEMINATION_MANAGEMENT', baseToken: 'CROSSING_LOG', name: 'Insemination Management', icon: '🧬', category: 'Core Modules' },
+    { prefix: 'PROCUREMENT_MANAGEMENT', baseToken: 'PROCUREMENT_MANAGEMENT', name: 'Procurement Management', icon: '🛒', category: 'Core Modules' },
+
+    // Operational Modules
+    { prefix: 'LIVESTOCK', baseToken: 'CATTLE', name: 'Live Stock', icon: '🐄', category: 'Operational Modules' },
+    { prefix: 'SHED_LOG', baseToken: 'SHED_LOG', name: 'Shed Log', icon: '📝', category: 'Operational Modules' },
+    { prefix: 'CROSSING_LOG', baseToken: 'CROSSING_LOG', name: 'Crossing Log', icon: '🧬', category: 'Operational Modules' },
+    { prefix: 'PURCHASE_LOG', baseToken: 'PURCHASE_LOG', name: 'Purchase Log', icon: '📥', category: 'Operational Modules' },
+    { prefix: 'SALE_LOG', baseToken: 'SALE_LOG', name: 'Sale Log', icon: '📤', category: 'Operational Modules' },
+    { prefix: 'TREATMENT_LOG', baseToken: 'HEALTH', name: 'Treatment Log', icon: '🩺', category: 'Operational Modules' },
+    { prefix: 'VACCINATION_LOG', baseToken: 'HEALTH', name: 'Vaccination Log', icon: '💉', category: 'Operational Modules' },
+    { prefix: 'FEED_INVENTORY', baseToken: 'INVENTORY', name: 'Feed Inventory', icon: '📦', category: 'Operational Modules' },
+    { prefix: 'MEDICINE_INVENTORY', baseToken: 'INVENTORY', name: 'Medicine Inventory', icon: '💊', category: 'Operational Modules' },
+    { prefix: 'GRASS', baseToken: 'GRASS', name: 'Grass Collection', icon: '🌿', category: 'Operational Modules' },
+    { prefix: 'FEEDING', baseToken: 'FEEDING', name: 'Daily Feeding', icon: '🌾', category: 'Operational Modules' },
+    { prefix: 'MILK_COLLECTION', baseToken: 'MILK', name: 'Daily Milk Collection', icon: '🥛', category: 'Operational Modules' },
+    { prefix: 'MILK_QA', baseToken: 'MILK', name: 'Milk QA', icon: '🧪', category: 'Operational Modules' },
+    { prefix: 'MILK_PROCUREMENT', baseToken: 'MILK', name: 'Milk Procurement', icon: '🥛', category: 'Operational Modules' },
+    { prefix: 'MILK_PERFORMANCE', baseToken: 'MILK_PERFORMANCE', name: 'Milking Performance', icon: '📈', category: 'Operational Modules' }
+  ];
 
   const parseDateString = (dateVal) => {
     if (!dateVal) return null;
@@ -485,6 +522,9 @@
 
     const formatInitialData = (data, fields) => {
       const formatted = { ...data };
+      if (Array.isArray(data.permissions)) {
+        formatted.permissions = [...data.permissions];
+      }
       const initAnimalType = formatted.cattleType || formatted.animalType || '';
       if (initAnimalType) {
         formatted.cattleType = initAnimalType;
@@ -584,6 +624,9 @@
 
     const [formData, setFormData] = useState(() => {
       const formatted = formatInitialData(initialData, fields);
+      if (Array.isArray(initialData?.permissions)) {
+        formatted.permissions = [...initialData.permissions];
+      }
       if (fields.some(f => f.name === 'date') && (!formatted.date || formatted.date === '')) {
         formatted.date = formatDateToYYYYMMDD(new Date());
       }
@@ -631,6 +674,141 @@
     const [roleList, setRoleList] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [addModuleOpen, setAddModuleOpen] = useState(false);
+    const [moduleSearchQuery, setModuleSearchQuery] = useState("");
+    const addModuleRef = useRef(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (addModuleRef.current && !addModuleRef.current.contains(event.target)) {
+          setAddModuleOpen(false);
+        }
+      };
+      if (addModuleOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+      }
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, [addModuleOpen]);
+
+    const getEffectivePermissions = () => {
+      if (Array.isArray(formData.permissions)) {
+        return formData.permissions;
+      }
+      const selectedRoleObj = roleList.find(r => r.name === formData.role);
+      return selectedRoleObj?.permissions || [];
+    };
+
+    const isModuleActive = (mod, currentPerms) => {
+      if (!Array.isArray(currentPerms)) return false;
+      if (currentPerms.includes('ALL')) return true;
+      return currentPerms.some(p => {
+        if (typeof p === 'string') {
+          const u = p.trim().toUpperCase();
+          return u === mod.prefix || 
+                 u.startsWith(`${mod.prefix}_`) ||
+                 (mod.baseToken && (u === mod.baseToken || u.startsWith(`${mod.baseToken}_`)));
+        }
+        if (typeof p === 'object' && p) {
+          const k = String(p.module_key || p.module || p.name || p.prefix || '').trim().toUpperCase();
+          return k === mod.prefix || (mod.baseToken && k === mod.baseToken);
+        }
+        return false;
+      });
+    };
+
+    const handleRemoveModule = (modToRemove) => {
+      const currentPerms = getEffectivePermissions();
+      let updatedPerms = [];
+
+      if (currentPerms.includes('ALL')) {
+        ALL_SYSTEM_MODULES.forEach(m => {
+          if (m.prefix !== modToRemove.prefix) {
+            updatedPerms.push(
+              `${m.prefix}_VIEW`,
+              `${m.prefix}_CREATE`,
+              `${m.prefix}_EDIT`,
+              `${m.prefix}_DELETE`
+            );
+          }
+        });
+      } else {
+        let expanded = [];
+        currentPerms.forEach(p => {
+          if (typeof p !== 'string') return;
+          const u = p.trim().toUpperCase();
+          if (modToRemove.baseToken && (u === modToRemove.baseToken || u.startsWith(`${modToRemove.baseToken}_`))) {
+            ALL_SYSTEM_MODULES.filter(m => m.baseToken === modToRemove.baseToken && m.prefix !== modToRemove.prefix).forEach(other => {
+              expanded.push(
+                `${other.prefix}_VIEW`,
+                `${other.prefix}_CREATE`,
+                `${other.prefix}_EDIT`,
+                `${other.prefix}_DELETE`
+              );
+            });
+          } else {
+            expanded.push(u);
+          }
+        });
+
+        updatedPerms = expanded.filter(p => {
+          const u = p.trim().toUpperCase();
+          return u !== modToRemove.prefix && !u.startsWith(`${modToRemove.prefix}_`);
+        });
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        permissions: Array.from(new Set(updatedPerms))
+      }));
+    };
+
+    const handleAddModule = (modToAdd) => {
+      const currentPerms = getEffectivePermissions();
+      if (currentPerms.includes('ALL')) return;
+
+      const newTokens = [
+        `${modToAdd.prefix}_VIEW`,
+        `${modToAdd.prefix}_CREATE`,
+        `${modToAdd.prefix}_EDIT`,
+        `${modToAdd.prefix}_DELETE`
+      ];
+
+      const updated = Array.from(new Set([...currentPerms, ...newTokens]));
+      setFormData(prev => ({
+        ...prev,
+        permissions: updated
+      }));
+      setAddModuleOpen(false);
+      setModuleSearchQuery("");
+    };
+
+    const handleResetToRole = () => {
+      const selectedRoleObj = roleList.find(r => r.name === formData.role);
+      const rolePerms = selectedRoleObj?.permissions || [];
+      setFormData(prev => ({
+        ...prev,
+        permissions: [...rolePerms]
+      }));
+    };
+
+    const handleConvertAllToCustom = () => {
+      const allTokens = [];
+      ALL_SYSTEM_MODULES.forEach(m => {
+        allTokens.push(
+          `${m.prefix}_VIEW`,
+          `${m.prefix}_CREATE`,
+          `${m.prefix}_EDIT`,
+          `${m.prefix}_DELETE`
+        );
+      });
+      setFormData(prev => ({
+        ...prev,
+        permissions: allTokens
+      }));
+    };
+
     const [allShedsList, setAllShedsList] = useState([]);
 
     const checkTagExistsInLivestock = (tagValue) => {
@@ -722,7 +900,22 @@
       if (hasRoleField && title?.includes('User')) {
         import('../utils/api').then(({ api }) => {
           api.roles.getAll().then(roles => {
-            setRoleList(Array.isArray(roles) ? roles : []);
+            const list = Array.isArray(roles) ? roles : [];
+            setRoleList(list);
+
+            // If user permissions are not yet initialized, initialize from the role
+            setFormData(prev => {
+              if (prev.permissions !== undefined && prev.permissions !== null && prev.permissions.length > 0) {
+                return prev;
+              }
+              if (prev.role) {
+                const matched = list.find(r => r.name === prev.role);
+                if (matched && Array.isArray(matched.permissions)) {
+                  return { ...prev, permissions: [...matched.permissions] };
+                }
+              }
+              return prev;
+            });
           }).catch(err => {
             console.error("Failed to load roles for select:", err);
           });
@@ -1964,7 +2157,12 @@
                                   <div
                                     key={role._id || role.id}
                                     onClick={() => {
-                                      setFormData(prev => ({ ...prev, role: role.name }));
+                                      const rolePerms = Array.isArray(role.permissions) ? [...role.permissions] : [];
+                                      setFormData(prev => ({ 
+                                        ...prev, 
+                                        role: role.name,
+                                        permissions: rolePerms
+                                      }));
                                       setDropdownOpen(false);
                                       setSearchQuery("");
                                     }}
@@ -1983,60 +2181,207 @@
                         )}
                       </div>
 
-                      {/* Read-Only Access Feedback Summary badges */}
+                      {/* Interactive Access Permissions Summary */}
                       {formData.role && (
-                        <div className="mt-2 bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-2">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Access Permissions Summary</p>
+                        <div className="mt-2 bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-3 relative">
+                          {/* Header with Title, Count, and Add Module Button */}
+                          <div className="flex justify-between items-center flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                                Access Permissions Summary
+                              </p>
+                              {(() => {
+                                const perms = getEffectivePermissions();
+                                if (perms.includes('ALL')) return null;
+                                const activeCount = ALL_SYSTEM_MODULES.filter(m => isModuleActive(m, perms)).length;
+                                return (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                                    {activeCount} {activeCount === 1 ? 'module' : 'modules'}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+
+                            <div className="flex items-center gap-2 relative">
+                              {/* Reset to Role Defaults button if customized */}
+                              {(() => {
+                                const perms = getEffectivePermissions();
+                                const selectedRoleObj = roleList.find(r => r.name === formData.role);
+                                const rolePerms = selectedRoleObj?.permissions || [];
+                                const isDiff = Array.isArray(formData.permissions) && (
+                                  formData.permissions.length !== rolePerms.length ||
+                                  formData.permissions.some(p => !rolePerms.includes(p))
+                                );
+                                if (!isDiff) return null;
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={handleResetToRole}
+                                    className="text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                                    title="Reset permissions to match the selected role defaults"
+                                  >
+                                    <span>↺</span> Reset to Role
+                                  </button>
+                                );
+                              })()}
+
+                              {/* Add Module Button & Dropdown */}
+                              <div className="relative" ref={addModuleRef}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddModuleOpen(prev => !prev);
+                                    setModuleSearchQuery("");
+                                  }}
+                                  className="px-2.5 py-1 text-xs font-bold bg-[#16223F] hover:bg-[#2a3f75] text-white rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>+</span> Add Module
+                                </button>
+
+                                {addModuleOpen && (
+                                  <div className="absolute right-0 top-full mt-1.5 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-3 flex flex-col gap-2 max-h-80 overflow-hidden">
+                                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                                      <span className="text-xs font-extrabold text-[#16223F]">Grant Module Access</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAddModuleOpen(false)}
+                                        className="text-slate-400 hover:text-slate-600 text-xs font-bold p-0.5 rounded cursor-pointer"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      placeholder="Search modules to add..."
+                                      value={moduleSearchQuery}
+                                      onChange={(e) => setModuleSearchQuery(e.target.value)}
+                                      className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs outline-none focus:border-[#16223F] font-semibold text-[#16223F]"
+                                      onClick={(e) => e.stopPropagation()}
+                                      autoFocus
+                                    />
+                                    <div className="flex flex-col gap-1 overflow-y-auto custom-scrollbar max-h-60 pr-1">
+                                      {(() => {
+                                        const perms = getEffectivePermissions();
+                                        const availableModules = ALL_SYSTEM_MODULES.filter(m => {
+                                          const isActive = isModuleActive(m, perms);
+                                          const matchesSearch = m.name.toLowerCase().includes(moduleSearchQuery.toLowerCase());
+                                          return !isActive && matchesSearch;
+                                        });
+
+                                        if (availableModules.length === 0) {
+                                          return (
+                                            <span className="text-xs text-slate-400 font-semibold p-3 text-center">
+                                              {moduleSearchQuery ? 'No matching modules found.' : 'All available modules are already granted.'}
+                                            </span>
+                                          );
+                                        }
+
+                                        const opsModules = availableModules.filter(m => m.category === 'Operational Modules');
+                                        const coreModules = availableModules.filter(m => m.category === 'Core Modules');
+
+                                        return (
+                                          <>
+                                            {opsModules.length > 0 && (
+                                              <div className="flex flex-col gap-1">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider px-2 pt-1">
+                                                  Operational Modules
+                                                </span>
+                                                {opsModules.map(mod => (
+                                                  <div
+                                                    key={mod.prefix}
+                                                    onClick={() => handleAddModule(mod)}
+                                                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-[#16223F] cursor-pointer transition-colors"
+                                                  >
+                                                    <span className="flex items-center gap-2">
+                                                      <span>{mod.icon}</span>
+                                                      <span>{mod.name}</span>
+                                                    </span>
+                                                    <span className="text-emerald-600 font-black text-xs">+ Add</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+
+                                            {coreModules.length > 0 && (
+                                              <div className="flex flex-col gap-1 mt-1">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider px-2 pt-1">
+                                                  Core Modules
+                                                </span>
+                                                {coreModules.map(mod => (
+                                                  <div
+                                                    key={mod.prefix}
+                                                    onClick={() => handleAddModule(mod)}
+                                                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-[#16223F] cursor-pointer transition-colors"
+                                                  >
+                                                    <span className="flex items-center gap-2">
+                                                      <span>{mod.icon}</span>
+                                                      <span>{mod.name}</span>
+                                                    </span>
+                                                    <span className="text-emerald-600 font-black text-xs">+ Add</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Active Module Pills */}
                           <div className="flex flex-wrap gap-1.5">
                             {(() => {
-                              const selectedRoleObj = roleList.find(r => r.name === formData.role);
-                              if (!selectedRoleObj) return <span className="text-xs text-slate-400 font-semibold">Standard database access.</span>;
-                              
-                              const perms = selectedRoleObj.permissions || [];
+                              const perms = getEffectivePermissions();
+
                               if (perms.includes('ALL')) {
                                 return (
-                                  <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase tracking-wider">
-                                    🌟 Full Master Control (Super Admin)
-                                  </span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
+                                      🌟 Full Master Control (Super Admin)
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={handleConvertAllToCustom}
+                                      className="text-xs text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
+                                    >
+                                      Customize individual modules
+                                    </button>
+                                  </div>
                                 );
                               }
 
-                              const matchedModules = [];
-                              const mappings = {
-                                'USER_MANAGEMENT': '👥 User Management',
-                                'DEPARTMENT': '🏢 Department',
-                                'FARM_MANAGEMENT': '🏠 Farm Management',
-                                'SHED_MANAGEMENT': '⚙️ Shed Management',
-                                'LINE_MANAGEMENT': '📏 Line Management',
-                                'CATTLE_MANAGEMENT': '🐄 Cattle Management',
-                                'LIVESTOCK': '🐄 Live Stock',
-                                'SHED_LOG': '📝 Shed Log',
-                                'CROSSING_LOG': '🧬 Crossing Log',
-                                'PURCHASE_LOG': '📥 Purchase Log',
-                                'SALE_LOG': '📤 Sale Log',
-                                'TREATMENT_LOG': '🩺 Treatment Log',
-                                'VACCINATION_LOG': '💉 Vaccination Log',
-                                'FEED_INVENTORY': '📦 Feed Inventory',
-                                'MEDICINE_INVENTORY': '💊 Medicine Inventory',
-                                'MILK_COLLECTION': '🥛 Daily Milk Collection',
-                                'MILK_QA': '🧪 Milk QA',
-                                'MILK_PROCUREMENT': '🥛 Milk Procurement'
-                              };
+                              const activeModules = ALL_SYSTEM_MODULES.filter(mod => isModuleActive(mod, perms));
 
-                              Object.entries(mappings).forEach(([prefix, label]) => {
-                                const hasAccess = perms.some(p => p.startsWith(prefix));
-                                if (hasAccess) {
-                                  matchedModules.push(label);
-                                }
-                              });
-
-                              if (matchedModules.length === 0) {
-                                return <span className="text-xs text-slate-400 font-semibold">No active permissions.</span>;
+                              if (activeModules.length === 0) {
+                                return (
+                                  <div className="text-xs text-slate-400 font-semibold p-2">
+                                    No active modules granted. Click <strong className="text-slate-600 font-bold">+ Add Module</strong> above to assign permissions.
+                                  </div>
+                                );
                               }
 
-                              return matchedModules.map(label => (
-                                <span key={label} className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-100 text-slate-600 border border-slate-200">
-                                  {label}
+                              return activeModules.map(mod => (
+                                <span
+                                  key={mod.prefix}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-200 shadow-2xs hover:border-slate-300 transition-all group"
+                                >
+                                  <span>{mod.icon}</span>
+                                  <span>{mod.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveModule(mod);
+                                    }}
+                                    className="ml-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full w-4 h-4 inline-flex items-center justify-center transition-colors font-bold text-[10px] cursor-pointer"
+                                    title={`Remove ${mod.name} access`}
+                                  >
+                                    ✕
+                                  </button>
                                 </span>
                               ));
                             })()}
