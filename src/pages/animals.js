@@ -43,7 +43,10 @@ export default function AnimalsPage() {
       .then(res => {
         if (isMounted && res && Array.isArray(res)) {
           const names = res.filter(a => a && a.status !== false).map(a => a.name);
-          if (names.length > 0) setAnimalOptions(names);
+          if (names.length > 0) {
+            const combined = Array.from(new Set([...names, 'Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf']));
+            setAnimalOptions(combined);
+          }
         }
       })
       .catch(err => console.error("Failed to fetch animals:", err));

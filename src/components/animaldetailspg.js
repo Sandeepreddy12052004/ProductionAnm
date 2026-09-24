@@ -658,7 +658,7 @@ const getStandardHeaderKey = (headerValue) => {
     tag: ['tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number', 'animal tag', 'animal id', 'animalid', 'femaletag', 'female tag'],
     farm: ['farm', 'farmid', 'farmcode', 'farmname', 'farm_id', 'farm_code', 'farm_name', 'farm id', 'farm code', 'farm name', 'farmlocation', 'farm location', 'location', 'branch', 'farm_location'],
     shed: ['shed', 'shedno', 'shednumber', 'shedid', 'shed number', 'shed no', 'shed id'],
-    cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type'],
+    cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type', 'species', 'animalcategory', 'animal category', 'category', 'cattleanimal', 'cattle/animal', 'cattle/animal type', 'livestock', 'livestocktype', 'livestock type', 'animal_type', 'cattle_type'],
     breed: ['breed', 'breedtype', 'breed type'],
     gender: ['gender', 'sex'],
     'date of birth': ['dateofbirth', 'dob', 'birthdate', 'birth date', 'date of birth', 'bdate', 'birth_date', 'date_of_birth'],
@@ -866,6 +866,239 @@ const ID_PREFIX_MAP = {
   'animal-management': { prefix: 'ANIMAL_MANAGEMENT', baseToken: 'CATTLE' },
 };
 
+const BUFFALO_BREED_NAMES = [
+  'MURRAH', 'BHURI', 'JAFFARABADI', 'NILI', 'NILI-RAVI', 'NILI RAVI', 
+  'MEHSANA', 'SURTI', 'BUFFALO', 'DESI BUFFALO', 'DESI-BUFFALO', 
+  'PANDHARPURI', 'TODA', 'BHADAWARI', 'BANNI', 'NAGPURI', 'MARATHWADI',
+  'CHILIKA', 'KALAHANDI', 'SAMBALPURI', 'TARAI', 'JERANGI', 'SOUTH KANARA'
+];
+
+const COW_BREED_NAMES = [
+  'HF', 'HOLSTEIN', 'JERSEY', 'GIR', 'SAHIWAL', 'KANKREJ', 'COW', 
+  'DESI COW', 'DESI-COW', 'RED SINDHI', 'THARPARKAR', 'RATHI', 'ONGOLE',
+  'DEONI', 'HARIANA', 'DANGI', 'KHILLARI', 'AMRIT MAHAL', 'HALLIKAR',
+  'KRISHNA VALLEY', 'MALVI', 'NAGORI', 'NIMARI', 'VECHUR', 'PUGANUR', 'PUNGANUR'
+];
+
+const resolveLivestockAnimalType = ({
+  rawCattleInput = '',
+  rawTag = '',
+  rawBreed = '',
+  rawSireBreed = '',
+  rawDameBreed = '',
+  rawDameId = '',
+  rawAge = '',
+  rawCalvings = 0,
+  rawRemarks = '',
+  isDeadCalf = false,
+  activeCattle = [],
+  suffixRules = [],
+  allowedAnimals = null
+}) => {
+  const cleanInput = String(rawCattleInput || '').trim();
+  const cleanTag = String(rawTag || '').trim().toUpperCase();
+  const cleanBreed = String(rawBreed || '').trim().toUpperCase();
+  const cleanSireBreed = String(rawSireBreed || '').trim().toUpperCase();
+  const cleanDameBreed = String(rawDameBreed || '').trim().toUpperCase();
+  const cleanMotherTag = String(rawDameId || '').trim().toUpperCase();
+  const cleanRemarks = String(rawRemarks || '').trim().toUpperCase();
+  const cleanAge = String(rawAge || '').trim().toUpperCase();
+
+  // 1. Direct evaluation of rawCattleInput if present and meaningful
+  if (cleanInput && cleanInput !== '-' && cleanInput.toLowerCase() !== 'null' && cleanInput.toLowerCase() !== 'undefined') {
+    const upper = cleanInput.toUpperCase().replace(/[\s\-_.]+/g, ' ').trim();
+    
+    // Explicit Buffalo Calf
+    if (
+      upper === 'B CALF' || upper === 'B CALVES' || upper === 'BCALF' ||
+      upper.includes('BUFFALO CALF') || upper.includes('BUFFALO CALVES') ||
+      (upper.includes('BUFF') && upper.includes('CALF')) ||
+      upper.startsWith('B CALF') || upper.endsWith('B CALF')
+    ) {
+      return 'Buffalo Calf';
+    }
+    
+    // Explicit Cow Calf
+    if (
+      upper === 'C CALF' || upper === 'C CALVES' || upper === 'CCALF' ||
+      upper.includes('COW CALF') || upper.includes('COW CALVES') ||
+      (upper.includes('COW') && upper.includes('CALF')) ||
+      upper.startsWith('C CALF') || upper.endsWith('C CALF')
+    ) {
+      return 'Cow Calf';
+    }
+    
+    // Explicit Buffalo (Adult)
+    if (
+      upper === 'BUFFALO' || upper === 'BUFFALOS' || upper === 'BUFFALOES' ||
+      upper === 'BUFF' || upper === 'BUF' || upper.includes('MURRAH') ||
+      (upper.includes('BUFFALO') && !upper.includes('CALF'))
+    ) {
+      return 'Buffalo';
+    }
+    
+    // Explicit Cow (Adult)
+    if (
+      upper === 'COW' || upper === 'COWS' || upper === 'CATTLE' || upper === 'HEIFER'
+    ) {
+      return 'Cow';
+    }
+    
+    // Generic Calf — will be refined below by breed/mother/tag
+    if (upper !== 'CALF' && upper !== 'CALVES') {
+      if (allowedAnimals && allowedAnimals.has && allowedAnimals.has(upper)) {
+        return allowedAnimals.get ? allowedAnimals.get(upper) : cleanInput;
+      }
+    }
+  }
+
+  // 2. Existing cattle match from database (if tag already exists)
+  if (cleanTag && Array.isArray(activeCattle) && activeCattle.length > 0) {
+    const existing = activeCattle.find(a => {
+      const t = String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase();
+      return t === cleanTag;
+    });
+    if (existing) {
+      const exType = String(existing.cattleType || existing.animalType || '').trim();
+      const exUpper = exType.toUpperCase();
+      if (exUpper.includes('BUFFALO') && exUpper.includes('CALF')) return 'Buffalo Calf';
+      if (exUpper.includes('COW') && exUpper.includes('CALF')) return 'Cow Calf';
+      if (exUpper.includes('BUFFALO') || exUpper.includes('MURRAH')) return 'Buffalo';
+      if (exUpper.includes('COW') || exUpper === 'CATTLE') return 'Cow';
+      if (exType && exType !== '-' && exUpper !== 'NULL' && exUpper !== 'PENDING') return exType;
+    }
+  }
+
+  // 3. Determine if the animal is a Calf
+  let isCalf = isDeadCalf || isDeadCalfTag(cleanTag);
+  const inputUpper = cleanInput.toUpperCase();
+  if (!isCalf) {
+    if (inputUpper.includes('CALF') || inputUpper.includes('CALVES')) {
+      isCalf = true;
+    } else if (
+      cleanTag.includes('CALF') || cleanTag.includes('B.CALF') || 
+      cleanTag.includes('C.CALF') || cleanTag.includes('B-CALF') || 
+      cleanTag.includes('C-CALF') || cleanTag.includes('BCALF') || cleanTag.includes('CCALF')
+    ) {
+      isCalf = true;
+    } else if (/\b(?:CALF|CALVES|STILLBORN|BORN DEAD|BORN-DEAD)\b/i.test(cleanRemarks)) {
+      isCalf = true;
+    } else {
+      const calvingsNum = Number(rawCalvings) || 0;
+      if (calvingsNum === 0) {
+        if (cleanAge.includes('MONTH') || cleanAge.includes('DAY') || cleanAge.includes('WK') || cleanAge.includes('WEEK')) {
+          const mMatch = cleanAge.match(/(\d+)\s*(?:M|MONTH|MONTHS)/);
+          if (mMatch && Number(mMatch[1]) <= 12) {
+            isCalf = true;
+          } else if (cleanAge.includes('DAY') || cleanAge.includes('WEEK')) {
+            isCalf = true;
+          }
+        } else {
+          const yrMatch = cleanAge.match(/^(\d+(?:\.\d+)?)\s*(?:Y|YR|YEAR|YEARS)?$/);
+          if (yrMatch && Number(yrMatch[1]) < 1) {
+            isCalf = true;
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Determine Species (Buffalo vs Cow)
+  if (
+    cleanTag.includes('B.CALF') || cleanTag.includes('B-CALF') || 
+    cleanTag.includes('B CALF') || cleanTag.includes('BUFFALOCALF') || 
+    cleanTag.includes('BUFFALO CALF')
+  ) {
+    return 'Buffalo Calf';
+  }
+  if (
+    cleanTag.includes('C.CALF') || cleanTag.includes('C-CALF') || 
+    cleanTag.includes('C CALF') || cleanTag.includes('COWCALF') || 
+    cleanTag.includes('COW CALF')
+  ) {
+    return 'Cow Calf';
+  }
+
+  let isBuffalo = false;
+  let isCow = false;
+
+  // Check breeds (own breed, sire breed, dame breed)
+  const combinedBreed = `${cleanBreed} ${cleanSireBreed} ${cleanDameBreed}`;
+  if (BUFFALO_BREED_NAMES.some(b => combinedBreed.includes(b))) {
+    isBuffalo = true;
+  } else if (COW_BREED_NAMES.some(c => combinedBreed.includes(c))) {
+    isCow = true;
+  }
+
+  // Check tag prefix/content
+  if (!isBuffalo && !isCow) {
+    if (cleanTag.includes('BUFFALO') || cleanTag.includes('MURRAH') || cleanTag.startsWith('BUF') || /^B[\-_/0-9]/.test(cleanTag)) {
+      isBuffalo = true;
+    } else if (cleanTag.includes('COW') || /^C[\-_/0-9]/.test(cleanTag)) {
+      isCow = true;
+    }
+  }
+
+  // Check remarks
+  if (!isBuffalo && !isCow) {
+    if (cleanRemarks.includes('BUFFALO') || cleanRemarks.includes('MURRAH') || cleanRemarks.includes('B.CALF') || cleanRemarks.includes('B-CALF') || cleanRemarks.includes('B CALF')) {
+      isBuffalo = true;
+    } else if (cleanRemarks.includes('COW') || cleanRemarks.includes('C.CALF') || cleanRemarks.includes('C-CALF') || cleanRemarks.includes('C CALF')) {
+      isCow = true;
+    }
+  }
+
+  // Check mother in active cattle
+  if (!isBuffalo && !isCow && cleanMotherTag && Array.isArray(activeCattle) && activeCattle.length > 0) {
+    const mother = activeCattle.find(a => String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase() === cleanMotherTag);
+    if (mother) {
+      const mType = String(mother.cattleType || mother.animalType || '').toUpperCase();
+      const mBreed = String(mother.breed || '').toUpperCase();
+      if (mType.includes('BUFFALO') || BUFFALO_BREED_NAMES.some(b => mBreed.includes(b))) {
+        isBuffalo = true;
+      } else if (mType.includes('COW') || COW_BREED_NAMES.some(c => mBreed.includes(c))) {
+        isCow = true;
+      }
+    }
+  }
+
+  // Check suffix rules
+  if (!isBuffalo && !isCow && Array.isArray(suffixRules) && suffixRules.length > 0) {
+    for (const r of suffixRules) {
+      const suff = String(r.suffix).toUpperCase();
+      if (cleanTag.endsWith(suff)) {
+        const matchedType = String(r.animalType || '').toUpperCase();
+        if (matchedType.includes('BUFFALO')) {
+          isBuffalo = true;
+          break;
+        } else if (matchedType.includes('COW')) {
+          isCow = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // Check rawCattleInput text if generic
+  if (!isBuffalo && !isCow) {
+    if (inputUpper.includes('BUFFALO') || inputUpper.includes('BUFF') || inputUpper.includes('MURRAH') || inputUpper.includes('B.CALF') || inputUpper.includes('B CALF')) {
+      isBuffalo = true;
+    } else if (inputUpper.includes('COW') || inputUpper.includes('C.CALF') || inputUpper.includes('C CALF')) {
+      isCow = true;
+    }
+  }
+
+  // 5. Final resolution
+  if (isBuffalo) {
+    return isCalf ? 'Buffalo Calf' : 'Buffalo';
+  }
+  if (isCow) {
+    return isCalf ? 'Cow Calf' : 'Cow';
+  }
+
+  return isCalf ? 'Cow Calf' : 'Cow';
+};
+
 const AnimalDetailspg = ({ moduleConfig }) => {
 
 const router = useRouter();
@@ -967,16 +1200,14 @@ useEffect(() => {
       setAllowedBreeds(breedMap);
       
       const animalMap = new Map();
+      const standardAnimals = ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf', 'Calf'];
+      standardAnimals.forEach(name => {
+        animalMap.set(name.toUpperCase(), name);
+      });
       const animalNames = (animals || []).map(a => String(a.name || a.code || '').trim()).filter(Boolean);
-      if (animalNames.length === 0) {
-        ['Cow', 'Buffalo', 'Buffalo Calf', 'Cow Calf', 'Calf'].forEach(name => {
-          animalMap.set(name.toUpperCase(), name);
-        });
-      } else {
-        animalNames.forEach(name => {
-          animalMap.set(name.toUpperCase(), name);
-        });
-      }
+      animalNames.forEach(name => {
+        animalMap.set(name.toUpperCase(), name);
+      });
       setAllowedAnimals(animalMap);
     }
   }).catch(console.error);
@@ -2086,53 +2317,22 @@ const currentFields = current.fields.map(f => {
 
               const matchedBreed = findSmartMatch(rawBreed, allowedBreeds);
               
-              let finalCattle = '';
-              let isAnimalValid = false;
-
-              if (rawCattleInput && rawCattleInput !== '-' && rawCattleInput.toLowerCase() !== 'null' && rawCattleInput.toLowerCase() !== 'undefined') {
-                // User explicitly provided an Animal Type in Excel - ALWAYS respect it!
-                const upper = rawCattleInput.toUpperCase().replace(/\s+/g, ' ').trim();
-                if (upper === 'B.CALF' || upper === 'B. CALF' || upper === 'B CALF' || upper === 'BUFFALO CALF') {
-                  finalCattle = 'Buffalo Calf';
-                } else if (upper === 'C.CALF' || upper === 'C. CALF' || upper === 'C CALF' || upper === 'COW CALF') {
-                  finalCattle = 'Cow Calf';
-                } else if (upper === 'COW' || upper === 'CATTLE') {
-                  finalCattle = 'Cow';
-                } else if (upper === 'BUFFALO' || upper === 'BUFF') {
-                  finalCattle = 'Buffalo';
-                } else {
-                  const matched = findSmartMatch(rawCattleInput, allowedAnimals);
-                  finalCattle = matched || rawCattleInput;
-                }
-                const canonicalMatch = findSmartMatch(finalCattle, allowedAnimals);
-                if (canonicalMatch) {
-                  finalCattle = canonicalMatch;
-                  isAnimalValid = true;
-                } else {
-                  isAnimalValid = allowedAnimals.has(finalCattle.toUpperCase());
-                }
-              } else {
-                // Fallback ONLY when Excel animal type column is missing or empty
-                if (isDeadCalf) {
-                  const breedCombo = (rawBreed + ' ' + rawDameBreed + ' ' + rawSireBreed).toUpperCase();
-                  finalCattle = breedCombo.includes('BUFFALO') ? 'Buffalo Calf' : 'Cow Calf';
-                } else {
-                  const resolvedCalf = resolveCalfType(rawTag, '', rawBreed, rawSireBreed, rawDameBreed, rawDameId, activeCattle, suffixRules);
-                  let suffixType = null;
-                  const cleanTag = rawTag.toUpperCase();
-                  for (const r of suffixRules) {
-                    const suff = String(r.suffix).toUpperCase();
-                    if (cleanTag.endsWith(suff)) {
-                      suffixType = r.animalType;
-                      break;
-                    }
-                  }
-                  const fallbackCandidate = resolvedCalf || suffixType || 'Cow';
-                  const matchedFallback = findSmartMatch(fallbackCandidate, allowedAnimals);
-                  finalCattle = matchedFallback || fallbackCandidate;
-                }
-                isAnimalValid = allowedAnimals.has(finalCattle.toUpperCase()) || findSmartMatch(finalCattle, allowedAnimals) !== null;
-              }
+              const finalCattle = resolveLivestockAnimalType({
+                rawCattleInput,
+                rawTag,
+                rawBreed,
+                rawSireBreed,
+                rawDameBreed,
+                rawDameId,
+                rawAge,
+                rawCalvings,
+                rawRemarks: finalRemarks,
+                isDeadCalf,
+                activeCattle,
+                suffixRules,
+                allowedAnimals
+              });
+              const isAnimalValid = allowedAnimals.has(finalCattle.toUpperCase()) || findSmartMatch(finalCattle, allowedAnimals) !== null;
 
               const finalBreed = matchedBreed || rawBreed;
               const isBreedValid = matchedBreed !== null;
@@ -2896,6 +3096,40 @@ const fetchLogs = async (page = currentPage, limit = itemsPerPage) => {
           const resolvedStatus = resolveStatusFromInfo(tagVal, remarksVal, log.status);
           if (resolvedStatus !== log.status) {
             log.status = resolvedStatus;
+          }
+        }
+
+        // Dynamically ensure accurate animal type for sold, deceased, or misclassified records
+        const currentTypeUpper = String(log.cattleType || log.animalType || '').trim().toUpperCase();
+        const statusUpper = String(log.status || '').trim().toUpperCase();
+        const isInactiveOrSoldOrDead = ['SOLD', 'DECEASED', 'DEAD'].includes(statusUpper);
+
+        if (isInactiveOrSoldOrDead || !currentTypeUpper || currentTypeUpper === 'COW' || currentTypeUpper === 'PENDING') {
+          const inferredType = resolveLivestockAnimalType({
+            rawCattleInput: log.cattleType || log.animalType || '',
+            rawTag: tagVal,
+            rawBreed: log.breed || log.breedType || '',
+            rawSireBreed: log.sireBreed || '',
+            rawDameBreed: log.dameBreed || '',
+            rawDameId: log.dameId || '',
+            rawAge: log.age || '',
+            rawCalvings: log.calvings,
+            rawRemarks: remarksVal,
+            isDeadCalf: isDeadCalf,
+            activeCattle: rawCattleList,
+            suffixRules: [],
+            allowedAnimals: allowedAnimals
+          });
+          if (inferredType && inferredType.toUpperCase() !== currentTypeUpper) {
+            if (currentTypeUpper === 'COW') {
+              if (inferredType !== 'Cow') {
+                log.cattleType = inferredType;
+                log.animalType = inferredType;
+              }
+            } else {
+              log.cattleType = inferredType;
+              log.animalType = inferredType;
+            }
           }
         }
 
