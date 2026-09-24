@@ -655,21 +655,30 @@ const getStandardHeaderKey = (headerValue) => {
   const clean = rawStr.toLowerCase().replace(/[^a-z0-9?]/g, '');
   
   const aliases = {
-    tag: ['tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number', 'animal tag', 'animal id', 'animalid', 'femaletag', 'female tag'],
+    tag: [
+      'tag', 'tagid', 'tag_id', 'tagno', 'tagnumber', 'animaltag', 'animaltagid', 'tagnum', 'tag id', 'tag number',
+      'animal tag', 'animal id', 'animalid', 'femaletag', 'female tag',
+      'eartag', 'ear tag', 'eartagno', 'ear tag no', 'ear tag no.', 'ear tag number', 'eartagid', 'ear tag id',
+      'cattletag', 'cattle tag', 'cattletagno', 'cattle tag no', 'cattletagid', 'cattle tag id', 'cattleid', 'cattle id',
+      'livestocktag', 'livestock tag', 'livestockid', 'livestock id', 'livestocktagno', 'livestock tag no',
+      'cowtag', 'cow tag', 'buffalotag', 'buffalo tag',
+      'tag/id', 'tag / id', 'tag/no', 'tag / no', 'tag no.', 'tag no', 'tag.', 'tag#', 'tag #', 'tagidno'
+    ],
     farm: ['farm', 'farmid', 'farmcode', 'farmname', 'farm_id', 'farm_code', 'farm_name', 'farm id', 'farm code', 'farm name', 'farmlocation', 'farm location', 'location', 'branch', 'farm_location'],
-    shed: ['shed', 'shedno', 'shednumber', 'shedid', 'shed number', 'shed no', 'shed id'],
-    cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type', 'species', 'animalcategory', 'animal category', 'category', 'cattleanimal', 'cattle/animal', 'cattle/animal type', 'livestock', 'livestocktype', 'livestock type', 'animal_type', 'cattle_type'],
-    breed: ['breed', 'breedtype', 'breed type'],
+    shed: ['shed', 'shedno', 'shednumber', 'shedid', 'shed number', 'shed no', 'shed id', 'shed no.', 'shed_no', 'shed name', 'shedname', 'barn', 'pen'],
+    cattle: ['cattle', 'cattletype', 'animaltype', 'type', 'animal', 'cattle type', 'animal type', 'species', 'animalcategory', 'animal category', 'category', 'cattleanimal', 'cattle/animal', 'cattle/animal type', 'livestock', 'livestocktype', 'livestock type', 'animal_type', 'cattle_type', 'typeofanimal', 'type of animal', 'animal_category', 'cattle_category'],
+    breed: ['breed', 'breedtype', 'breed type', 'breed_type', 'breed name', 'breedname'],
     gender: ['gender', 'sex'],
-    'date of birth': ['dateofbirth', 'dob', 'birthdate', 'birth date', 'date of birth', 'bdate', 'birth_date', 'date_of_birth'],
-    'sire id': ['sireid', 'fatherid', 'siresid', 'sire id', 'father id', 'bulltag', 'bull tag', 'siretag', 'sire tag'],
+    'date of birth': ['dateofbirth', 'dob', 'birthdate', 'birth date', 'date of birth', 'bdate', 'birth_date', 'date_of_birth', 'd.o.b', 'd.o.b.', 'birth', 'birth_date'],
+    'sire id': ['sireid', 'fatherid', 'siresid', 'sire id', 'father id', 'bulltag', 'bull tag', 'siretag', 'sire tag', 'sire id (father)', 'sireidfather', 'sire tag id', 'sire tag no', 'siretagno', 'father tag', 'sire no', 'sireno'],
     'sire breed': ['sirebreed', 'fatherbreed', 'sire breed', 'father breed'],
-    'dame id': ['dameid', 'motherid', 'damesid', 'dame id', 'mother id', 'damid', 'dam id', 'damtag', 'dam tag'],
+    'dame id': ['dameid', 'motherid', 'damesid', 'dame id', 'mother id', 'damid', 'dam id', 'damtag', 'dam tag', 'dame id (mother)', 'dameidmother', 'dam tag id', 'dam tag no', 'damtagno', 'mother tag', 'dam no', 'damno'],
     'dame breed': ['damebreed', 'motherbreed', 'dame breed', 'mother breed', 'dam breed'],
-    'farm born?': ['farmborn', 'farmborn?', 'farm born', 'farm born?'],
-    calving: ['calving', 'calvings', 'noofcalving', 'noofcalvings', 'calvingcount', 'calving count', 'no of calvings'],
+    'farm born?': ['farmborn', 'farmborn?', 'farm born', 'farm born?', 'farm born (yes/no)', 'farm born (y/n)', 'born at farm', 'born in farm'],
+    calving: ['calving', 'calvings', 'noofcalving', 'noofcalvings', 'calvingcount', 'calving count', 'no of calvings', 'lactation', 'calving no', 'calving no.', 'no of calving'],
     remarks: ['remarks', 'remark', 'note', 'notes', 'reason', 'reasonforsale', 'reason for sale'],
     age: ['age', 'animalage', 'animal age'],
+    status: ['status', 'animalstatus', 'animal status', 'cattlestatus', 'cattle status', 'currentstatus', 'current status'],
     buyerName: ['buyer', 'buyername', 'buyer name', 'purchaser', 'purchasername', 'purchaser name'],
     buyerPhone: ['contact', 'phone', 'buyerphone', 'buyercontact', 'buyer phone', 'buyer contact', 'contactnumber', 'contact number', 'sellercontact', 'seller contact'],
     salePrice: ['price', 'saleprice', 'amount', 'sale price', 'sale amount', 'purchaseprice', 'purchase price'],
@@ -678,7 +687,7 @@ const getStandardHeaderKey = (headerValue) => {
       'crossingdate', 'crossing date', 'inseminationdate', 'insemination date', 'aidate', 'ai date',
       'servicedate', 'service date', 'crossedinsemnuatedate', 'crossedinseminatedate', 'crossedinseminateddate',
       'crossed insemnuate date', 'crossed inseminate date', 'crossed inseminated date',
-      'crossed/ insemnuate date', 'crossed/insemnuate date', 'crossed / insemnuate date',
+      'crossed/ insemnuate date', 'crossed/inseminate date', 'crossed / insemnuate date',
       'crossed/ inseminate date', 'crossed/inseminate date', 'crossed / inseminate date',
       'crossed/ inseminated date', 'crossed/inseminated date', 'crossed / inseminated date',
       'insemnuatedate', 'inseminatedate', 'inseminateddate', 'insemnuate date', 'inseminate date', 'inseminated date',
@@ -744,7 +753,7 @@ const getStandardHeaderKey = (headerValue) => {
     actualCalvingDate: [
       'actualcalvingdate', 'birthingdate', 'dateofbirthing', 'birthing', 'birthdate', 'calvingdate', 'dateofcalving',
       'parturitiondate', 'acd', 'actual calving date', 'birthing date', 'date of birthing', 'birth date',
-      'calving date', 'calved date', 'calveddate', 'date of calving', 'date of birth', 'parturition date',
+      'calving date', 'calved date', 'calveddate', 'date of calving', 'parturition date',
       'actual_calving_date', 'birthing_date', 'deliverydate', 'delivery date',
       'birthingdateaborteddate', 'birthingdateabortdate', 'birthingdateoraborteddate', 'birthingdateorabortdate',
       'birthing date / aborted date', 'birthing date/aborted date', 'birthing date / abort date', 'birthing date/abort date',
@@ -1286,23 +1295,67 @@ const currentFields = current.fields.map(f => {
 
         const rows = [];
         
-        // Find header row dynamically (look for the row containing the "tag" column)
+        // Helper to extract animal tag from multiple possible row keys
+        const extractRowTag = (row) => {
+          let t = String(
+            row['tag'] ||
+            row['tagId'] ||
+            row['tag_id'] ||
+            row['tagid'] ||
+            row['tagno'] ||
+            row['tag no'] ||
+            row['tag no.'] ||
+            row['tagnumber'] ||
+            row['tag number'] ||
+            row['eartag'] ||
+            row['ear tag'] ||
+            row['eartagno'] ||
+            row['ear tag no'] ||
+            row['eartagid'] ||
+            row['ear tag id'] ||
+            row['animaltag'] ||
+            row['animal tag'] ||
+            row['cattletag'] ||
+            row['cattle tag'] ||
+            row['animalid'] ||
+            row['animal id'] ||
+            row['cattleid'] ||
+            row['cattle id'] ||
+            ''
+          ).trim();
+          if (t.endsWith('.0') && /^\d+\.0$/.test(t)) {
+            t = t.slice(0, -2);
+          }
+          return t.trim();
+        };
+
+        // Find header row dynamically (look for the row containing the "tag" column or known headers)
         let headerRowNumber = 1;
         let foundHeader = false;
         
-        for (let r = 1; r <= Math.min(worksheet.rowCount || 0, 10); r++) {
+        const maxScanRows = Math.min(Math.max(worksheet.actualRowCount || 0, worksheet.rowCount || 0, 25), 50);
+        for (let r = 1; r <= maxScanRows; r++) {
           const row = worksheet.getRow(r);
+          if (!row) continue;
           const cellCount = Math.max(worksheet.columnCount || 0, row.cellCount || 0, 50);
+          let rowHasTag = false;
+          let knownHeaderMatches = 0;
           for (let c = 1; c <= cellCount; c++) {
             const val = getCellStringValue(row.getCell(c).value);
+            if (!val) continue;
             const standardHeader = getStandardHeaderKey(val);
-            if (standardHeader === 'tag') {
-              headerRowNumber = r;
-              foundHeader = true;
-              break;
+            if (standardHeader === 'tag' || /^(?:tag|tag[\s_.-]*id|tag[\s_.-]*no|ear[\s_.-]*tag|animal[\s_.-]*tag|cattle[\s_.-]*tag)/i.test(val)) {
+              rowHasTag = true;
+              knownHeaderMatches++;
+            } else if (['cattle', 'breed', 'gender', 'shed', 'date of birth', 'age', 'farm', 'sire id', 'dame id', 'calving', 'remarks', 'status'].includes(standardHeader)) {
+              knownHeaderMatches++;
             }
           }
-          if (foundHeader) break;
+          if (rowHasTag || knownHeaderMatches >= 2) {
+            headerRowNumber = r;
+            foundHeader = true;
+            break;
+          }
         }
 
         const headerRow = worksheet.getRow(headerRowNumber);
@@ -1336,6 +1389,13 @@ const currentFields = current.fields.map(f => {
             }
           }
           if (hasAnyData) {
+            // Populate normalized tag property
+            const extractedTag = extractRowTag(rowData);
+            if (extractedTag) {
+              rowData['tag'] = extractedTag;
+              rowData['tagId'] = extractedTag;
+              rowData['tag_id'] = extractedTag;
+            }
             rows.push(rowData);
           }
         });
@@ -1343,11 +1403,14 @@ const currentFields = current.fields.map(f => {
         const uniqueParsed = [];
         const seenTags = new Set();
         for (const row of rows) {
-          const tag = String(row['tag'] || '').trim();
+          const tag = extractRowTag(row);
+          if (!tag) continue;
+          row['tag'] = tag;
+          row['tagId'] = tag;
+          row['tag_id'] = tag;
+
           if (['shed', 'crossing', 'purchase'].includes(current.id)) {
-            if (tag) {
-              uniqueParsed.push(row);
-            }
+            uniqueParsed.push(row);
           } else if (current.id === 'livestock' && isDeadCalfTag(tag)) {
             // Dead calves represent individual stillborn birth events.
             // Every stillborn calf must be preserved and not dropped by tag deduplication.
@@ -1362,7 +1425,7 @@ const currentFields = current.fields.map(f => {
         }
 
         if (uniqueParsed.length === 0) {
-          swalError("No valid rows", "Could not find any rows with a 'tag' column.");
+          swalError("No valid rows", "Could not find any rows with a valid animal Tag ID column in the Excel file.");
           return;
         }
 
@@ -2152,15 +2215,29 @@ const currentFields = current.fields.map(f => {
           // --- LIVE STOCK IMPORT PIPELINE ---
           const [suffixRulesRes, cattleListRes, shedsRes, farmsRes] = await Promise.all([
             api.tags.getAllSuffixes().catch(() => []),
-            api.cattle.getAll().catch(() => []),
+            api.cattle.getAll({ bypassFarmFilter: true }).catch(() => []),
             api.sheds.getAll({ bypassFarmFilter: true }).catch(() => []),
             api.farms.getAll().catch(() => [])
           ]);
           const suffixRules = Array.isArray(suffixRulesRes) ? suffixRulesRes : (suffixRulesRes?.data ?? []);
           const activeCattle = Array.isArray(cattleListRes) ? cattleListRes : (cattleListRes?.data ?? []);
 
-          let allFarms = farmsList && farmsList.length > 0 ? farmsList : (Array.isArray(farmsRes) ? farmsRes : (farmsRes?.data ?? []));
-          let allSheds = rawShedsList && rawShedsList.length > 0 ? rawShedsList : (Array.isArray(shedsRes) ? shedsRes : (shedsRes?.data ?? []));
+          let allFarms = (Array.isArray(farmsRes) && farmsRes.length > 0)
+            ? farmsRes
+            : ((farmsRes?.data && Array.isArray(farmsRes.data))
+                ? farmsRes.data
+                : (farmsList && farmsList.length > 0 ? farmsList : []));
+          if (allFarms.length === 0) {
+            try {
+              const cached = sessionStorage.getItem('__cached_farms_list__');
+              if (cached) allFarms = JSON.parse(cached);
+            } catch (_) {}
+          }
+          let allSheds = (Array.isArray(shedsRes) && shedsRes.length > 0)
+            ? shedsRes
+            : ((shedsRes?.data && Array.isArray(shedsRes.data))
+                ? shedsRes.data
+                : (rawShedsList && rawShedsList.length > 0 ? rawShedsList : []));
 
           // Detect active farm filter on the current page / user session
           let pageFarmFilterId = null;
@@ -2188,11 +2265,16 @@ const currentFields = current.fields.map(f => {
           }
 
           let deadCalfSeq = 1;
-          await processInBatches(uniqueParsed, 20, async (row) => {
+          await processInBatches(uniqueParsed, 20, async (row, idx) => {
             try {
-              const rawTag = String(row['tag'] || '').trim();
+              const rawTag = extractRowTag(row);
+              if (!rawTag) return;
+
               const isDeadCalf = isDeadCalfTag(rawTag);
-              const cleanDameId = String(row['dame id'] || '').trim().replace(/^-$/, '');
+              const cleanDameId = String(
+                row['dame id'] || row['dameId'] || row['dameid'] || row['dame tag'] || 
+                row['dam id'] || row['damid'] || row['dame id (mother)'] || row['dameidmother'] || ''
+              ).trim().replace(/^-$/, '');
 
               let processedTag = rawTag;
               if (isDeadCalf) {
@@ -2202,33 +2284,43 @@ const currentFields = current.fields.map(f => {
                 }
               }
 
-              const rawShed = String(row['shed'] || '-').trim();
+              const rawShed = String(
+                row['shed'] || row['shedId'] || row['shedid'] || row['shed no'] || 
+                row['shedno'] || row['shed number'] || row['shednumber'] || '-'
+              ).trim();
               
               const rawCattleInput = String(
                 row['cattle'] || row['cattleType'] || row['cattletype'] || row['cattle type'] || row['cattle_type'] ||
                 row['animalType'] || row['animaltype'] || row['animal type'] || row['animal_type'] ||
-                row['animal'] || row['type'] || ''
+                row['animal'] || row['type'] || row['typeofanimal'] || row['type of animal'] || ''
               ).trim();
 
-              const rawGender = String(row['gender'] || '').trim();
-              const rawBreed = String(row['breed'] || '').trim();
+              let rawGender = String(row['gender'] || row['sex'] || '').trim();
+              const rawBreed = String(
+                row['breed'] || row['breedType'] || row['breedtype'] || row['breed type'] || row['breed name'] || ''
+              ).trim();
               
               let rawDOB = null;
-              if (row['date of birth'] || row['dob']) {
-                const parsedD = parseDateString(row['date of birth'] || row['dob']);
+              const rawDobStr = row['date of birth'] || row['dob'] || row['dateofbirth'] || row['birth date'] || row['birthdate'] || row['date_of_birth'] || '';
+              if (rawDobStr) {
+                const parsedD = parseDateString(rawDobStr);
                 if (parsedD && !isNaN(parsedD.getTime())) {
                   rawDOB = parsedD;
                 }
               }
 
-              const rawSireId = String(row['sire id'] || '').trim();
-              const rawSireBreed = String(row['sire breed'] || '').trim();
-              const rawDameId = String(row['dame id'] || '').trim();
-              const rawDameBreed = String(row['dame breed'] || '').trim();
-              const rawFarmBorn = isDeadCalf ? 'Yes' : normalizeYesNo(row['farm born?'] || row['farm born'] || 'No');
+              const rawSireId = String(
+                row['sire id'] || row['sireId'] || row['sireid'] || row['sire tag'] || 
+                row['sire id (father)'] || row['sireidfather'] || ''
+              ).trim();
+              const rawSireBreed = String(row['sire breed'] || row['sireBreed'] || row['sirebreed'] || '').trim();
+              const rawDameBreed = String(row['dame breed'] || row['dameBreed'] || row['damebreed'] || row['dam breed'] || '').trim();
+              const rawFarmBorn = isDeadCalf ? 'Yes' : normalizeYesNo(row['farm born?'] || row['farm born'] || row['farmborn'] || row['farmborn?'] || 'No');
               
-              const rawCalvings = isDeadCalf ? 0 : (Number(row['calving'] || row['calvings']) || 0);
-              let finalRemarks = String(row['remarks'] || '').trim();
+              const parsedCalvings = parseInt(row['calving'] || row['calvings'] || row['noofcalving'] || row['noofcalvings'] || row['calvingcount'] || row['no of calvings'] || row['lactation'] || 0, 10);
+              const rawCalvings = isDeadCalf ? 0 : (isNaN(parsedCalvings) ? 0 : parsedCalvings);
+
+              let finalRemarks = String(row['remarks'] || row['remark'] || row['note'] || row['notes'] || '').trim();
               if (isDeadCalf) {
                 if (!finalRemarks || finalRemarks === '-') {
                   finalRemarks = 'Born Dead';
@@ -2236,7 +2328,7 @@ const currentFields = current.fields.map(f => {
                   finalRemarks = `${finalRemarks} (Born Dead)`;
                 }
               }
-              const rawAge = String(row['age'] || '').trim();
+              const rawAge = String(row['age'] || row['animalage'] || row['animal age'] || '').trim();
 
               if (!rawDOB) {
                 const tagDob = extractDOBFromTag(rawTag);
@@ -2263,7 +2355,20 @@ const currentFields = current.fields.map(f => {
                 resolvedFarm = findFarmMatch(pageFarmFilterId, allFarms);
               }
 
-              // 3. Inference from Shed name if present (e.g. "TKP - Shed 1", "TDR - 2")
+              // 3. Known shed mapping (Sheds 1, 2, 3, 4, 7 -> TKP; Sheds 5, 6 -> TDR)
+              if (!resolvedFarm && rawShed && rawShed !== '-') {
+                const cleanShedNum = rawShed.replace(/[^0-9]/g, '');
+                if (cleanShedNum) {
+                  const sNum = parseInt(cleanShedNum, 10);
+                  if ([1, 2, 3, 4, 7].includes(sNum)) {
+                    resolvedFarm = findFarmMatch('TKP', allFarms);
+                  } else if ([5, 6].includes(sNum)) {
+                    resolvedFarm = findFarmMatch('TDR', allFarms);
+                  }
+                }
+              }
+
+              // 4. Inference from Shed list
               if (!resolvedFarm && rawShed && rawShed !== '-') {
                 resolvedFarm = findFarmMatch(rawShed, allFarms);
                 if (!resolvedFarm) {
@@ -2280,7 +2385,7 @@ const currentFields = current.fields.map(f => {
                 }
               }
 
-              // 4. Fallback to first farm in system
+              // 5. Fallback to first farm in system
               if (!resolvedFarm && allFarms.length > 0) {
                 resolvedFarm = allFarms[0];
               }
@@ -2298,7 +2403,8 @@ const currentFields = current.fields.map(f => {
                 return false;
               });
 
-              const finalStatus = isDeadCalf ? 'DECEASED' : resolveStatusFromInfo(rawTag, finalRemarks, row['status'] || 'ACTIVE');
+              const rawStatus = String(row['status'] || row['animal status'] || row['cattle status'] || 'ACTIVE').trim();
+              const finalStatus = isDeadCalf ? 'DECEASED' : resolveStatusFromInfo(rawTag, finalRemarks, rawStatus);
               const isDeadOrSold = finalStatus === 'DECEASED' || finalStatus === 'SOLD';
 
               let finalShed = '-';
@@ -2323,7 +2429,7 @@ const currentFields = current.fields.map(f => {
                 rawBreed,
                 rawSireBreed,
                 rawDameBreed,
-                rawDameId,
+                rawDameId: cleanDameId,
                 rawAge,
                 rawCalvings,
                 rawRemarks: finalRemarks,
@@ -2334,40 +2440,113 @@ const currentFields = current.fields.map(f => {
               });
               const isAnimalValid = allowedAnimals.has(finalCattle.toUpperCase()) || findSmartMatch(finalCattle, allowedAnimals) !== null;
 
+              // Ensure gender is normalized and never empty
+              if (!rawGender || rawGender === '-') {
+                const fcLower = finalCattle.toLowerCase();
+                if (fcLower.includes('bull') || fcLower.includes('sire') || fcLower.includes('male')) {
+                  rawGender = 'Male';
+                } else {
+                  rawGender = 'Female';
+                }
+              } else {
+                const gLower = rawGender.toLowerCase();
+                if (gLower.startsWith('m')) rawGender = 'Male';
+                else if (gLower.startsWith('f')) rawGender = 'Female';
+              }
+
               const finalBreed = matchedBreed || rawBreed;
               const isBreedValid = matchedBreed !== null;
               const isDOBValid = rawDOB !== null && rawDOB !== undefined && !isNaN(rawDOB.getTime());
               const isInvalid = !isDeadOrSold && (!isShedValid || !isBreedValid || !isAnimalValid || !isDOBValid);
 
-              const payload = {
-                tag: processedTag,
-                tagId: processedTag,
-                code: `CTL-${Date.now()}-${Math.floor(Math.random()*100000)}`,
-                farmId: resolvedFarmId,
-                farmName: resolvedFarm?.name || resolvedFarmCode || undefined,
-                shed: finalShed,
-                shedId: finalShed,
-                cattleType: finalCattle,
-                animalType: finalCattle,
-                gender: rawGender,
-                breed: finalBreed,
-                dateOfBirth: rawDOB,
-                sireId: rawSireId === '-' ? '' : rawSireId,
-                sireBreed: rawSireBreed === '-' ? '' : rawSireBreed,
-                dameId: rawDameId === '-' ? '' : rawDameId,
-                dameBreed: rawDameBreed === '-' ? '' : rawDameBreed,
-                farmBorn: rawFarmBorn,
-                calvings: rawCalvings,
-                remarks: finalRemarks,
-                age: rawAge,
-                status: finalStatus,
-                isPendingDetails: isDeadCalf ? false : isInvalid,
-                onboardingType: 'IMPORT',
-                isImported: true
-              };
+              // Check if animal already exists in livestock registry (UPSERT support)
+              const matchedAnimal = activeCattle.find(a => {
+                const aTag = String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase();
+                return aTag === rawTag.toUpperCase() || aTag === processedTag.toUpperCase();
+              });
 
-              // If it's classified as Deceased / Dead during Excel import, register it
-              await api.cattle.create(payload);
+              if (matchedAnimal) {
+                // Update existing record
+                const animalId = matchedAnimal.id || matchedAnimal._id;
+                const updatePayload = {
+                  tag: processedTag,
+                  tagId: processedTag,
+                  tag_id: processedTag,
+                  farmId: resolvedFarmId || (matchedAnimal.farmId?._id || matchedAnimal.farmId?.id || matchedAnimal.farmId),
+                  farmName: resolvedFarm?.name || resolvedFarmCode || matchedAnimal.farmName || undefined,
+                  shed: finalShed !== '-' ? finalShed : (matchedAnimal.shed || matchedAnimal.shedId || '-'),
+                  shedId: finalShed !== '-' ? finalShed : (matchedAnimal.shed || matchedAnimal.shedId || '-'),
+                  cattleType: finalCattle || matchedAnimal.cattleType || matchedAnimal.animalType,
+                  animalType: finalCattle || matchedAnimal.cattleType || matchedAnimal.animalType,
+                  gender: rawGender || matchedAnimal.gender,
+                  breed: finalBreed || matchedAnimal.breed,
+                  dateOfBirth: rawDOB || matchedAnimal.dateOfBirth,
+                  sireId: rawSireId && rawSireId !== '-' ? rawSireId : (matchedAnimal.sireId || ''),
+                  sireBreed: rawSireBreed && rawSireBreed !== '-' ? rawSireBreed : (matchedAnimal.sireBreed || ''),
+                  dameId: cleanDameId ? cleanDameId : (matchedAnimal.dameId || ''),
+                  dameBreed: rawDameBreed && rawDameBreed !== '-' ? rawDameBreed : (matchedAnimal.dameBreed || ''),
+                  farmBorn: rawFarmBorn || matchedAnimal.farmBorn,
+                  calvings: rawCalvings !== undefined && rawCalvings !== null ? rawCalvings : (matchedAnimal.calvings || 0),
+                  remarks: finalRemarks || matchedAnimal.remarks,
+                  age: rawAge || matchedAnimal.age,
+                  status: finalStatus || matchedAnimal.status,
+                  isPendingDetails: isDeadCalf ? false : isInvalid,
+                  onboardingType: 'IMPORT',
+                  isImported: true
+                };
+                await api.cattle.update(animalId, updatePayload);
+              } else {
+                // Register new cattle record
+                const payload = {
+                  tag: processedTag,
+                  tagId: processedTag,
+                  tag_id: processedTag,
+                  code: `CTL-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${idx}`,
+                  farmId: resolvedFarmId,
+                  farmName: resolvedFarm?.name || resolvedFarmCode || undefined,
+                  shed: finalShed,
+                  shedId: finalShed,
+                  cattleType: finalCattle,
+                  animalType: finalCattle,
+                  gender: rawGender,
+                  breed: finalBreed,
+                  dateOfBirth: rawDOB,
+                  sireId: rawSireId === '-' ? '' : rawSireId,
+                  sireBreed: rawSireBreed === '-' ? '' : rawSireBreed,
+                  dameId: cleanDameId === '-' ? '' : cleanDameId,
+                  dameBreed: rawDameBreed === '-' ? '' : rawDameBreed,
+                  farmBorn: rawFarmBorn,
+                  calvings: rawCalvings,
+                  remarks: finalRemarks,
+                  age: rawAge,
+                  status: finalStatus,
+                  isPendingDetails: isDeadCalf ? false : isInvalid,
+                  onboardingType: 'IMPORT',
+                  isImported: true
+                };
+
+                try {
+                  await api.cattle.create(payload);
+                } catch (createErr) {
+                  const errMsg = String(createErr?.message || createErr || '').toLowerCase();
+                  if (errMsg.includes('already exists') || errMsg.includes('duplicate') || errMsg.includes('e11000')) {
+                    // Tag already in database, fetch and update it
+                    const freshList = await api.cattle.getAll({ bypassFarmFilter: true }).catch(() => []);
+                    const freshAnimals = Array.isArray(freshList) ? freshList : (freshList?.data ?? []);
+                    const existing = freshAnimals.find(a => {
+                      const aTag = String(a.tag || a.tagId || a.tag_id || '').trim().toUpperCase();
+                      return aTag === rawTag.toUpperCase() || aTag === processedTag.toUpperCase();
+                    });
+                    if (existing) {
+                      await api.cattle.update(existing.id || existing._id, payload);
+                    } else {
+                      throw createErr;
+                    }
+                  } else {
+                    throw createErr;
+                  }
+                }
+              }
 
               // Auto-create Sale Log if status resolved to SOLD
               if (finalStatus === 'SOLD') {
@@ -2378,6 +2557,7 @@ const currentFields = current.fields.map(f => {
                   await api.sale.create({
                     tag: rawTag,
                     tagId: rawTag,
+                    tag_id: rawTag,
                     buyerName: 'Auto Classified from Remarks',
                     buyerPhone: '0000000000',
                     salePrice: salePrice,
@@ -2391,21 +2571,44 @@ const currentFields = current.fields.map(f => {
 
               successCount++;
             } catch (err) {
+              const errMsg = typeof err === 'string' ? err : (err?.message || JSON.stringify(err) || 'Unknown error');
               console.error(`Error importing tag ${row['tag']}:`, err);
-              errorDetails.push(`Tag ${row['tag'] || 'unknown'}: ${err.message || err || 'Unknown error'}`);
+              errorDetails.push(`Tag ${row['tag'] || 'unknown'}: ${errMsg}`);
               errorCount++;
             }
           });
         }
 
-        swalSuccess(
-          "Import Complete",
-          `Successfully imported ${successCount} records. Errors: ${errorCount}.`
-        );
-        fetchLogs();
+        sessionStorage.removeItem('__livestock_tag_cache__');
+
+        if (successCount > 0 && errorCount === 0) {
+          swalSuccess(
+            "Import Complete",
+            `Successfully imported/updated ${successCount} record(s).`
+          );
+        } else if (successCount > 0 && errorCount > 0) {
+          swalSuccess(
+            "Import Partially Complete",
+            `Successfully imported/updated ${successCount} record(s). ${errorCount} record(s) failed.\n\nFirst error: ${errorDetails[0] || 'Unknown'}`
+          );
+        } else if (successCount === 0 && errorCount > 0) {
+          swalError(
+            "Import Failed",
+            `Could not import records (${errorCount} failed).\n\nReasons:\n${errorDetails.slice(0, 3).join('\n')}`
+          );
+        } else {
+          swalSuccess("Import Complete", `Processed ${successCount} record(s).`);
+        }
+
+        await fetchLogs();
       } catch (err) {
         console.error("Failed to parse Excel file:", err);
-        swalError("Error", "Failed to parse the Excel file.");
+        const isXls = file?.name?.toLowerCase().endsWith('.xls') && !file?.name?.toLowerCase().endsWith('.xlsx');
+        if (isXls) {
+          swalError("Unsupported Format", "Please save your Excel file as modern .xlsx format (Excel Workbook) before importing.");
+        } else {
+          swalError("Error", "Failed to parse the Excel file. Please verify file format and columns.");
+        }
       } finally {
         setIsLoading(false);
       }
